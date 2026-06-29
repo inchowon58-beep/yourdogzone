@@ -1,0 +1,13 @@
+[
+  {
+    "name": "학원명을 여기에",
+    "address": "경기도 부천시 원미구 ... (도로명 또는 지번)",
+    "phone": "032-000-0000",
+    "description": "네이버 플레이스 '소개' 탭 글을 복사해서 붙여넣기",
+    "image_urls": [
+      "https://search.pstatic.net/sunny/?src=... (네이버 이미지 주소 1)",
+      "https://search.pstatic.net/sunny/?src=... (선택, 더 있으면 추가)"
+    ],
+    "naver_place_url": "https://map.naver.com/p/... (선택)"
+  }
+]
