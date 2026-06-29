@@ -47,6 +47,7 @@ def save_crawled(places: list, path: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="네이버 플레이스 자동 수집·등록")
+    parser.add_argument("--gui", action="store_true", help="GUI 프로그램 실행")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="설정 JSON 경로")
     parser.add_argument("--query", help="단일 검색어 (config 대신 사용)")
     parser.add_argument("--max", type=int, default=5, help="검색당 최대 수집 수")
@@ -54,6 +55,12 @@ def main() -> int:
     parser.add_argument("--no-gemini", action="store_true", help="Gemini 재가공 끄기")
     parser.add_argument("--show-browser", action="store_true", help="브라우저 창 표시")
     args = parser.parse_args()
+
+    if args.gui:
+        from gui_app import main as gui_main
+
+        gui_main()
+        return 0
 
     if not args.dry_run and not ADMIN_SECRET:
         print("오류: .env 에 ACADEMY_ADMIN_SECRET 을 설정하세요.", file=sys.stderr)

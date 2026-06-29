@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+"""YourDogZone 애견미용학원 자동 수집·등록 GUI"""
+
+from __future__ import annotations
+
+import queue
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import messagebox, scrolledtext, ttk
+
+from pipeline import (
+    PipelineSettings,
+    list_crawled_files,
+    load_settings_from_files,
+    parse_search_lines,
+    register_from_json,
+    run_collect,
+    run_collect_and_register,
+    save_settings,
+)
+
+SCRIPT_DIR = Path(__file__).parent
+APP_TITLE = "유아독존 — 애견미용학원 자동 등록"
+
+
+class AcademyRegisterApp(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title(APP_TITLE)
+        self.geometry("720x780")
+        self.minsize(640, 680)
+        self.configure(bg="#f5f5f7")
+
+        self.log_queue: queue.Queue[str] = queue.Queue()
+        self.worker: threading.Thread | None = None
+        self.running = False
+        self.last_json: Path | None = None
+
+        self._build_ui()
+        self._load_initial_settings()
+        self.after(150, self._poll_log)
+
+    def _build_ui(self) -> None:
+        pad = {"padx": 12, "pady": 6}
+
+        header = tk.Label(
+            self,
+            text="네이버 플레이스 → 수집 → Gemini 가공 → 사이트 등록",
+            font=("Segoe UI", 11, "bold"),
+            bg="#f5f5f7",
+            fg="#333",
+        )
+        header.pack(pady=(14, 4))
+
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill="both", expand=False, padx=12, pady=4)
+
+        # --- 설정 탭 ---
+        tab_settings = tk.Frame(notebook, bg="#fff")
+        notebook.add(tab_settings, text="  설정  ")
+
+        frm = tk.Frame(tab_settings, bg="#fff")
+        frm.pack(fill="x", padx=16, pady=12)
+
+        tk.Label(frm, text="사이트 URL", bg="#fff", anchor="w").grid(row=0, column=0, sticky="w", **pad)
+        self.api_url_var = tk.StringVar()
+        tk.Entry(frm, textvariable=self.api_url_var, width=52).grid(row=0, column=1, **pad)
+
+        tk.Label(frm, text="관리자 비밀키", bg="#fff", anchor="w").grid(row=1, column=0, sticky="w", **pad)
+        self.secret_var = tk.StringVar()
+        tk.Entry(frm, textvariable=self.secret_var, width=52, show="•").grid(row=1, column=1, **pad)
+
+        tk.Label(
+            frm,
+            text="(Vercel ACADEMY_ADMIN_SECRET 과 동일)",
+            bg="#fff",
+            fg="#888",
+            font=("Segoe UI", 8),
+        ).grid(row=2, column=1, sticky="w", padx=12)
+
+        tk.Label(frm, text="검색어 (줄마다 1개)", bg="#fff", anchor="nw").grid(row=3, column=0, sticky="nw", **pad)
+        self.search_text = scrolledtext.ScrolledText(frm, width=40, height=8, font=("Segoe UI", 10))
+        self.search_text.grid(row=3, column=1, **pad)
+        tk.Label(
+            frm,
+            text="예: 부천 애견미용학원\n     인천 애견미용학원|5  (← |5 는 최대 5곳)",
+            bg="#fff",
+            fg="#888",
+            font=("Segoe UI", 8),
+            justify="left",
+        ).grid(row=4, column=1, sticky="w", padx=12)
+
+        opts = tk.Frame(frm, bg="#fff")
+        opts.grid(row=5, column=1, sticky="w", **pad)
+
+        tk.Label(opts, text="검색당 최대", bg="#fff").pack(side="left")
+        self.max_var = tk.IntVar(value=3)
+        tk.Spinbox(opts, from_=1, to=20, textvariable=self.max_var, width=5).pack(side="left", padx=6)
+
+        tk.Label(opts, text="대기(초)", bg="#fff").pack(side="left", padx=(12, 0))
+        self.delay_var = tk.DoubleVar(value=2.0)
+        tk.Spinbox(opts, from_=1, to=10, increment=0.5, textvariable=self.delay_var, width=5).pack(
+            side="left", padx=6
+        )
+
+        self.gemini_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(opts, text="Gemini 소개글 편집", variable=self.gemini_var, bg="#fff").pack(
+            side="left", padx=(12, 0)
+        )
+
+        self.headless_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(opts, text="브라우저 숨김", variable=self.headless_var, bg="#fff").pack(
+            side="left", padx=(8, 0)
+        )
+
+        tk.Button(
+            tab_settings,
+            text="💾 설정 저장",
+            command=self._save_settings,
+            bg="#e8e8ed",
+            relief="flat",
+            padx=12,
+            pady=6,
+        ).pack(pady=8)
+
+        # --- 수집 파일 탭 ---
+        tab_files = tk.Frame(notebook, bg="#fff")
+        notebook.add(tab_files, text="  수집 파일  ")
+
+        tk.Label(
+            tab_files,
+            text="이전에 수집한 JSON 파일만 등록할 때 선택하세요.",
+            bg="#fff",
+            fg="#666",
+        ).pack(pady=8)
+
+        self.json_combo = ttk.Combobox(tab_files, width=60, state="readonly")
+        self.json_combo.pack(padx=16, pady=4)
+        tk.Button(
+            tab_files,
+            text="목록 새로고침",
+            command=self._refresh_json_list,
+            relief="flat",
+            bg="#e8e8ed",
+        ).pack(pady=4)
+
+        # --- 버튼 ---
+        btn_frame = tk.Frame(self, bg="#f5f5f7")
+        btn_frame.pack(fill="x", padx=12, pady=10)
+
+        self.btn_collect = tk.Button(
+            btn_frame,
+            text="▶  수집 시작",
+            font=("Segoe UI", 11, "bold"),
+            bg="#5c6bc0",
+            fg="white",
+            relief="flat",
+            padx=16,
+            pady=10,
+            command=self._on_collect,
+        )
+        self.btn_collect.pack(side="left", padx=6)
+
+        self.btn_register = tk.Button(
+            btn_frame,
+            text="▶  수집 + 등록",
+            font=("Segoe UI", 11, "bold"),
+            bg="#2e7d32",
+            fg="white",
+            relief="flat",
+            padx=16,
+            pady=10,
+            command=self._on_collect_register,
+        )
+        self.btn_register.pack(side="left", padx=6)
+
+        self.btn_json_register = tk.Button(
+            btn_frame,
+            text="📄 JSON만 등록",
+            font=("Segoe UI", 10),
+            bg="#ef6c00",
+            fg="white",
+            relief="flat",
+            padx=12,
+            pady=10,
+            command=self._on_json_register,
+        )
+        self.btn_json_register.pack(side="left", padx=6)
+
+        # --- 로그 ---
+        log_frame = tk.LabelFrame(self, text=" 진행 로그 ", bg="#f5f5f7", padx=8, pady=8)
+        log_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        self.log_text = scrolledtext.ScrolledText(
+            log_frame,
+            height=16,
+            font=("Consolas", 9),
+            bg="#1e1e1e",
+            fg="#d4d4d4",
+            insertbackground="white",
+        )
+        self.log_text.pack(fill="both", expand=True)
+
+    def _load_initial_settings(self) -> None:
+        s = load_settings_from_files()
+        self.api_url_var.set(s.api_url)
+        self.secret_var.set(s.admin_secret)
+        self.max_var.set(s.max_per_search)
+        self.delay_var.set(s.delay_seconds)
+        self.gemini_var.set(s.refine_with_gemini)
+        self.headless_var.set(s.headless)
+
+        if s.searches:
+            lines = []
+            for item in s.searches:
+                q = item.get("query", "")
+                m = item.get("max", s.max_per_search)
+                lines.append(f"{q}|{m}" if m != s.max_per_search else q)
+            self.search_text.insert("1.0", "\n".join(lines))
+        else:
+            self.search_text.insert(
+                "1.0",
+                "부천 애견미용학원\n인천 애견미용학원\n서울 강남 애견미용학원",
+            )
+
+        self._refresh_json_list()
+        self._log("프로그램 준비 완료. 설정 확인 후 버튼을 누르세요.")
+
+    def _get_settings(self) -> PipelineSettings:
+        searches = parse_search_lines(self.search_text.get("1.0", "end"), self.max_var.get())
+        return PipelineSettings(
+            api_url=self.api_url_var.get().strip(),
+            admin_secret=self.secret_var.get().strip(),
+            searches=searches,
+            max_per_search=self.max_var.get(),
+            delay_seconds=self.delay_var.get(),
+            refine_with_gemini=self.gemini_var.get(),
+            headless=self.headless_var.get(),
+        )
+
+    def _save_settings(self) -> None:
+        try:
+            s = self._get_settings()
+            save_settings(s)
+            self._log("✓ 설정 저장 완료 (.env + config.json)")
+            messagebox.showinfo("저장", "설정이 저장되었습니다.")
+        except Exception as e:
+            messagebox.showerror("오류", str(e))
+
+    def _refresh_json_list(self) -> None:
+        files = list_crawled_files()
+        names = [f.name for f in files]
+        self.json_combo["values"] = names
+        if names:
+            self.json_combo.current(0)
+
+    def _log(self, msg: str) -> None:
+        self.log_queue.put(msg)
+
+    def _poll_log(self) -> None:
+        while True:
+            try:
+                msg = self.log_queue.get_nowait()
+            except queue.Empty:
+                break
+            self.log_text.insert("end", msg + "\n")
+            self.log_text.see("end")
+        self.after(150, self._poll_log)
+
+    def _set_buttons(self, enabled: bool) -> None:
+        state = "normal" if enabled else "disabled"
+        self.btn_collect.configure(state=state)
+        self.btn_register.configure(state=state)
+        self.btn_json_register.configure(state=state)
+
+    def _run_async(self, target) -> None:
+        if self.running:
+            messagebox.showwarning("실행 중", "이미 작업이 진행 중입니다.")
+            return
+
+        try:
+            settings = self._get_settings()
+            save_settings(settings)
+        except Exception as e:
+            messagebox.showerror("설정 오류", str(e))
+            return
+
+        self.running = True
+        self._set_buttons(False)
+        self._log("\n" + "—" * 40)
+
+        def worker():
+            try:
+                target(settings)
+            except Exception as e:
+                self._log(f"\n✗ 오류: {e}")
+            finally:
+                self.running = False
+                self.after(0, lambda: self._set_buttons(True))
+                self.after(0, self._refresh_json_list)
+                self._log("—" * 40 + "\n작업 종료.\n")
+
+        self.worker = threading.Thread(target=worker, daemon=True)
+        self.worker.start()
+
+    def _on_collect(self) -> None:
+        def job(settings: PipelineSettings):
+            path = run_collect(settings, self._log)
+            if path:
+                self.last_json = path
+                self._log(f"\n✓ 수집만 완료. 등록하려면 '수집+등록' 또는 'JSON만 등록'")
+
+        self._run_async(job)
+
+    def _on_collect_register(self) -> None:
+        def job(settings: PipelineSettings):
+            if not settings.admin_secret:
+                raise ValueError("관리자 비밀키를 입력하세요.")
+            ok = run_collect_and_register(settings, self._log)
+            if ok:
+                self._log("\n✓ 수집 및 등록 완료!")
+            else:
+                self._log("\n⚠ 일부 실패 또는 등록할 항목 없음")
+
+        self._run_async(job)
+
+    def _on_json_register(self) -> None:
+        name = self.json_combo.get()
+        if not name:
+            messagebox.showwarning("파일 없음", "등록할 crawled_*.json 파일이 없습니다.\n먼저 수집을 실행하세요.")
+            return
+
+        path = SCRIPT_DIR / name
+
+        def job(settings: PipelineSettings):
+            if not settings.admin_secret:
+                raise ValueError("관리자 비밀키를 입력하세요.")
+            ok, fail = register_from_json(path, settings, self._log)
+            if ok and not fail:
+                self._log("\n✓ JSON 등록 완료!")
+
+        self._run_async(job)
+
+
+def main() -> None:
+    app = AcademyRegisterApp()
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()

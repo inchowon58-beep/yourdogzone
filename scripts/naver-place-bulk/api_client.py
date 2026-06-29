@@ -4,42 +4,52 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Callable
 
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-API_URL = os.getenv("YOURDOGZONE_API_URL", "https://www.yourdogzone.co.kr").rstrip("/")
-ADMIN_SECRET = os.getenv("ACADEMY_ADMIN_SECRET", "")
 BATCH_SIZE = 5
 DELAY_SEC = 2
+LogFn = Callable[[str], None]
+
+
+def _api_url() -> str:
+    return os.getenv("YOURDOGZONE_API_URL", "https://www.yourdogzone.co.kr").rstrip("/")
+
+
+def _admin_secret() -> str:
+    return os.getenv("ACADEMY_ADMIN_SECRET", "")
 
 
 def _headers() -> dict[str, str]:
-    return {"x-admin-secret": ADMIN_SECRET, "Content-Type": "application/json"}
+    return {"x-admin-secret": _admin_secret(), "Content-Type": "application/json"}
 
 
-def fetch_registered_names() -> set[str]:
-    if not ADMIN_SECRET:
+def fetch_registered_names(log: LogFn = print) -> set[str]:
+    secret = _admin_secret()
+    if not secret:
         return set()
     try:
         res = requests.get(
-            f"{API_URL}/api/academy/admin",
-            headers={"x-admin-secret": ADMIN_SECRET},
+            f"{_api_url()}/api/academy/admin",
+            headers={"x-admin-secret": secret},
             timeout=30,
         )
         if not res.ok:
             return set()
         data = res.json()
         return {a.get("name", "").strip() for a in data.get("academies", []) if a.get("name")}
-    except requests.RequestException:
+    except requests.RequestException as e:
+        log(f"⚠ 등록 목록 조회 실패: {e}")
         return set()
 
 
 def register_batch(items: list[dict], refine_gemini: bool = True) -> dict:
     res = requests.post(
-        f"{API_URL}/api/admin/bulk-register",
+        f"{_api_url()}/api/admin/bulk-register",
         headers=_headers(),
         json={"refine_with_gemini": refine_gemini, "items": items},
         timeout=180,
@@ -48,24 +58,32 @@ def register_batch(items: list[dict], refine_gemini: bool = True) -> dict:
     return res.json()
 
 
-def register_all(items: list[dict], refine_gemini: bool = True) -> tuple[int, int]:
+def register_all(
+    items: list[dict],
+    refine_gemini: bool = True,
+    log: LogFn = print,
+) -> tuple[int, int]:
     succeeded = 0
     failed = 0
     for i in range(0, len(items), BATCH_SIZE):
         batch = items[i : i + BATCH_SIZE]
-        print(f"\n[등록 배치 {i // BATCH_SIZE + 1}] {len(batch)}건 전송...")
+        log(f"\n[등록 배치 {i // BATCH_SIZE + 1}] {len(batch)}건 전송...")
         try:
             result = register_batch(batch, refine_gemini)
             rows = result.get("results", [result])
             for r in rows:
                 if r.get("ok"):
                     succeeded += 1
-                    print(f"  ✓ {r.get('name')} → {r.get('url')}")
+                    log(f"  ✓ {r.get('name')} → {r.get('url')}")
                 else:
                     failed += 1
-                    print(f"  ✗ {r.get('name')}: {r.get('error')}")
+                    log(f"  ✗ {r.get('name')}: {r.get('error')}")
         except requests.RequestException as e:
             failed += len(batch)
-            print(f"  배치 실패: {e}")
+            log(f"  배치 실패: {e}")
         time.sleep(DELAY_SEC)
     return succeeded, failed
+
+# CLI 호환
+API_URL = _api_url()
+ADMIN_SECRET = _admin_secret()
