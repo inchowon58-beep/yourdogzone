@@ -13,6 +13,29 @@ export function isAllowedImageType(contentType: string): boolean {
   );
 }
 
+const EXT_TO_MIME: Record<string, (typeof ALLOWED_IMAGE_TYPES)[number]> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
+export function resolveImageContentType(
+  filename: string,
+  contentType?: string
+): string | null {
+  if (contentType && isAllowedImageType(contentType)) {
+    return contentType;
+  }
+
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (!ext) return null;
+
+  const resolved = EXT_TO_MIME[ext];
+  return resolved ?? null;
+}
+
 export function sanitizeFilename(filename: string): string {
   const base = filename.split(/[/\\]/).pop() ?? "image";
   return base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "image";

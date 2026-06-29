@@ -1,33 +1,12 @@
 import { NextResponse } from "next/server";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   buildR2Key,
-  isAllowedImageType,
   MAX_IMAGE_SIZE_BYTES,
+  resolveImageContentType,
 } from "@/lib/upload/constants";
-
-function getR2Config() {
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const endpoint = process.env.R2_ENDPOINT;
-  const bucket = process.env.R2_BUCKET_NAME;
-  const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
-
-  if (!accessKeyId || !secretAccessKey || !endpoint || !bucket || !publicBase) {
-    return null;
-  }
-
-  return { accessKeyId, secretAccessKey, endpoint, bucket, publicBase };
-}
-
-function getS3Client(endpoint: string, accessKeyId: string, secretAccessKey: string) {
-  return new S3Client({
-    region: "auto",
-    endpoint,
-    credentials: { accessKeyId, secretAccessKey },
-  });
-}
+import { createR2S3Client, getR2Config } from "@/lib/upload/r2-server";
 
 export async function POST(request: Request) {
   try {
@@ -41,17 +20,18 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const filename = body.filename as string | undefined;
-    const contentType = body.contentType as string | undefined;
+    const requestedContentType = body.contentType as string | undefined;
     const fileSize = body.fileSize as number | undefined;
 
-    if (!filename?.trim() || !contentType?.trim()) {
+    if (!filename?.trim()) {
       return NextResponse.json(
-        { error: "filename과 contentType이 필요합니다." },
+        { error: "filename이 필요합니다." },
         { status: 400 }
       );
     }
 
-    if (!isAllowedImageType(contentType)) {
+    const contentType = resolveImageContentType(filename, requestedContentType);
+    if (!contentType) {
       return NextResponse.json(
         { error: "지원하지 않는 이미지 형식입니다. (JPEG, PNG, WebP, GIF)" },
         { status: 400 }
@@ -65,24 +45,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const uniqueFilename = buildR2Key(filename);
+    const key = buildR2Key(filename);
+    const s3Client = createR2S3Client(config);
 
     const command = new PutObjectCommand({
       Bucket: config.bucket,
-      Key: uniqueFilename,
+      Key: key,
       ContentType: contentType,
     });
 
-    const uploadUrl = await getSignedUrl(
-      getS3Client(config.endpoint, config.accessKeyId, config.secretAccessKey),
-      command,
-      { expiresIn: 60 }
-    );
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 60,
+      signableHeaders: new Set(["content-type"]),
+      unhoistableHeaders: new Set(["content-type"]),
+    });
 
-    const publicBase = config.publicBase.replace(/\/$/, "");
-    const publicUrl = `${publicBase}/${uniqueFilename}`;
+    const publicUrl = `${config.publicBase}/${key}`;
 
-    return NextResponse.json({ uploadUrl, publicUrl, key: uniqueFilename });
+    return NextResponse.json({
+      uploadUrl,
+      publicUrl,
+      key,
+      contentType,
+    });
   } catch (error) {
     console.error("R2 Presigned URL 생성 실패:", error);
     return NextResponse.json(
