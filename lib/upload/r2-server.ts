@@ -1,14 +1,3 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { NodeHttpHandler } from "@smithy/node-http-handler";
-import https from "node:https";
-
-const httpsAgent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 50,
-  rejectUnauthorized: true,
-  minVersion: "TLSv1.2",
-});
-
 export type R2Config = {
   accessKeyId: string;
   secretAccessKey: string;
@@ -93,25 +82,4 @@ export function extractR2AccountId(endpoint: string): string | null {
     /https?:\/\/([a-f0-9]{32})\.r2\.cloudflarestorage\.com/i
   );
   return match?.[1] ?? null;
-}
-
-export function createR2S3Client(
-  config: Pick<R2Config, "accessKeyId" | "secretAccessKey" | "endpoint">
-) {
-  return new S3Client({
-    region: "auto",
-    endpoint: config.endpoint,
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
-    forcePathStyle: true,
-    requestChecksumCalculation: "WHEN_REQUIRED",
-    responseChecksumValidation: "WHEN_REQUIRED",
-    requestHandler: new NodeHttpHandler({
-      httpsAgent,
-      connectionTimeout: 5_000,
-      requestTimeout: 5_000,
-    }),
-  });
 }
