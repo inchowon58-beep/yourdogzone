@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import re
 import time
+from io import BytesIO
 from typing import Callable
 from urllib.parse import parse_qs, unquote, urlparse
 
 import requests
+from PIL import Image
 
 LogFn = Callable[[str], None]
+
+ACADEMY_IMAGE_MAX_WIDTH = 1200
+ACADEMY_IMAGE_MAX_HEIGHT = 900
+ACADEMY_IMAGE_JPEG_QUALITY = 85
 
 DOWNLOAD_HEADERS = {
     "User-Agent": (
@@ -53,6 +59,27 @@ def normalize_image_urls(urls: list[str], max_count: int = 3) -> list[str]:
     return out
 
 
+def optimize_academy_image(content: bytes) -> tuple[bytes, str]:
+    """비율 유지 리사이즈 후 JPEG로 변환 (용량 절감)."""
+    img = Image.open(BytesIO(content))
+    if img.format == "GIF":
+        return content, "image/gif"
+
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+
+    img.thumbnail(
+        (ACADEMY_IMAGE_MAX_WIDTH, ACADEMY_IMAGE_MAX_HEIGHT),
+        Image.Resampling.LANCZOS,
+    )
+
+    out = BytesIO()
+    if img.mode == "L":
+        img = img.convert("RGB")
+    img.save(out, format="JPEG", quality=ACADEMY_IMAGE_JPEG_QUALITY, optimize=True)
+    return out.getvalue(), "image/jpeg"
+
+
 def upload_image_to_r2(
     image_url: str,
     api_url: str,
@@ -76,14 +103,19 @@ def upload_image_to_r2(
                 log(f"    ⚠ 이미지 용량 너무 작음: {url[:72]}…")
                 continue
 
-            content_type = (res.headers.get("Content-Type") or "image/jpeg").split(";")[0]
+            try:
+                content, content_type = optimize_academy_image(content)
+            except Exception as e:
+                log(f"    ⚠ 이미지 최적화 실패, 원본 사용: {e}")
+                content_type = (res.headers.get("Content-Type") or "image/jpeg").split(";")[0]
+
             ext = ".jpg"
-            if "png" in content_type:
+            if content_type == "image/gif":
+                ext = ".gif"
+            elif "png" in content_type:
                 ext = ".png"
             elif "webp" in content_type:
                 ext = ".webp"
-            elif "gif" in content_type:
-                ext = ".gif"
 
             filename = f"academy-{int(time.time() * 1000)}{ext}"
             presign_res = requests.post(

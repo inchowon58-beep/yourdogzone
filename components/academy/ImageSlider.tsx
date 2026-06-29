@@ -15,7 +15,7 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
   if (images.length === 0) {
     return (
       <AcademyNoImage
-        className="h-72 rounded-2xl shadow-[var(--card-shadow)] sm:h-96"
+        className="aspect-[4/3] rounded-2xl shadow-[var(--card-shadow)]"
         iconClassName="h-12 w-12"
       />
     );
@@ -25,13 +25,15 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
   const next = () => setIndex((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-[var(--card-shadow)]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={images[index]}
-        alt={`${alt} ${index + 1}`}
-        className="h-72 w-full object-cover sm:h-96"
-      />
+    <div className="relative overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
+      <div className="flex aspect-[4/3] items-center justify-center bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={images[index]}
+          alt={`${alt} ${index + 1}`}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
       {images.length > 1 && (
         <>
           <button

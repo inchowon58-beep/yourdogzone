@@ -1,5 +1,6 @@
 import { buildR2Key, MAX_IMAGE_SIZE_BYTES, resolveImageContentType } from "@/lib/upload/constants";
 import { createPresignedPutObject } from "@/lib/upload/presign";
+import { resizeAcademyImage } from "@/lib/upload/resize-image";
 import type { R2UploadTask } from "@/lib/academy/r2-store";
 
 const DOWNLOAD_HEADERS = {
@@ -72,17 +73,32 @@ export async function mirrorExternalImageToR2(
         continue;
       }
 
-      const buffer = Buffer.from(await res.arrayBuffer());
+      let buffer = Buffer.from(await res.arrayBuffer());
       if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
         return { error: "이미지 크기가 10MB를 초과합니다." };
       }
 
-      const filename = guessFilenameFromUrl(url);
-      const headerType = res.headers.get("content-type")?.split(";")[0]?.trim();
-      const contentType = resolveImageContentType(filename, headerType);
-      if (!contentType) {
-        lastError = "지원하지 않는 이미지 형식입니다.";
-        continue;
+      let contentType: string;
+      let filename: string;
+      try {
+        const resized = await resizeAcademyImage(buffer);
+        buffer = Buffer.from(resized.buffer);
+        contentType = resized.contentType;
+        const base = guessFilenameFromUrl(url).replace(/\.[^.]+$/, "");
+        filename = `${base}${resized.extension}`;
+      } catch {
+        filename = guessFilenameFromUrl(url);
+        const headerType = res.headers.get("content-type")?.split(";")[0]?.trim();
+        const resolved = resolveImageContentType(filename, headerType);
+        if (!resolved) {
+          lastError = "지원하지 않는 이미지 형식입니다.";
+          continue;
+        }
+        contentType = resolved;
+      }
+
+      if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+        return { error: "이미지 크기가 10MB를 초과합니다." };
       }
 
       const key = buildR2Key(filename);
