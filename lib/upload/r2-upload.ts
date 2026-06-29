@@ -1,9 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { createR2S3Client, getR2Config } from "@/lib/upload/r2-server";
-import {
-  buildR2Key,
-  resolveImageContentType,
-} from "@/lib/upload/constants";
+import { buildR2Key, resolveImageContentType } from "@/lib/upload/constants";
 
 export async function uploadBufferToR2(
   buffer: Buffer,
@@ -33,12 +30,8 @@ export async function uploadBufferToR2(
       key,
     };
   } catch (error) {
-    console.error("R2 서버 업로드 실패:", error);
-    return { error: "R2 업로드에 실패했습니다." };
+    console.error("R2 PutObject 실패:", error);
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    return { error: `R2 저장 실패: ${message}` };
   }
-}
-
-export function resolvePublicBaseUrl(): string | null {
-  const config = getR2Config();
-  return config?.publicBase ?? null;
 }

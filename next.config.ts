@@ -43,6 +43,11 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: getR2ImageRemotePatterns(),
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
+  },
 };
 
 export default nextConfig;

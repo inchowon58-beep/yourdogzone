@@ -7,15 +7,11 @@ export type UploadResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
-type DirectUploadResponse = {
+type UploadResponse = {
   publicUrl?: string;
   error?: string;
 };
 
-/**
- * 브라우저 → 우리 서버 → R2 경로로 업로드합니다.
- * (CORS / Presigned URL 서명 문제를 피하기 위함)
- */
 export async function uploadImageToR2(file: File): Promise<UploadResult> {
   const resolvedType = resolveImageContentType(file.name, file.type);
   if (!resolvedType) {
@@ -31,19 +27,24 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
 
   try {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", file, file.name);
 
-    const res = await fetch("/api/upload/direct", {
+    const res = await fetch("/api/upload", {
       method: "POST",
       body: formData,
     });
 
-    const data = (await res.json()) as DirectUploadResponse;
+    let data: UploadResponse;
+    try {
+      data = (await res.json()) as UploadResponse;
+    } catch {
+      return { ok: false, error: `서버 응답 오류 (${res.status})` };
+    }
 
     if (!res.ok || !data.publicUrl) {
       return {
         ok: false,
-        error: data.error ?? "업로드에 실패했습니다.",
+        error: data.error ?? `업로드에 실패했습니다. (${res.status})`,
       };
     }
 

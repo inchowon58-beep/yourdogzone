@@ -1,36 +1,36 @@
 import { NextResponse } from "next/server";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
-  buildR2Key,
   MAX_IMAGE_SIZE_BYTES,
   resolveImageContentType,
 } from "@/lib/upload/constants";
-import { createR2S3Client, getR2Config } from "@/lib/upload/r2-server";
+import { uploadBufferToR2 } from "@/lib/upload/r2-upload";
+import { getMissingR2EnvVars, getR2Config } from "@/lib/upload/r2-server";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const config = getR2Config();
-    if (!config) {
+    const missing = getMissingR2EnvVars();
+    if (missing.length > 0 || !getR2Config()) {
       return NextResponse.json(
-        { error: "R2 환경 변수가 설정되지 않았습니다." },
+        {
+          error: `R2 환경 변수가 설정되지 않았습니다: ${missing.join(", ")}`,
+        },
         { status: 500 }
       );
     }
 
-    const body = await request.json();
-    const filename = body.filename as string | undefined;
-    const requestedContentType = body.contentType as string | undefined;
-    const fileSize = body.fileSize as number | undefined;
+    const formData = await request.formData();
+    const file = formData.get("file");
 
-    if (!filename?.trim()) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
-        { error: "filename이 필요합니다." },
+        { error: "업로드할 파일이 없습니다." },
         { status: 400 }
       );
     }
 
-    const contentType = resolveImageContentType(filename, requestedContentType);
+    const contentType = resolveImageContentType(file.name, file.type);
     if (!contentType) {
       return NextResponse.json(
         { error: "지원하지 않는 이미지 형식입니다. (JPEG, PNG, WebP, GIF)" },
@@ -38,40 +38,30 @@ export async function POST(request: Request) {
       );
     }
 
-    if (fileSize && fileSize > MAX_IMAGE_SIZE_BYTES) {
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
       return NextResponse.json(
         { error: "파일 크기는 10MB 이하여야 합니다." },
         { status: 400 }
       );
     }
 
-    const key = buildR2Key(filename);
-    const s3Client = createR2S3Client(config);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const result = await uploadBufferToR2(buffer, file.name, contentType);
 
-    const command = new PutObjectCommand({
-      Bucket: config.bucket,
-      Key: key,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 60,
-      signableHeaders: new Set(["content-type"]),
-      unhoistableHeaders: new Set(["content-type"]),
-    });
-
-    const publicUrl = `${config.publicBase}/${key}`;
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
 
     return NextResponse.json({
-      uploadUrl,
-      publicUrl,
-      key,
-      contentType,
+      publicUrl: result.publicUrl,
+      key: result.key,
     });
   } catch (error) {
-    console.error("R2 Presigned URL 생성 실패:", error);
+    console.error("업로드 API 실패:", error);
+    const message =
+      error instanceof Error ? error.message : "알 수 없는 오류";
     return NextResponse.json(
-      { error: "Upload preparation failed" },
+      { error: `업로드 처리 중 오류: ${message}` },
       { status: 500 }
     );
   }
