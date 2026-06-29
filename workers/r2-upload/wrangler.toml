@@ -1,0 +1,12 @@
+name = "yourdogzone-r2-upload"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "yourdogzoneig"
+
+[vars]
+PUBLIC_BASE = "https://img.yourdogzone.co.kr"
+
+# wrangler secret put UPLOAD_SECRET
