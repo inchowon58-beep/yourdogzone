@@ -31,6 +31,8 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
     return { ok: false, error: "파일 크기는 10MB 이하여야 합니다." };
   }
 
+  let presignData: PresignResponse;
+
   try {
     const presignRes = await fetch("/api/upload", {
       method: "POST",
@@ -42,7 +44,7 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
       }),
     });
 
-    const presignData = (await presignRes.json()) as PresignResponse;
+    presignData = (await presignRes.json()) as PresignResponse;
 
     if (!presignRes.ok || !presignData.uploadUrl || !presignData.contentType) {
       return {
@@ -50,14 +52,22 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
         error: presignData.error ?? "업로드 주소를 받지 못했습니다.",
       };
     }
+  } catch (error) {
+    console.error("Presigned URL 요청 실패:", error);
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    return {
+      ok: false,
+      error: `업로드 준비 중 네트워크 오류가 발생했습니다. (${message})`,
+    };
+  }
 
+  try {
     const uploadRes = await fetch(presignData.uploadUrl, {
       method: "PUT",
       body: file,
       headers: {
         "Content-Type": presignData.contentType,
       },
-      // Node/Next fetch 호환 (브라우저에서는 무시됨)
       duplex: "half",
     } as RequestInit & { duplex?: "half" });
 
@@ -76,8 +86,14 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
 
     return { ok: true, url: presignData.publicUrl };
   } catch (error) {
-    console.error("업로드 중 에러:", error);
+    console.error("R2 PUT 네트워크 실패:", error);
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
-    return { ok: false, error: `네트워크 오류로 업로드에 실패했습니다. (${message})` };
+    return {
+      ok: false,
+      error:
+        message === "Failed to fetch"
+          ? "R2 업로드 연결에 실패했습니다. R2 CORS에 https://www.yourdogzone.co.kr 이 포함되어 있는지 확인해 주세요."
+          : `R2 업로드 중 네트워크 오류가 발생했습니다. (${message})`,
+    };
   }
 }

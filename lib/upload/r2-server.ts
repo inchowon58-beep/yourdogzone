@@ -12,8 +12,31 @@ function trimEnv(value: string | undefined): string {
   return value?.trim() ?? "";
 }
 
+const R2_HOST_PATTERN = /([a-f0-9]{32})\.r2\.cloudflarestorage\.com/i;
+
+/** Vercel 값 칸에 `R2_ENDPOINT=https://...` 형태로 넣은 경우 등 복구 */
+export function sanitizeRawR2Endpoint(raw: string): string {
+  let value = raw.trim().replace(/^r2_endpoint\s*=\s*/i, "");
+
+  const hostMatch = value.match(R2_HOST_PATTERN);
+  if (hostMatch) {
+    return `https://${hostMatch[1].toLowerCase()}.r2.cloudflarestorage.com`;
+  }
+
+  const accountOnly = value.match(/^([a-f0-9]{32})$/i);
+  if (accountOnly) {
+    return `https://${accountOnly[1].toLowerCase()}.r2.cloudflarestorage.com`;
+  }
+
+  return value;
+}
+
+export function isValidR2Endpoint(endpoint: string): boolean {
+  return R2_HOST_PATTERN.test(endpoint);
+}
+
 export function normalizeR2Endpoint(endpoint: string, bucket: string): string {
-  let normalized = endpoint.trim().replace(/\/+$/, "");
+  let normalized = sanitizeRawR2Endpoint(endpoint).replace(/\/+$/, "");
 
   if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
     normalized = `https://${normalized}`;
@@ -68,10 +91,15 @@ export function getR2Config(): R2Config | null {
     return null;
   }
 
+  const endpoint = normalizeR2Endpoint(rawEndpoint, bucket);
+  if (!isValidR2Endpoint(endpoint)) {
+    return null;
+  }
+
   return {
     accessKeyId,
     secretAccessKey,
-    endpoint: normalizeR2Endpoint(rawEndpoint, bucket),
+    endpoint,
     bucket,
     publicBase: getPublicBaseUrl(),
   };
