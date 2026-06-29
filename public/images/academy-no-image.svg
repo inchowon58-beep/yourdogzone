@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#F3F4F6"/>
+  <rect x="1" y="1" width="398" height="298" rx="12" stroke="#E5E7EB" stroke-width="2"/>
+  <path d="M160 118h80v12h-80v-12zm0 28h56v12h-56v-12zm0 28h72v12h-72v-12z" fill="#D1D5DB"/>
+  <circle cx="200" cy="108" r="28" fill="#E5E7EB"/>
+  <path d="M188 108a12 12 0 1 1 24 0 12 12 0 0 1-24 0z" fill="#9CA3AF"/>
+  <path d="M176 132c4-10 12-16 24-16s20 6 24 16" stroke="#9CA3AF" stroke-width="4" stroke-linecap="round"/>
+  <text x="200" y="218" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" fill="#9CA3AF">tøÀ ÆL</text>
+</svg>

@@ -167,6 +167,6 @@ def prepare_register_payload(
 
     r2_urls = mirror_images_for_register(raw_urls, api_url, log=log)
     if r2_urls:
-        payload["academy_images"] = r2_urls
         payload["logo_image"] = r2_urls[0]
+        payload["academy_images"] = r2_urls[1:3]
     return payload

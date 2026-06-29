@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ACADEMY_NO_IMAGE_URL } from "@/lib/academy/images";
 
 type ImageSliderProps = {
   images: string[];
@@ -13,8 +14,13 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
 
   if (images.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-gray-50 text-sm text-muted">
-        학원 이미지 준비 중
+      <div className="overflow-hidden rounded-2xl bg-gray-100 shadow-[var(--card-shadow)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={ACADEMY_NO_IMAGE_URL}
+          alt="이미지 없음"
+          className="h-72 w-full object-cover sm:h-96"
+        />
       </div>
     );
   }
@@ -24,11 +30,11 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-[var(--card-shadow)]">
-      <div
-        className="h-72 bg-cover bg-center transition-all sm:h-96"
-        style={{ backgroundImage: `url(${images[index]})` }}
-        role="img"
-        aria-label={`${alt} ${index + 1}`}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={images[index]}
+        alt={`${alt} ${index + 1}`}
+        className="h-72 w-full object-cover sm:h-96"
       />
       {images.length > 1 && (
         <>

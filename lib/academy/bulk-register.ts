@@ -1,4 +1,5 @@
 import { refineAcademyCopyWithGemini } from "@/lib/ai/gemini";
+import { countAcademyImages, splitAcademyImages } from "@/lib/academy/images";
 import { insertAcademy } from "@/lib/academy/queries";
 import { parseKoreanAddress } from "@/lib/academy/parse-address";
 import { generateAcademySlug } from "@/lib/academy/slug";
@@ -91,7 +92,10 @@ export async function bulkRegisterAcademy(
     }
   }
 
-  const r2Images: string[] = [...(input.academy_images ?? [])];
+  const r2Images: string[] = [
+    ...(input.logo_image?.startsWith("http") ? [input.logo_image] : []),
+    ...(input.academy_images ?? []),
+  ];
   let imageErrors: string[] = [];
 
   if (!options.skipImageMirror && input.image_urls?.length) {
@@ -114,13 +118,7 @@ export async function bulkRegisterAcademy(
   }
 
   const uniqueImages = [...new Set(r2Images.filter((u) => u.startsWith("http")))];
-  const logo_image =
-    input.logo_image?.startsWith("http")
-      ? input.logo_image
-      : uniqueImages[0] ?? null;
-  const academy_images = uniqueImages.length
-    ? uniqueImages.slice(0, 3)
-    : null;
+  const { logo_image, academy_images } = splitAcademyImages(uniqueImages);
 
   const slug = generateAcademySlug(name, region_small, region_big);
 
@@ -170,7 +168,7 @@ export async function bulkRegisterAcademy(
     slug: insertResult.data.slug,
     url: academyPageUrl(insertResult.data.slug),
     storage: insertResult.uploads?.length ? "r2" : "supabase",
-    imageCount: academy_images?.length ?? 0,
+    imageCount: countAcademyImages(logo_image, academy_images),
     imageErrors: imageErrors.length ? imageErrors : undefined,
     geminiRefined,
     geminiSkipReason,

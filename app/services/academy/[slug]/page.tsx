@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
 import { getAcademyBySlug, getAcademySlugs } from "@/lib/academy/queries";
+import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
@@ -43,10 +44,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
   const academy = await getAcademyBySlug(slug);
   if (!academy) notFound();
 
-  const images = [
-    ...(academy.logo_image ? [academy.logo_image] : []),
-    ...(academy.academy_images ?? []),
-  ];
+  const images = getAcademyGalleryImages(academy, 3);
 
   const mapQuery = encodeURIComponent(academy.address);
   const isPremium = academy.is_premium;
