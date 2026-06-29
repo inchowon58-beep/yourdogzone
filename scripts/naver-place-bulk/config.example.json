@@ -1,0 +1,9 @@
+{
+  "searches": [
+    { "query": "부천 애견미용학원", "max": 3 },
+    { "query": "인천 애견미용학원", "max": 3 },
+    { "query": "서울 강남 애견미용학원", "max": 3 }
+  ],
+  "delay_seconds": 2,
+  "refine_with_gemini": true
+}
