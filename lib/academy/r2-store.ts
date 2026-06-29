@@ -46,7 +46,9 @@ export async function fetchAcademyFromR2(
       ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
     });
     if (res.ok) {
-      return (await res.json()) as Academy;
+      const data = (await res.json()) as Academy & { deleted?: boolean };
+      if (data.deleted) return null;
+      return data;
     }
   } catch {
     // fall through to index lookup
@@ -239,4 +241,67 @@ export async function prepareAcademyPremiumUpdate(
   }
 
   return { record, uploads: built.uploads, error: null };
+}
+
+export async function prepareAcademyR2Deletes(
+  slugs: string[]
+): Promise<
+  | { deleted: string[]; uploads: R2UploadTask[]; error: null }
+  | { deleted: string[]; uploads: null; error: string }
+> {
+  const slugSet = new Set(slugs.map((s) => s.trim()).filter(Boolean));
+  if (slugSet.size === 0) {
+    return { deleted: [], uploads: null, error: "삭제할 slug가 없습니다." };
+  }
+
+  const academies = await loadLatestAcademyList();
+  const toDelete = academies.filter((a) => slugSet.has(a.slug));
+  if (toDelete.length === 0) {
+    return {
+      deleted: [],
+      uploads: null,
+      error: "해당 학원을 찾을 수 없습니다.",
+    };
+  }
+
+  const remaining = academies.filter((a) => !slugSet.has(a.slug));
+  const now = new Date().toISOString();
+  const uploads: R2UploadTask[] = [];
+
+  const indexBody = JSON.stringify(
+    { updatedAt: now, academies: remaining },
+    null,
+    2
+  );
+  const indexPresign = await createPresignedPutObject(INDEX_KEY, "application/json");
+  if ("error" in indexPresign) {
+    return { deleted: [], uploads: null, error: indexPresign.error };
+  }
+  uploads.push({
+    uploadUrl: indexPresign.uploadUrl,
+    contentType: indexPresign.contentType,
+    body: indexBody,
+  });
+
+  for (const slug of toDelete.map((a) => a.slug)) {
+    const tombstone = JSON.stringify({ deleted: true, slug, deleted_at: now }, null, 2);
+    const dataPresign = await createPresignedPutObject(
+      academyDataKey(slug),
+      "application/json"
+    );
+    if ("error" in dataPresign) {
+      return { deleted: [], uploads: null, error: dataPresign.error };
+    }
+    uploads.push({
+      uploadUrl: dataPresign.uploadUrl,
+      contentType: dataPresign.contentType,
+      body: tombstone,
+    });
+  }
+
+  return {
+    deleted: toDelete.map((a) => a.slug),
+    uploads,
+    error: null,
+  };
 }

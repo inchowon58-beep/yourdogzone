@@ -4,6 +4,7 @@ import {
   fetchAcademyFromR2,
   loadLatestAcademyList,
   prepareAcademyPremiumUpdate,
+  prepareAcademyR2Deletes,
   prepareAcademyR2Insert,
   type R2UploadTask,
 } from "@/lib/academy/r2-store";
@@ -136,6 +137,49 @@ export async function setAcademyPremium(
   return {
     data: prepared.record,
     error: null,
+    uploads: prepared.uploads,
+  };
+}
+
+export type DeleteAcademiesResult =
+  | { ok: true; deleted: string[]; uploads?: undefined }
+  | { ok: true; deleted: string[]; uploads: R2UploadTask[] }
+  | { ok: false; error: string; deleted: string[] };
+
+export async function deleteAcademies(
+  slugs: string[]
+): Promise<DeleteAcademiesResult> {
+  const unique = [...new Set(slugs.map((s) => s.trim()).filter(Boolean))];
+  if (unique.length === 0) {
+    return { ok: false, error: "삭제할 slug가 필요합니다.", deleted: [] };
+  }
+
+  const supabase = createSupabaseClient();
+  if (supabase) {
+    const { error } = await supabase
+      .from("academy_list")
+      .delete()
+      .in("slug", unique);
+
+    if (error) {
+      return { ok: false, error: error.message, deleted: [] };
+    }
+
+    return { ok: true, deleted: unique };
+  }
+
+  const prepared = await prepareAcademyR2Deletes(unique);
+  if (prepared.error || !prepared.uploads) {
+    return {
+      ok: false,
+      error: prepared.error ?? "삭제에 실패했습니다.",
+      deleted: [],
+    };
+  }
+
+  return {
+    ok: true,
+    deleted: prepared.deleted,
     uploads: prepared.uploads,
   };
 }

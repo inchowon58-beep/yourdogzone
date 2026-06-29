@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     const options = {
-      refineWithGemini: body.refine_with_gemini === true,
+      refineWithGemini: body.refine_with_gemini !== false,
       skipImageMirror: body.skip_image_mirror === true,
     };
 

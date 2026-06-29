@@ -53,7 +53,6 @@ def main() -> int:
     parser.add_argument("--max", type=int, default=5, help="검색당 최대 수집 수")
     parser.add_argument("--dry-run", action="store_true", help="수집만 하고 등록 안 함")
     parser.add_argument("--no-gemini", action="store_true", help="Gemini 재가공 끄기")
-    parser.add_argument("--show-browser", action="store_true", help="브라우저 창 표시")
     args = parser.parse_args()
 
     if args.gui:
@@ -78,13 +77,11 @@ def main() -> int:
 
     delay = float(config.get("delay_seconds", 2))
     refine_gemini = not args.no_gemini and config.get("refine_with_gemini", True)
-    headless = not args.show_browser
 
     print("=" * 50)
     print("네이버 플레이스 자동 수집 시작")
     print("=" * 50)
-
-    crawler = NaverPlaceCrawler(headless=headless, delay=delay)
+    crawler = NaverPlaceCrawler(delay=delay)
     try:
         places = crawler.crawl_many(searches, default_max=args.max)
     finally:

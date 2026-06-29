@@ -74,7 +74,17 @@ def register_all(
             for r in rows:
                 if r.get("ok"):
                     succeeded += 1
-                    log(f"  ✓ {r.get('name')} → {r.get('url')}")
+                    gemini = (
+                        "Gemini 적용"
+                        if r.get("geminiRefined")
+                        else "Gemini 미적용"
+                    )
+                    imgs = r.get("imageCount", 0)
+                    log(f"  ✓ {r.get('name')} → {r.get('url')} ({gemini}, 사진 {imgs}장)")
+                    if r.get("geminiSkipReason"):
+                        log(f"    ⚠ {r['geminiSkipReason']}")
+                    for err in r.get("imageErrors") or []:
+                        log(f"    ⚠ 이미지: {str(err)[:100]}")
                 else:
                     failed += 1
                     log(f"  ✗ {r.get('name')}: {r.get('error')}")

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, KeyRound, RefreshCw, Star } from "lucide-react";
+import { KeyRound, RefreshCw, Star, Trash2 } from "lucide-react";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
 
 type AcademyRow = {
@@ -20,10 +20,17 @@ export function AcademyAdminPanel() {
   const [secret, setSecret] = useState("");
   const [inputSecret, setInputSecret] = useState("");
   const [academies, setAcademies] = useState<AcademyRow[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
+
+  const allSelected = useMemo(
+    () => academies.length > 0 && selected.size === academies.length,
+    [academies.length, selected.size]
+  );
 
   const loadAcademies = useCallback(async (adminSecret: string) => {
     setLoading(true);
@@ -45,6 +52,7 @@ export function AcademyAdminPanel() {
       }
 
       setAcademies(data.academies ?? []);
+      setSelected(new Set());
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -73,7 +81,25 @@ export function AcademyAdminPanel() {
     sessionStorage.removeItem(STORAGE_KEY);
     setSecret("");
     setAcademies([]);
+    setSelected(new Set());
     setInputSecret("");
+  }
+
+  function toggleSelect(slug: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(academies.map((a) => a.slug)));
+    }
   }
 
   async function togglePremium(academy: AcademyRow) {
@@ -133,6 +159,50 @@ export function AcademyAdminPanel() {
     }
   }
 
+  async function deleteSelected() {
+    if (selected.size === 0) return;
+
+    const names = academies
+      .filter((a) => selected.has(a.slug))
+      .map((a) => a.name)
+      .join(", ");
+
+    const confirmed = window.confirm(
+      `선택한 ${selected.size}곳을 삭제할까요?\n\n${names}\n\n이 작업은 되돌릴 수 없습니다.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/academy/admin", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-secret": secret,
+        },
+        body: JSON.stringify({ slugs: [...selected] }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "삭제에 실패했습니다.");
+        return;
+      }
+
+      const deleted = new Set((data.deleted as string[]) ?? []);
+      setAcademies((prev) => prev.filter((a) => !deleted.has(a.slug)));
+      setSelected(new Set());
+      setMessage(`${data.count ?? deleted.size}곳을 삭제했습니다.`);
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (!secret) {
     return (
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
@@ -174,10 +244,21 @@ export function AcademyAdminPanel() {
         <div>
           <h1 className="text-2xl font-bold">학원 관리</h1>
           <p className="mt-1 text-sm text-muted">
-            인증 추천 학원(상단 노출) on/off
+            인증 추천 on/off · 업체 선택 후 삭제
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void deleteSelected()}
+              disabled={deleting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleting ? "삭제 중..." : `선택 삭제 (${selected.size})`}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void loadAcademies(secret)}
@@ -217,6 +298,15 @@ export function AcademyAdminPanel() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-100 bg-gray-50/80 text-xs text-muted">
               <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="전체 선택"
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </th>
                 <th className="px-5 py-3 font-medium">학원명</th>
                 <th className="hidden px-5 py-3 font-medium sm:table-cell">지역</th>
                 <th className="px-5 py-3 font-medium">인증 추천</th>
@@ -225,7 +315,21 @@ export function AcademyAdminPanel() {
             </thead>
             <tbody>
               {academies.map((academy) => (
-                <tr key={academy.slug} className="border-b border-gray-50 last:border-0">
+                <tr
+                  key={academy.slug}
+                  className={`border-b border-gray-50 last:border-0 ${
+                    selected.has(academy.slug) ? "bg-red-50/40" : ""
+                  }`}
+                >
+                  <td className="px-4 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(academy.slug)}
+                      onChange={() => toggleSelect(academy.slug)}
+                      aria-label={`${academy.name} 선택`}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                  </td>
                   <td className="px-5 py-4 font-medium">{academy.name}</td>
                   <td className="hidden px-5 py-4 text-muted sm:table-cell">
                     {academy.region_big} {academy.region_small}
@@ -269,7 +373,7 @@ export function AcademyAdminPanel() {
       )}
 
       <p className="mt-6 text-center text-xs text-muted">
-        변경 후 목록 페이지 반영까지 최대 1분 걸릴 수 있습니다.
+        변경·삭제 후 목록 페이지 반영까지 최대 1분 걸릴 수 있습니다.
       </p>
     </div>
   );

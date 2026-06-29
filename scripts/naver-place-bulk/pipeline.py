@@ -24,7 +24,6 @@ class PipelineSettings:
     max_per_search: int = 3
     delay_seconds: float = 2.0
     refine_with_gemini: bool = True
-    headless: bool = False
     use_chrome_profile: bool = True
 
     def apply_env(self) -> None:
@@ -36,7 +35,6 @@ class PipelineSettings:
             "searches": self.searches,
             "delay_seconds": self.delay_seconds,
             "refine_with_gemini": self.refine_with_gemini,
-            "headless": self.headless,
             "use_chrome_profile": self.use_chrome_profile,
         }
 
@@ -84,7 +82,6 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
         settings.searches = data.get("searches", [])
         settings.delay_seconds = float(data.get("delay_seconds", 2))
         settings.refine_with_gemini = bool(data.get("refine_with_gemini", True))
-        settings.headless = bool(data.get("headless", False))
         settings.use_chrome_profile = bool(data.get("use_chrome_profile", True))
         if settings.searches:
             settings.max_per_search = int(settings.searches[0].get("max", 3))
@@ -111,7 +108,11 @@ def _fetch_registered_names(log: LogFn) -> set[str]:
     return fetch_registered_names(log)
 
 
-def crawl_places(settings: PipelineSettings, log: LogFn) -> list[PlaceData]:
+def crawl_places(
+    settings: PipelineSettings,
+    log: LogFn,
+    on_browser_ready: Callable[[str], None] | None = None,
+) -> list[PlaceData]:
     if not settings.searches:
         raise ValueError("검색어를 1개 이상 입력하세요.")
 
@@ -120,10 +121,10 @@ def crawl_places(settings: PipelineSettings, log: LogFn) -> list[PlaceData]:
     log("=" * 48)
 
     crawler = NaverPlaceCrawler(
-        headless=settings.headless,
         delay=settings.delay_seconds,
         use_profile=settings.use_chrome_profile,
         log=log,
+        on_user_ready=on_browser_ready,
     )
     try:
         places = crawler.crawl_many(
@@ -197,22 +198,31 @@ def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tu
     return register_places(places, settings, log)
 
 
-def run_collect(settings: PipelineSettings, log: LogFn) -> Path | None:
+def run_collect(
+    settings: PipelineSettings,
+    log: LogFn,
+    on_browser_ready: Callable[[str], None] | None = None,
+) -> Path | None:
     settings.apply_env()
-    places = crawl_places(settings, log)
+    places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
     if not places:
         log("수집된 학원이 없습니다.")
         return None
     return save_places_json(places, log)
 
 
-def run_collect_and_register(settings: PipelineSettings, log: LogFn) -> bool:
+def run_collect_and_register(
+    settings: PipelineSettings,
+    log: LogFn,
+    on_browser_ready: Callable[[str], None] | None = None,
+) -> bool:
     settings.apply_env()
-    places = crawl_places(settings, log)
+    places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
     if not places:
         log("수집된 학원이 없습니다.")
         return False
     save_places_json(places, log)
+    log(f"\n④ 수집 완료 ({len(places)}곳) → 사이트 등록 시작")
     ok, fail = register_places(places, settings, log)
     return fail == 0 and ok > 0
 

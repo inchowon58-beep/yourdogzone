@@ -6,7 +6,25 @@ const DOWNLOAD_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   Accept: "image/*,*/*;q=0.8",
+  Referer: "https://map.naver.com/",
 };
+
+/** search.pstatic.net 프록시 URL → ldb-phinf 등 실제 이미지 URL */
+export function resolveExternalImageUrl(imageUrl: string): string {
+  try {
+    const u = new URL(imageUrl);
+    const src = u.searchParams.get("src");
+    if (
+      src &&
+      (u.hostname.includes("pstatic.net") || u.hostname.includes("naver"))
+    ) {
+      return decodeURIComponent(src);
+    }
+  } catch {
+    // ignore
+  }
+  return imageUrl;
+}
 
 function guessFilenameFromUrl(imageUrl: string): string {
   try {
@@ -37,58 +55,69 @@ export async function completeR2Uploads(uploads: R2UploadTask[]): Promise<void> 
 export async function mirrorExternalImageToR2(
   imageUrl: string
 ): Promise<{ publicUrl: string } | { error: string }> {
-  try {
-    const res = await fetch(imageUrl, {
-      headers: DOWNLOAD_HEADERS,
-      signal: AbortSignal.timeout(20_000),
-    });
+  const candidates = [
+    ...new Set([resolveExternalImageUrl(imageUrl), imageUrl]),
+  ];
+  let lastError = "이미지 다운로드 실패";
 
-    if (!res.ok) {
-      return { error: `이미지 다운로드 실패 (${res.status})` };
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers: DOWNLOAD_HEADERS,
+        signal: AbortSignal.timeout(20_000),
+      });
+
+      if (!res.ok) {
+        lastError = `이미지 다운로드 실패 (${res.status})`;
+        continue;
+      }
+
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+        return { error: "이미지 크기가 10MB를 초과합니다." };
+      }
+
+      const filename = guessFilenameFromUrl(url);
+      const headerType = res.headers.get("content-type")?.split(";")[0]?.trim();
+      const contentType = resolveImageContentType(filename, headerType);
+      if (!contentType) {
+        lastError = "지원하지 않는 이미지 형식입니다.";
+        continue;
+      }
+
+      const key = buildR2Key(filename);
+      const presign = await createPresignedPutObject(key, contentType);
+      if ("error" in presign) {
+        lastError = presign.error;
+        continue;
+      }
+
+      const putRes = await fetch(presign.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: buffer,
+        duplex: "half",
+      } as RequestInit & { duplex?: "half" });
+
+      if (!putRes.ok) {
+        const detail = await putRes.text().catch(() => "");
+        lastError = `R2 이미지 업로드 실패 (${putRes.status}): ${detail.slice(0, 120)}`;
+        continue;
+      }
+
+      return { publicUrl: presign.publicUrl };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "알 수 없는 오류";
+      lastError = `이미지 미러링 실패: ${message}`;
     }
-
-    const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
-      return { error: "이미지 크기가 10MB를 초과합니다." };
-    }
-
-    const filename = guessFilenameFromUrl(imageUrl);
-    const headerType = res.headers.get("content-type")?.split(";")[0]?.trim();
-    const contentType = resolveImageContentType(filename, headerType);
-    if (!contentType) {
-      return { error: "지원하지 않는 이미지 형식입니다." };
-    }
-
-    const key = buildR2Key(filename);
-    const presign = await createPresignedPutObject(key, contentType);
-    if ("error" in presign) {
-      return { error: presign.error };
-    }
-
-    const putRes = await fetch(presign.uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": contentType },
-      body: buffer,
-      duplex: "half",
-    } as RequestInit & { duplex?: "half" });
-
-    if (!putRes.ok) {
-      const detail = await putRes.text().catch(() => "");
-      return {
-        error: `R2 이미지 업로드 실패 (${putRes.status}): ${detail.slice(0, 120)}`,
-      };
-    }
-
-    return { publicUrl: presign.publicUrl };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "알 수 없는 오류";
-    return { error: `이미지 미러링 실패: ${message}` };
   }
+
+  return { error: lastError };
 }
 
 export async function mirrorExternalImagesToR2(
   imageUrls: string[],
-  maxCount = 10
+  maxCount = 3
 ): Promise<{ urls: string[]; errors: string[] }> {
   const urls: string[] = [];
   const errors: string[] = [];

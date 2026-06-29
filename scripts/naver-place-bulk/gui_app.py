@@ -99,33 +99,27 @@ class AcademyRegisterApp(tk.Tk):
         tk.Spinbox(opts, from_=1, to=20, textvariable=self.max_var, width=5).pack(side="left", padx=6)
 
         tk.Label(opts, text="대기(초)", bg="#fff").pack(side="left", padx=(12, 0))
-        self.delay_var = tk.DoubleVar(value=2.0)
+        self.delay_var = tk.DoubleVar(value=3.0)
         tk.Spinbox(opts, from_=1, to=10, increment=0.5, textvariable=self.delay_var, width=5).pack(
             side="left", padx=6
         )
 
+        opts2 = tk.Frame(frm, bg="#fff")
+        opts2.grid(row=6, column=1, sticky="w", padx=12, pady=(0, 6))
+
         self.gemini_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(opts, text="Gemini 소개글 편집", variable=self.gemini_var, bg="#fff").pack(
-            side="left", padx=(12, 0)
-        )
-
-        self.headless_var = tk.BooleanVar(value=False)
-        tk.Checkbutton(opts, text="브라우저 숨김 (비권장)", variable=self.headless_var, bg="#fff").pack(
-            side="left", padx=(8, 0)
-        )
-
-        self.profile_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(opts, text="네이버 로그인 유지", variable=self.profile_var, bg="#fff").pack(
-            side="left", padx=(8, 0)
+        tk.Checkbutton(opts2, text="Gemini 소개글 편집", variable=self.gemini_var, bg="#fff").pack(
+            side="left"
         )
 
         tk.Label(
             tab_settings,
-            text="※ 보안문자가 뜨면 Chrome 창에서 직접 입력하세요. 네이버 로그인 시 덜 뜹니다.",
+            text="※ [수집 시작] → 네이버 로그인 페이지 → 로그인 → [확인 — 수집 시작] → 지도·자동 수집",
             bg="#fff",
             fg="#c62828",
             font=("Segoe UI", 9),
-        ).pack(padx=16, pady=(0, 8))
+            justify="left",
+        ).pack(padx=16, pady=(0, 8), anchor="w")
 
         tk.Button(
             tab_settings,
@@ -222,8 +216,6 @@ class AcademyRegisterApp(tk.Tk):
         self.max_var.set(s.max_per_search)
         self.delay_var.set(s.delay_seconds)
         self.gemini_var.set(s.refine_with_gemini)
-        self.headless_var.set(s.headless)
-        self.profile_var.set(s.use_chrome_profile)
 
         if s.searches:
             lines = []
@@ -250,8 +242,7 @@ class AcademyRegisterApp(tk.Tk):
             max_per_search=self.max_var.get(),
             delay_seconds=self.delay_var.get(),
             refine_with_gemini=self.gemini_var.get(),
-            headless=self.headless_var.get(),
-            use_chrome_profile=self.profile_var.get(),
+            use_chrome_profile=True,
         )
 
     def _save_settings(self) -> None:
@@ -272,6 +263,60 @@ class AcademyRegisterApp(tk.Tk):
 
     def _log(self, msg: str) -> None:
         self.log_queue.put(msg)
+
+    def _wait_user_confirm(self, message: str) -> None:
+        """작업 스레드에서 호출 — 메인 스레드 팝업 [확인]까지 대기."""
+        done = threading.Event()
+
+        def show_dialog() -> None:
+            win = tk.Toplevel(self)
+            win.title("네이버 로그인")
+            win.geometry("480x260")
+            win.configure(bg="#ffffff")
+            win.transient(self)
+            win.grab_set()
+            win.attributes("-topmost", True)
+
+            tk.Label(
+                win,
+                text=message,
+                font=("Segoe UI", 11),
+                bg="#ffffff",
+                fg="#222",
+                wraplength=420,
+                justify="center",
+            ).pack(pady=(28, 10), padx=24)
+
+            tk.Label(
+                win,
+                text="Chrome 창을 닫지 마세요.",
+                font=("Segoe UI", 9),
+                bg="#ffffff",
+                fg="#c62828",
+            ).pack(pady=(0, 8))
+
+            def on_ok() -> None:
+                done.set()
+                win.destroy()
+
+            tk.Button(
+                win,
+                text="확인 — 수집 시작",
+                font=("Segoe UI", 12, "bold"),
+                bg="#5c6bc0",
+                fg="white",
+                relief="flat",
+                padx=28,
+                pady=12,
+                command=on_ok,
+            ).pack(pady=16)
+
+            win.protocol("WM_DELETE_WINDOW", lambda: None)
+            win.lift()
+            win.focus_force()
+
+        self.after(0, show_dialog)
+        done.wait()
 
     def _poll_log(self) -> None:
         while True:
@@ -321,7 +366,11 @@ class AcademyRegisterApp(tk.Tk):
 
     def _on_collect(self) -> None:
         def job(settings: PipelineSettings):
-            path = run_collect(settings, self._log)
+            path = run_collect(
+                settings,
+                self._log,
+                on_browser_ready=self._wait_user_confirm,
+            )
             if path:
                 self.last_json = path
                 self._log(f"\n✓ 수집만 완료. 등록하려면 '수집+등록' 또는 'JSON만 등록'")
@@ -332,7 +381,11 @@ class AcademyRegisterApp(tk.Tk):
         def job(settings: PipelineSettings):
             if not settings.admin_secret:
                 raise ValueError("관리자 비밀키를 입력하세요.")
-            ok = run_collect_and_register(settings, self._log)
+            ok = run_collect_and_register(
+                settings,
+                self._log,
+                on_browser_ready=self._wait_user_confirm,
+            )
             if ok:
                 self._log("\n✓ 수집 및 등록 완료!")
             else:

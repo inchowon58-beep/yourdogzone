@@ -4,8 +4,7 @@
     { "query": "인천 애견미용학원", "max": 3 },
     { "query": "서울 강남 애견미용학원", "max": 3 }
   ],
-  "delay_seconds": 2,
+  "delay_seconds": 3,
   "refine_with_gemini": true,
-  "headless": false,
   "use_chrome_profile": true
 }

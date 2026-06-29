@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
-import { getAcademies, setAcademyPremium } from "@/lib/academy/queries";
+import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror";
 
 export const runtime = "nodejs";
 
@@ -87,6 +89,54 @@ export async function PATCH(request: Request) {
       storage: "supabase",
     });
   } catch {
+    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!isAdminConfigured()) {
+    return NextResponse.json(
+      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
+      { status: 503 }
+    );
+  }
+
+  if (!verifyAdminSecret(request)) {
+    return unauthorized();
+  }
+
+  try {
+    const body = await request.json();
+    const slugs: string[] = Array.isArray(body.slugs)
+      ? body.slugs
+      : typeof body.slug === "string"
+        ? [body.slug]
+        : [];
+
+    const result = await deleteAcademies(slugs);
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    if (result.uploads?.length) {
+      await completeR2Uploads(result.uploads);
+    }
+
+    for (const slug of result.deleted) {
+      revalidatePath(`/services/academy/${slug}`);
+    }
+    revalidatePath("/services/academy");
+    revalidatePath("/sitemap.xml");
+
+    return NextResponse.json({
+      ok: true,
+      deleted: result.deleted,
+      count: result.deleted.length,
+      storage: result.uploads?.length ? "r2" : "supabase",
+    });
+  } catch (error) {
+    console.error("academy delete 오류:", error);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 }

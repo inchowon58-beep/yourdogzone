@@ -6,6 +6,7 @@ import { academyPageUrl } from "@/lib/indexnow/submit";
 import {
   completeR2Uploads,
   mirrorExternalImagesToR2,
+  resolveExternalImageUrl,
 } from "@/lib/upload/r2-mirror";
 
 export type BulkAcademyInput = {
@@ -40,6 +41,7 @@ export type BulkRegisterItemResult = {
   imageCount?: number;
   imageErrors?: string[];
   geminiRefined?: boolean;
+  geminiSkipReason?: string;
   error?: string;
 };
 
@@ -66,8 +68,14 @@ export async function bulkRegisterAcademy(
   let curriculum = input.curriculum?.trim() || input.description?.trim() || null;
   let tuition_info = input.tuition_info?.trim() || null;
   let geminiRefined = false;
+  let geminiSkipReason: string | undefined;
 
-  if (options.refineWithGemini && input.description?.trim()) {
+  const geminiRequested = options.refineWithGemini !== false;
+  const geminiAvailable = Boolean(process.env.GEMINI_API_KEY?.trim());
+
+  if (geminiRequested && !geminiAvailable) {
+    geminiSkipReason = "서버에 GEMINI_API_KEY가 설정되지 않았습니다 (Vercel 환경변수 확인)";
+  } else if (geminiRequested && input.description?.trim()) {
     const refined = await refineAcademyCopyWithGemini(
       name,
       input.description,
@@ -78,6 +86,8 @@ export async function bulkRegisterAcademy(
       curriculum = refined.curriculum;
       tuition_info = refined.tuition_info;
       geminiRefined = true;
+    } else {
+      geminiSkipReason = "Gemini API 호출 실패 — 원본 소개글로 등록됨";
     }
   }
 
@@ -85,9 +95,22 @@ export async function bulkRegisterAcademy(
   let imageErrors: string[] = [];
 
   if (!options.skipImageMirror && input.image_urls?.length) {
-    const mirrored = await mirrorExternalImagesToR2(input.image_urls);
+    const mirrored = await mirrorExternalImagesToR2(input.image_urls, 3);
     r2Images.push(...mirrored.urls);
     imageErrors = mirrored.errors;
+
+    if (r2Images.length === 0) {
+      const fallback = input.image_urls
+        .slice(0, 3)
+        .map(resolveExternalImageUrl)
+        .filter((u) => u.startsWith("https://"));
+      if (fallback.length) {
+        r2Images.push(...fallback);
+        imageErrors.push(
+          "R2 업로드 실패 — 네이버 원본 이미지 URL로 저장했습니다"
+        );
+      }
+    }
   }
 
   const uniqueImages = [...new Set(r2Images.filter((u) => u.startsWith("http")))];
@@ -95,6 +118,9 @@ export async function bulkRegisterAcademy(
     input.logo_image?.startsWith("http")
       ? input.logo_image
       : uniqueImages[0] ?? null;
+  const academy_images = uniqueImages.length
+    ? uniqueImages.slice(0, 3)
+    : null;
 
   const slug = generateAcademySlug(name, region_small, region_big);
 
@@ -110,7 +136,7 @@ export async function bulkRegisterAcademy(
     tuition_info,
     kakao_url: input.kakao_url?.trim() || null,
     logo_image,
-    academy_images: uniqueImages.length ? uniqueImages : null,
+    academy_images,
     is_premium: input.is_premium ?? false,
   });
 
@@ -144,9 +170,10 @@ export async function bulkRegisterAcademy(
     slug: insertResult.data.slug,
     url: academyPageUrl(insertResult.data.slug),
     storage: insertResult.uploads?.length ? "r2" : "supabase",
-    imageCount: uniqueImages.length,
+    imageCount: academy_images?.length ?? 0,
     imageErrors: imageErrors.length ? imageErrors : undefined,
     geminiRefined,
+    geminiSkipReason,
   };
 }
 
