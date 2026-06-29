@@ -36,8 +36,16 @@ export function Footer() {
           </nav>
         </div>
 
-        <p className="mt-10 text-xs text-muted">
-          © {new Date().getFullYear()} 유아독존. All rights reserved.
+        <p className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+          <span>© {new Date().getFullYear()} 유아독존. All rights reserved.</span>
+          <span className="hidden sm:inline">·</span>
+          <Link href="/feed.xml" className="hover:text-foreground">
+            RSS
+          </Link>
+          <span>·</span>
+          <Link href="/sitemap.xml" className="hover:text-foreground">
+            사이트맵
+          </Link>
         </p>
       </div>
     </footer>

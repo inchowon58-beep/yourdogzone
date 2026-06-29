@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "유아독존 | 반려동물 통합 포털",
-    template: "%s | 유아독존",
+    default: `${SITE_NAME} | 반려동물 통합 포털`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.",
+  description: SITE_DESCRIPTION,
   keywords: [
     "반려견",
     "강아지",
@@ -18,6 +18,13 @@ export const metadata: Metadata = {
     "동물병원",
     "견종소개",
   ],
+  alternates: {
+    types: {
+      "application/rss+xml": [
+        { url: "/feed.xml", title: `${SITE_NAME} RSS` },
+      ],
+    },
+  },
 };
 
 export default function RootLayout({
