@@ -37,10 +37,13 @@ export async function fetchAcademiesFromR2(options?: {
   }
 }
 
-export async function fetchAcademyFromR2(slug: string): Promise<Academy | null> {
+export async function fetchAcademyFromR2(
+  slug: string,
+  options?: { noCache?: boolean }
+): Promise<Academy | null> {
   try {
     const res = await fetch(academyPublicUrl(slug), {
-      next: { revalidate: 60 },
+      ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
     });
     if (res.ok) {
       return (await res.json()) as Academy;
@@ -49,8 +52,23 @@ export async function fetchAcademyFromR2(slug: string): Promise<Academy | null> 
     // fall through to index lookup
   }
 
-  const list = await fetchAcademiesFromR2();
+  const list = await fetchAcademiesFromR2(options);
   return list.find((a) => a.slug === slug) ?? null;
+}
+
+/** index + 개별 data JSON을 병합해 최신 학원 목록 반환 (is_premium 등 유지) */
+export async function loadLatestAcademyList(): Promise<Academy[]> {
+  const indexList = await fetchAcademiesFromR2({ noCache: true });
+  if (indexList.length === 0) return [];
+
+  const merged = await Promise.all(
+    indexList.map(async (summary) => {
+      const latest = await fetchAcademyFromR2(summary.slug, { noCache: true });
+      return latest ?? summary;
+    })
+  );
+
+  return merged;
 }
 
 export async function prepareAcademyR2Insert(
@@ -59,7 +77,7 @@ export async function prepareAcademyR2Insert(
   | { record: Academy; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const existing = await fetchAcademiesFromR2();
+  const existing = await loadLatestAcademyList();
   if (existing.some((a) => a.slug === payload.slug)) {
     return {
       record: null,
@@ -186,8 +204,10 @@ export async function prepareAcademyPremiumUpdate(
   | { record: Academy; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const academies = await fetchAcademiesFromR2({ noCache: true });
-  const target = academies.find((a) => a.slug === slug);
+  const academies = await loadLatestAcademyList();
+  const target =
+    (await fetchAcademyFromR2(slug, { noCache: true })) ??
+    academies.find((a) => a.slug === slug);
 
   if (!target) {
     return {
@@ -208,7 +228,8 @@ export async function prepareAcademyPremiumUpdate(
   }
 
   const record: Academy = { ...target, is_premium: isPremium };
-  const built = await buildAcademyR2Uploads(record, academies);
+  const mergedList = academies.map((a) => (a.slug === slug ? record : a));
+  const built = await buildAcademyR2Uploads(record, mergedList);
   if (built.error || !built.uploads) {
     return {
       record: null,

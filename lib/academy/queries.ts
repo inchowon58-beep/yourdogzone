@@ -2,6 +2,7 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import {
   fetchAcademiesFromR2,
   fetchAcademyFromR2,
+  loadLatestAcademyList,
   prepareAcademyPremiumUpdate,
   prepareAcademyR2Insert,
   type R2UploadTask,
@@ -14,7 +15,7 @@ export async function getAcademies(options?: {
 }): Promise<Academy[]> {
   const supabase = createSupabaseClient();
   if (!supabase) {
-    const fromR2 = await fetchAcademiesFromR2();
+    const fromR2 = await loadLatestAcademyList();
     if (fromR2.length > 0) return filterAcademies(fromR2, options);
     return getMockAcademies(options);
   }
@@ -64,7 +65,7 @@ export async function getAcademyBySlug(slug: string): Promise<Academy | null> {
 export async function getAcademySlugs(): Promise<string[]> {
   const supabase = createSupabaseClient();
   if (!supabase) {
-    const fromR2 = await fetchAcademiesFromR2();
+    const fromR2 = await loadLatestAcademyList();
     if (fromR2.length > 0) return fromR2.map((a) => a.slug);
     return getMockAcademies().map((a) => a.slug);
   }
