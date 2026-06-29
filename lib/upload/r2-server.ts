@@ -1,4 +1,13 @@
 import { S3Client } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
+import https from "node:https";
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 50,
+  rejectUnauthorized: true,
+  minVersion: "TLSv1.2",
+});
 
 export type R2Config = {
   accessKeyId: string;
@@ -99,5 +108,10 @@ export function createR2S3Client(
     forcePathStyle: true,
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
+    requestHandler: new NodeHttpHandler({
+      httpsAgent,
+      connectionTimeout: 5_000,
+      requestTimeout: 5_000,
+    }),
   });
 }

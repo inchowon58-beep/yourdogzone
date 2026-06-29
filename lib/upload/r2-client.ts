@@ -7,11 +7,17 @@ export type UploadResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
-type UploadResponse = {
+type PresignResponse = {
+  uploadUrl?: string;
   publicUrl?: string;
+  contentType?: string;
   error?: string;
 };
 
+/**
+ * 1) 서버에서 Presigned URL 발급 (R2에 직접 연결 없음 — SSL 안전)
+ * 2) 브라우저에서 R2로 PUT 업로드
+ */
 export async function uploadImageToR2(file: File): Promise<UploadResult> {
   const resolvedType = resolveImageContentType(file.name, file.type);
   if (!resolvedType) {
@@ -26,31 +32,52 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
   }
 
   try {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-
-    const res = await fetch("/api/upload", {
+    const presignRes = await fetch("/api/upload", {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: resolvedType,
+        fileSize: file.size,
+      }),
     });
 
-    let data: UploadResponse;
-    try {
-      data = (await res.json()) as UploadResponse;
-    } catch {
-      return { ok: false, error: `서버 응답 오류 (${res.status})` };
-    }
+    const presignData = (await presignRes.json()) as PresignResponse;
 
-    if (!res.ok || !data.publicUrl) {
+    if (!presignRes.ok || !presignData.uploadUrl || !presignData.contentType) {
       return {
         ok: false,
-        error: data.error ?? `업로드에 실패했습니다. (${res.status})`,
+        error: presignData.error ?? "업로드 주소를 받지 못했습니다.",
       };
     }
 
-    return { ok: true, url: data.publicUrl };
+    const uploadRes = await fetch(presignData.uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": presignData.contentType,
+      },
+      // Node/Next fetch 호환 (브라우저에서는 무시됨)
+      duplex: "half",
+    } as RequestInit & { duplex?: "half" });
+
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text().catch(() => "");
+      console.error("R2 PUT 실패:", uploadRes.status, detail);
+      return {
+        ok: false,
+        error: `R2 업로드에 실패했습니다. (${uploadRes.status})`,
+      };
+    }
+
+    if (!presignData.publicUrl) {
+      return { ok: false, error: "publicUrl을 받지 못했습니다." };
+    }
+
+    return { ok: true, url: presignData.publicUrl };
   } catch (error) {
     console.error("업로드 중 에러:", error);
-    return { ok: false, error: "네트워크 오류로 업로드에 실패했습니다." };
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    return { ok: false, error: `네트워크 오류로 업로드에 실패했습니다. (${message})` };
   }
 }
