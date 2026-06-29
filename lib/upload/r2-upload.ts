@@ -1,6 +1,15 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { createR2S3Client, getR2Config } from "@/lib/upload/r2-server";
-import { buildR2Key, resolveImageContentType } from "@/lib/upload/constants";
+import { AwsClient } from "aws4fetch";
+import { buildR2Key } from "@/lib/upload/constants";
+import { getR2Config } from "@/lib/upload/r2-server";
+
+function buildR2ObjectUrl(endpoint: string, bucket: string, key: string): string {
+  const base = endpoint.replace(/\/$/, "");
+  const encodedKey = key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${base}/${bucket}/${encodedKey}`;
+}
 
 export async function uploadBufferToR2(
   buffer: Buffer,
@@ -13,24 +22,39 @@ export async function uploadBufferToR2(
   }
 
   const key = buildR2Key(filename);
-  const client = createR2S3Client(config);
+  const objectUrl = buildR2ObjectUrl(config.endpoint, config.bucket, key);
+
+  const aws = new AwsClient({
+    accessKeyId: config.accessKeyId,
+    secretAccessKey: config.secretAccessKey,
+    service: "s3",
+    region: "auto",
+  });
 
   try {
-    await client.send(
-      new PutObjectCommand({
-        Bucket: config.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: contentType,
-      })
-    );
+    const response = await aws.fetch(objectUrl, {
+      method: "PUT",
+      body: new Uint8Array(buffer),
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(buffer.length),
+      },
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error("R2 PUT 실패:", response.status, detail);
+      return {
+        error: `R2 저장 실패: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 200)}` : ""}`,
+      };
+    }
 
     return {
       publicUrl: `${config.publicBase}/${key}`,
       key,
     };
   } catch (error) {
-    console.error("R2 PutObject 실패:", error);
+    console.error("R2 업로드 예외:", error);
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
     return { error: `R2 저장 실패: ${message}` };
   }
