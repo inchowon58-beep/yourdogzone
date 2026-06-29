@@ -10,6 +10,10 @@ export type R2Config = {
 
 const DEFAULT_PUBLIC_BASE = "https://img.yourdogzone.co.kr";
 
+function trimEnv(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
+
 export function normalizeR2Endpoint(endpoint: string, bucket: string): string {
   let normalized = endpoint.trim().replace(/\/+$/, "");
 
@@ -40,26 +44,27 @@ export function normalizeR2Endpoint(endpoint: string, bucket: string): string {
 
 export function getPublicBaseUrl(): string {
   const fromEnv =
-    process.env.NEXT_PUBLIC_R2_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_S3_PUBLIC_URL;
+    trimEnv(process.env.NEXT_PUBLIC_R2_PUBLIC_URL) ||
+    trimEnv(process.env.NEXT_PUBLIC_S3_PUBLIC_URL);
 
   return (fromEnv || DEFAULT_PUBLIC_BASE).replace(/\/$/, "");
 }
 
 export function getMissingR2EnvVars(): string[] {
   const missing: string[] = [];
-  if (!process.env.R2_ACCESS_KEY_ID) missing.push("R2_ACCESS_KEY_ID");
-  if (!process.env.R2_SECRET_ACCESS_KEY) missing.push("R2_SECRET_ACCESS_KEY");
-  if (!process.env.R2_ENDPOINT) missing.push("R2_ENDPOINT");
-  if (!process.env.R2_BUCKET_NAME) missing.push("R2_BUCKET_NAME");
+  if (!trimEnv(process.env.R2_ACCESS_KEY_ID)) missing.push("R2_ACCESS_KEY_ID");
+  if (!trimEnv(process.env.R2_SECRET_ACCESS_KEY))
+    missing.push("R2_SECRET_ACCESS_KEY");
+  if (!trimEnv(process.env.R2_ENDPOINT)) missing.push("R2_ENDPOINT");
+  if (!trimEnv(process.env.R2_BUCKET_NAME)) missing.push("R2_BUCKET_NAME");
   return missing;
 }
 
 export function getR2Config(): R2Config | null {
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const rawEndpoint = process.env.R2_ENDPOINT;
-  const bucket = process.env.R2_BUCKET_NAME;
+  const accessKeyId = trimEnv(process.env.R2_ACCESS_KEY_ID);
+  const secretAccessKey = trimEnv(process.env.R2_SECRET_ACCESS_KEY);
+  const rawEndpoint = trimEnv(process.env.R2_ENDPOINT);
+  const bucket = trimEnv(process.env.R2_BUCKET_NAME);
 
   if (!accessKeyId || !secretAccessKey || !rawEndpoint || !bucket) {
     return null;
