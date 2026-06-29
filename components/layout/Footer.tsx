@@ -10,6 +10,8 @@ const FOOTER_LINKS = [
 ];
 
 export function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="mt-auto border-t border-gray-100 bg-white">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -36,8 +38,17 @@ export function Footer() {
           </nav>
         </div>
 
-        <p className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-          <span>© {new Date().getFullYear()} 유아독존. All rights reserved.</span>
+        <div className="mt-10 space-y-1 border-t border-gray-100 pt-8 text-xs leading-relaxed text-muted">
+          <p className="font-medium text-foreground">주식회사 인포씨에스</p>
+          <p>법인등록번호 224-87-00683</p>
+          <p>대표 조춘원</p>
+          <p>경기도 부천시 길주로 246 2층</p>
+        </div>
+
+        <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+          <span>
+            © 2017–{currentYear} 유아독존. All rights reserved.
+          </span>
           <span className="hidden sm:inline">·</span>
           <Link href="/feed.xml" className="hover:text-foreground">
             RSS

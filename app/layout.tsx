@@ -45,6 +45,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
   robots: { index: true, follow: true },
+  verification: {
+    other: {
+      "naver-site-verification": "4b76245dea128c61246f068d9449786517ecd73d",
+    },
+  },
 };
 
 export default function RootLayout({
