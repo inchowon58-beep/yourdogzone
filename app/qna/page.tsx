@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "강아지 Q&A",
-  description: "강아지에 대한 궁금증 커뮤니티",
-};
+import { JsonLd } from "@/components/seo/JsonLd";
+import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 const SAMPLE_QNA = [
   {
@@ -25,9 +23,19 @@ const SAMPLE_QNA = [
   },
 ];
 
+export const metadata: Metadata = buildPageMetadata({
+  title: "강아지 Q&A",
+  description:
+    "강아지 산책, 사료 급여, 미용 주기 등 반려견 양육에 대한 자주 묻는 질문과 답변.",
+  path: "/qna",
+  keywords: ["강아지 Q&A", "반려견 질문", "강아지 미용", "강아지 산책"],
+});
+
 export default function QnaPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
+      <JsonLd data={buildFaqPageJsonLd(SAMPLE_QNA)} />
+
       <Link
         href="/"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

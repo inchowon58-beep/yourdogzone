@@ -7,12 +7,27 @@ import { AcademySearchBar } from "@/components/academy/AcademySearchBar";
 import { RegionTabs } from "@/components/academy/RegionTabs";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyList } from "@/components/academy/AcademyList";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  buildAcademyListBreadcrumbJsonLd,
+  buildAcademyListJsonLd,
+} from "@/lib/seo/academy-jsonld";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "애견미용학원",
+export const metadata: Metadata = buildPageMetadata({
+  title: "전국 애견미용학원 정보 통합 검색",
   description:
-    "전국 애견미용학원 정보 통합 검색. 지역별 필터, 인증 추천 학원, 수강 과정 및 수강료 안내.",
-};
+    "서울·경기·인천 등 전국 애견미용학원을 지역별로 검색하세요. 인증 추천 학원, 교육과정, 수강료, 위치 정보를 한곳에서 확인할 수 있습니다.",
+  path: "/services/academy",
+  keywords: [
+    "애견미용학원",
+    "전국 애견미용학원",
+    "애견미용 학원 추천",
+    "애견미용 자격증",
+    "반려견 미용 교육",
+    "지역별 애견미용학원",
+  ],
+});
 
 type PageProps = {
   searchParams: Promise<{ region?: string; q?: string }>;
@@ -26,6 +41,10 @@ export default async function AcademyPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 md:py-14">
+      <JsonLd
+        data={[buildAcademyListJsonLd(all.length), buildAcademyListBreadcrumbJsonLd()]}
+      />
+
       <Link
         href="/"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

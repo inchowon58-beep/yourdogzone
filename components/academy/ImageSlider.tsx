@@ -15,7 +15,7 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
   if (images.length === 0) {
     return (
       <AcademyNoImage
-        className="aspect-[4/3] rounded-2xl shadow-[var(--card-shadow)]"
+        className="mx-auto aspect-[4/3] w-full max-w-3xl rounded-2xl shadow-[var(--card-shadow)]"
         iconClassName="h-12 w-12"
       />
     );
@@ -25,48 +25,48 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
   const next = () => setIndex((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
-      <div className="flex aspect-[4/3] items-center justify-center bg-white">
+    <div className="flex justify-center">
+      <div className="relative w-fit max-w-full">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={images[index]}
           alt={`${alt} ${index + 1}`}
-          className="max-h-full max-w-full object-contain"
+          className="block max-h-[min(70vh,640px)] w-auto max-w-full rounded-2xl bg-white shadow-[var(--card-shadow)]"
         />
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={prev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
+              aria-label="이전 이미지"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
+              aria-label="다음 이미지"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setIndex(i)}
+                  className={`h-2 rounded-full transition-all ${
+                    i === index ? "w-6 bg-white" : "w-2 bg-white/60"
+                  }`}
+                  aria-label={`${i + 1}번째 이미지`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
-      {images.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
-            aria-label="이전 이미지"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
-            aria-label="다음 이미지"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setIndex(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === index ? "w-6 bg-white" : "w-2 bg-white/60"
-                }`}
-                aria-label={`${i + 1}번째 이미지`}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

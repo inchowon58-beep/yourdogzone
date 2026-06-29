@@ -1,14 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-const SERVICE_META: Record<string, { title: string; description: string }> = {
-  academy: { title: "애견미용학원", description: "전문 미용 교육 및 매칭" },
-  adoption: { title: "강아지분양", description: "윤리적 분양 매칭" },
-  shelter: { title: "강아지보호소", description: "유기견·구조견 정보" },
-  funeral: { title: "강아지장례식장", description: "장례 정보 및 예약" },
-  breeder: { title: "브리더정보", description: "인증 브리더 리스트" },
-  hospital: { title: "동물병원", description: "위치 기반 병원 조회" },
+const SERVICE_META: Record<
+  string,
+  { title: string; description: string; keywords: string[] }
+> = {
+  adoption: {
+    title: "강아지분양",
+    description: "윤리적 강아지 분양 정보 및 매칭 — 전국 지역별 분양 안내.",
+    keywords: ["강아지분양", "강아지 입양", "반려견 분양"],
+  },
+  shelter: {
+    title: "강아지보호소",
+    description: "유기견·구조견 보호소 정보 — 지역별 보호소 검색.",
+    keywords: ["강아지보호소", "유기견", "구조견"],
+  },
+  funeral: {
+    title: "강아지장례식장",
+    description: "반려견 장례식장 정보 및 예약 안내.",
+    keywords: ["강아지장례", "반려견 장례식장"],
+  },
+  breeder: {
+    title: "브리더정보",
+    description: "인증 브리더 리스트 및 견종별 브리더 정보.",
+    keywords: ["브리더", "견종 브리더", "강아지 브리더"],
+  },
+  hospital: {
+    title: "동물병원",
+    description: "위치 기반 동물병원 조회 — 지역별 반려동물 병원 정보.",
+    keywords: ["동물병원", "반려동물 병원", "24시 동물병원"],
+  },
 };
 
 type PageProps = {
@@ -18,10 +41,16 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { service } = await params;
   const meta = SERVICE_META[service];
-  return {
-    title: meta?.title ?? "서비스",
-    description: meta?.description ?? "유아독존 서비스",
-  };
+  if (!meta) {
+    return { title: "서비스" };
+  }
+
+  return buildPageMetadata({
+    title: meta.title,
+    description: meta.description,
+    path: `/services/${service}`,
+    keywords: meta.keywords,
+  });
 }
 
 export default async function ServicePage({ params }: PageProps) {

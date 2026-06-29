@@ -1,5 +1,23 @@
 import { SearchBar } from "@/components/home/SearchBar";
 import { ServiceGrid } from "@/components/home/ServiceGrid";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = buildPageMetadata({
+  title: "반려견과 함께하는 모든 정보",
+  description:
+    "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.",
+  path: "/",
+  keywords: [
+    "유아독존",
+    "반려견",
+    "강아지",
+    "애견미용학원",
+    "강아지분양",
+    "동물병원",
+    "견종소개",
+  ],
+});
 
 export default function Home() {
   return (

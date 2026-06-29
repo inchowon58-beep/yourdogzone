@@ -4,9 +4,15 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
 import { getAcademyBySlug, getAcademySlugs } from "@/lib/academy/queries";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
-import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  buildAcademyBreadcrumbJsonLd,
+  buildAcademyDetailKeywords,
+  buildAcademyLocalBusinessJsonLd,
+} from "@/lib/seo/academy-jsonld";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = 3600;
 
@@ -24,19 +30,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const academy = await getAcademyBySlug(slug);
   if (!academy) return { title: "학원을 찾을 수 없습니다" };
 
-  const title = `${academy.name} | ${academy.region_small} ${academy.region_big} 애견미용학원 추천`;
-  const description = `${academy.region_big} ${academy.region_small} ${academy.name} — ${academy.title_copy}. 교육과정, 수강료, 위치 정보를 확인하세요.`;
+  const title = `${academy.name} | ${academy.region_small} ${academy.region_big} 애견미용학원`;
+  const description = `${academy.region_big} ${academy.region_small} ${academy.address} — ${academy.name}. ${academy.title_copy} 교육과정, 수강료, 연락처, 위치 정보.`;
+  const images = getAcademyGalleryImages(academy, 3);
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      url: absoluteUrl(`/services/academy/${academy.slug}`),
-      images: academy.logo_image ? [academy.logo_image] : undefined,
-    },
-  };
+    path: `/services/academy/${academy.slug}`,
+    keywords: buildAcademyDetailKeywords(academy),
+    images,
+    type: "article",
+  });
 }
 
 export default async function AcademyDetailPage({ params }: PageProps) {
@@ -45,7 +50,6 @@ export default async function AcademyDetailPage({ params }: PageProps) {
   if (!academy) notFound();
 
   const images = getAcademyGalleryImages(academy, 3);
-
   const mapQuery = encodeURIComponent(academy.address);
   const isPremium = academy.is_premium;
 
@@ -53,6 +57,13 @@ export default async function AcademyDetailPage({ params }: PageProps) {
     <main
       className={`mx-auto max-w-4xl px-6 py-10 ${isPremium ? "pb-4" : "pb-14"}`}
     >
+      <JsonLd
+        data={[
+          buildAcademyBreadcrumbJsonLd(academy),
+          buildAcademyLocalBusinessJsonLd(academy, images),
+        ]}
+      />
+
       <Link
         href="/services/academy"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
@@ -61,7 +72,10 @@ export default async function AcademyDetailPage({ params }: PageProps) {
         학원 목록
       </Link>
 
-      <article>
+      <article itemScope itemType="https://schema.org/EducationalOrganization">
+        <meta itemProp="name" content={academy.name} />
+        <meta itemProp="description" content={academy.title_copy} />
+
         <header
           className={`mb-8 ${isPremium ? "rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white p-6" : ""}`}
         >
@@ -79,17 +93,34 @@ export default async function AcademyDetailPage({ params }: PageProps) {
           </p>
         </header>
 
-        <section className="mb-10">
+        <section className="mb-10" aria-label={`${academy.name} 사진`}>
           <ImageSlider images={images} alt={academy.name} />
         </section>
 
-        <section className="mb-10 overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
+        <section
+          className="mb-10 overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]"
+          itemProp="address"
+          itemScope
+          itemType="https://schema.org/PostalAddress"
+        >
           <table className="w-full text-sm">
             <tbody>
               <InfoRow label="지역" value={`${academy.region_big} ${academy.region_small}`} />
-              <InfoRow label="주소" value={academy.address} icon={<MapPin className="h-4 w-4" />} />
+              <InfoRow
+                label="주소"
+                value={academy.address}
+                icon={<MapPin className="h-4 w-4" />}
+              />
+              <meta itemProp="streetAddress" content={academy.address} />
+              <meta itemProp="addressLocality" content={academy.region_small} />
+              <meta itemProp="addressRegion" content={academy.region_big} />
+              <meta itemProp="addressCountry" content="KR" />
               {academy.phone && (
-                <InfoRow label="연락처" value={academy.phone} icon={<Phone className="h-4 w-4" />} />
+                <InfoRow
+                  label="연락처"
+                  value={academy.phone}
+                  icon={<Phone className="h-4 w-4" />}
+                />
               )}
             </tbody>
           </table>
@@ -126,7 +157,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
           <p className="mb-4 text-sm text-muted">{academy.address}</p>
           <div className="overflow-hidden rounded-xl bg-gray-100">
             <iframe
-              title={`${academy.name} 위치`}
+              title={`${academy.name} 위치 — ${academy.region_big} ${academy.region_small}`}
               src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
               className="h-72 w-full border-0"
               loading="lazy"

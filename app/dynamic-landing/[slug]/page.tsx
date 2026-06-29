@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl } from "@/lib/site/config";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -13,11 +16,14 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const title = decodeURIComponent(slug).replace(/-/g, " ");
+  const path = `/dynamic-landing/${encodeURIComponent(slug)}`;
 
-  return {
+  return buildPageMetadata({
     title,
-    description: `${title}에 대한 상세 정보 — 유아독존`,
-  };
+    description: `${title} 관련 반려견 정보 — 유아독존에서 애견미용학원, 분양, 병원 등 지역 정보를 확인하세요.`,
+    path,
+    keywords: [title, "반려견", "강아지", "유아독존"],
+  });
 }
 
 async function getLandingData(slug: string) {
@@ -52,9 +58,29 @@ export default async function DynamicLandingPage({ params }: PageProps) {
   if (!slug) notFound();
 
   const data = await getLandingData(slug);
+  const pageUrl = absoluteUrl(`/dynamic-landing/${encodeURIComponent(slug)}`);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: data.title,
+    description:
+      "subtitle" in data && data.subtitle
+        ? String(data.subtitle)
+        : `${data.title} — 유아독존`,
+    url: pageUrl,
+    inLanguage: "ko-KR",
+    isPartOf: {
+      "@type": "WebSite",
+      name: "유아독존",
+      url: absoluteUrl("/"),
+    },
+  };
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
+      <JsonLd data={jsonLd} />
+
       <Link
         href="/"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

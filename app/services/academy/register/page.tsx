@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { RegisterForm } from "@/components/academy/RegisterForm";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "학원 정보 등록",
-  description: "애견미용학원 정보를 직접 등록하고 상세 페이지를 생성하세요.",
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: "애견미용학원 정보 등록",
+  description:
+    "애견미용학원 원장님이 직접 학원 정보를 등록하세요. 지역·주소·교육과정이 반영된 상세 페이지가 생성되고 검색엔진에 노출됩니다.",
+  path: "/services/academy/register",
+  keywords: ["애견미용학원 등록", "학원 홍보", "애견미용 학원 정보"],
+});
 
 export default function AcademyRegisterPage() {
   return (

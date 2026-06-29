@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site/config";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  getSiteUrl,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+} from "@/lib/site/config";
+import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/seo/site-jsonld";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: `${SITE_NAME} | 반려동물 통합 포털`,
     template: `%s | ${SITE_NAME}`,
@@ -17,14 +24,27 @@ export const metadata: Metadata = {
     "강아지분양",
     "동물병원",
     "견종소개",
+    "유아독존",
   ],
   alternates: {
+    canonical: "/",
     types: {
       "application/rss+xml": [
         { url: "/feed.xml", title: `${SITE_NAME} RSS` },
       ],
     },
   },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} | 반려동물 통합 포털`,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -41,6 +61,7 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col antialiased">
+        <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />
         <div className="flex flex-1 flex-col">{children}</div>
         <Footer />

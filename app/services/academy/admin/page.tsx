@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AcademyAdminPanel } from "@/components/academy/AcademyAdminPanel";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "학원 관리",
-  robots: { index: false, follow: false },
-};
+  description: "애견미용학원 관리자 페이지",
+  path: "/services/academy/admin",
+  noIndex: true,
+});
 
 export default function AcademyAdminPage() {
   return (
