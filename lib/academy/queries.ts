@@ -1,4 +1,10 @@
 import { createSupabaseClient } from "@/lib/supabase/client";
+import {
+  fetchAcademiesFromR2,
+  fetchAcademyFromR2,
+  prepareAcademyR2Insert,
+  type R2UploadTask,
+} from "@/lib/academy/r2-store";
 import type { Academy, AcademyInsert } from "@/lib/types/academy";
 
 export async function getAcademies(options?: {
@@ -6,7 +12,11 @@ export async function getAcademies(options?: {
   query?: string;
 }): Promise<Academy[]> {
   const supabase = createSupabaseClient();
-  if (!supabase) return getMockAcademies(options);
+  if (!supabase) {
+    const fromR2 = await fetchAcademiesFromR2();
+    if (fromR2.length > 0) return filterAcademies(fromR2, options);
+    return getMockAcademies(options);
+  }
 
   let q = supabase
     .from("academy_list")
@@ -33,6 +43,8 @@ export async function getAcademies(options?: {
 export async function getAcademyBySlug(slug: string): Promise<Academy | null> {
   const supabase = createSupabaseClient();
   if (!supabase) {
+    const fromR2 = await fetchAcademyFromR2(slug);
+    if (fromR2) return fromR2;
     return getMockAcademies().find((a) => a.slug === slug) ?? null;
   }
 
@@ -50,19 +62,36 @@ export async function getAcademyBySlug(slug: string): Promise<Academy | null> {
 
 export async function getAcademySlugs(): Promise<string[]> {
   const supabase = createSupabaseClient();
-  if (!supabase) return getMockAcademies().map((a) => a.slug);
+  if (!supabase) {
+    const fromR2 = await fetchAcademiesFromR2();
+    if (fromR2.length > 0) return fromR2.map((a) => a.slug);
+    return getMockAcademies().map((a) => a.slug);
+  }
 
   const { data, error } = await supabase.from("academy_list").select("slug");
   if (error || !data) return getMockAcademies().map((a) => a.slug);
   return data.map((row) => row.slug);
 }
 
+export type InsertAcademyResult =
+  | { data: Academy; error: null; uploads?: undefined }
+  | { data: Academy; error: null; uploads: R2UploadTask[] }
+  | { data: null; error: string; uploads?: undefined };
+
 export async function insertAcademy(
   payload: AcademyInsert
-): Promise<{ data: Academy | null; error: string | null }> {
+): Promise<InsertAcademyResult> {
   const supabase = createSupabaseClient();
   if (!supabase) {
-    return { data: null, error: "Supabase가 설정되지 않았습니다." };
+    const prepared = await prepareAcademyR2Insert(payload);
+    if (prepared.error || !prepared.record) {
+      return { data: null, error: prepared.error ?? "R2 저장 준비에 실패했습니다." };
+    }
+    return {
+      data: prepared.record,
+      error: null,
+      uploads: prepared.uploads,
+    };
   }
 
   const { data, error } = await supabase
@@ -73,6 +102,27 @@ export async function insertAcademy(
 
   if (error) return { data: null, error: error.message };
   return { data: data as Academy, error: null };
+}
+
+function filterAcademies(
+  academies: Academy[],
+  options?: { region?: string; query?: string }
+): Academy[] {
+  let result = academies;
+  if (options?.region && options.region !== "전체") {
+    result = result.filter((a) => a.region_big === options.region);
+  }
+  if (options?.query) {
+    const q = options.query.toLowerCase();
+    result = result.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.region_small.includes(q) ||
+        a.address.includes(q) ||
+        a.title_copy.includes(q)
+    );
+  }
+  return result;
 }
 
 function getMockAcademies(options?: {
@@ -137,19 +187,5 @@ function getMockAcademies(options?: {
     },
   ];
 
-  let result = mocks;
-  if (options?.region && options.region !== "전체") {
-    result = result.filter((a) => a.region_big === options.region);
-  }
-  if (options?.query) {
-    const q = options.query.toLowerCase();
-    result = result.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.region_small.includes(q) ||
-        a.address.includes(q) ||
-        a.title_copy.includes(q)
-    );
-  }
-  return result;
+  return filterAcademies(mocks, options);
 }

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         )
       : null;
 
-    const { data, error } = await insertAcademy({
+    const insertResult = await insertAcademy({
       slug,
       name: name.trim(),
       region_big,
@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
       is_premium: false,
     });
 
+    const { data, error } = insertResult;
+
     if (error || !data) {
       return NextResponse.json(
         { error: error ?? "등록에 실패했습니다." },
@@ -66,11 +68,21 @@ export async function POST(request: NextRequest) {
 
     const url = academyPageUrl(data.slug);
 
+    if (insertResult.uploads?.length) {
+      return NextResponse.json({
+        slug: data.slug,
+        url,
+        storage: "r2",
+        uploads: insertResult.uploads,
+      });
+    }
+
     const indexResult = await submitToIndexNow([url]);
 
     return NextResponse.json({
       slug: data.slug,
       url,
+      storage: "supabase",
       indexnow: indexResult,
     });
   } catch {

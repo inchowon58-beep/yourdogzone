@@ -111,3 +111,50 @@ export async function createPresignedUpload(
     s3Client.destroy();
   }
 }
+
+export async function createPresignedPutObject(
+  key: string,
+  contentType: string
+): Promise<PresignResult> {
+  const missing = getMissingR2EnvVars();
+  const config = getR2Config();
+
+  if (missing.length > 0 || !config) {
+    return {
+      error: `R2 환경 변수 누락: ${missing.join(", ")}`,
+      status: 500,
+    };
+  }
+
+  const s3Client = createPresignS3Client();
+  if (!s3Client) {
+    return { error: "R2 클라이언트를 생성할 수 없습니다.", status: 500 };
+  }
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 60,
+      signableHeaders: new Set(["content-type"]),
+      unhoistableHeaders: new Set(["content-type"]),
+    });
+
+    return {
+      uploadUrl,
+      publicUrl: `${config.publicBase}/${key}`,
+      key,
+      contentType,
+    };
+  } catch (error) {
+    console.error("R2 Presigned URL 생성 실패:", error);
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    return { error: `Upload preparation failed: ${message}`, status: 500 };
+  } finally {
+    s3Client.destroy();
+  }
+}

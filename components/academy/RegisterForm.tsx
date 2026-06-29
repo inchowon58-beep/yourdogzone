@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ChevronLeft, ChevronRight, Upload } from "lucide-react";
 import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
-import { uploadImageToR2 } from "@/lib/upload/r2-client";
+import { uploadImageToR2, uploadToPresignedUrl } from "@/lib/upload/r2-client";
 
 type FormData = {
   name: string;
@@ -106,6 +106,24 @@ export function RegisterForm() {
       if (!res.ok) {
         setError(data.error ?? "등록에 실패했습니다.");
         return;
+      }
+
+      if (Array.isArray(data.uploads)) {
+        for (const upload of data.uploads as Array<{
+          uploadUrl: string;
+          contentType: string;
+          body: string;
+        }>) {
+          const putResult = await uploadToPresignedUrl(
+            upload.uploadUrl,
+            upload.body,
+            upload.contentType
+          );
+          if (!putResult.ok) {
+            setError(putResult.error);
+            return;
+          }
+        }
       }
 
       setResult({ slug: data.slug, url: data.url });

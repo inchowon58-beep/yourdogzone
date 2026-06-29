@@ -18,6 +18,41 @@ type PresignResponse = {
  * 1) 서버에서 Presigned URL 발급 (R2에 직접 연결 없음 — SSL 안전)
  * 2) 브라우저에서 R2로 PUT 업로드
  */
+export async function uploadToPresignedUrl(
+  uploadUrl: string,
+  body: Blob | string,
+  contentType: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const uploadRes = await fetch(uploadUrl, {
+      method: "PUT",
+      body,
+      headers: { "Content-Type": contentType },
+      duplex: "half",
+    } as RequestInit & { duplex?: "half" });
+
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text().catch(() => "");
+      console.error("Presigned PUT 실패:", uploadRes.status, detail);
+      return {
+        ok: false,
+        error: `R2 업로드에 실패했습니다. (${uploadRes.status})`,
+      };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "알 수 없는 오류";
+    return {
+      ok: false,
+      error:
+        message === "Failed to fetch"
+          ? "R2 업로드 연결에 실패했습니다. R2 CORS에 https://www.yourdogzone.co.kr 이 포함되어 있는지 확인해 주세요."
+          : `R2 업로드 중 네트워크 오류가 발생했습니다. (${message})`,
+    };
+  }
+}
+
 export async function uploadImageToR2(file: File): Promise<UploadResult> {
   const resolvedType = resolveImageContentType(file.name, file.type);
   if (!resolvedType) {
