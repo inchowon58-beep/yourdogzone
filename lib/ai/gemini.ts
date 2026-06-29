@@ -8,46 +8,14 @@ export type GeminiRefineResult =
   | { ok: true; data: RefinedCopy }
   | { ok: false; error: string };
 
+/** Google AI Studio에서 사용 가능한 안정(stable) 모델 */
 const DEFAULT_MODELS = [
+  "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-1.5-flash",
-  "gemini-2.5-flash-preview-05-20",
 ];
 
-async function callGeminiModel(
-  apiKey: string,
-  model: string,
-  prompt: string
-): Promise<GeminiRefineResult> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024,
-          responseMimeType: "application/json",
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const detail = (await res.text()).slice(0, 240);
-    return { ok: false, error: `Gemini ${model} HTTP ${res.status}: ${detail}` };
-  }
-
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) {
-    return { ok: false, error: `Gemini ${model}: 응답 텍스트 없음` };
-  }
-
+function parseRefinedCopy(text: string, model: string): GeminiRefineResult {
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as RefinedCopy;
@@ -68,6 +36,48 @@ async function callGeminiModel(
   } catch {
     return { ok: false, error: `Gemini ${model}: JSON 파싱 실패` };
   }
+}
+
+async function callGeminiModel(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  jsonMode: boolean
+): Promise<GeminiRefineResult> {
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  };
+  if (jsonMode) {
+    generationConfig.responseMimeType = "application/json";
+  }
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 200);
+    return { ok: false, error: `Gemini ${model} HTTP ${res.status}: ${detail}` };
+  }
+
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) {
+    return { ok: false, error: `Gemini ${model}: 응답 텍스트 없음` };
+  }
+
+  return parseRefinedCopy(text, model);
 }
 
 export async function refineAcademyCopyWithGemini(
@@ -105,21 +115,35 @@ ${rawDescription.slice(0, 4000)}
   "tuition_info": "수강료·혜택 안내 (없으면 null)"
 }`;
 
-  let lastError = "Gemini 호출 실패";
+  const errors: string[] = [];
+
   for (const model of models) {
-    try {
-      const result = await callGeminiModel(apiKey, model, prompt);
-      if (result.ok) return result;
-      lastError = result.error;
-      console.error("[Gemini]", result.error);
-    } catch (error) {
-      lastError =
-        error instanceof Error ? error.message : "Gemini 알 수 없는 오류";
-      console.error("[Gemini]", lastError);
+    for (const jsonMode of [true, false] as const) {
+      try {
+        const result = await callGeminiModel(apiKey, model, prompt, jsonMode);
+        if (result.ok) return result;
+
+        errors.push(result.error);
+        console.error("[Gemini]", result.error);
+
+        // 모델 자체가 없으면 다음 모델로
+        if (result.error.includes("HTTP 404")) {
+          break;
+        }
+      } catch (error) {
+        const msg =
+          error instanceof Error ? error.message : "Gemini 알 수 없는 오류";
+        errors.push(`Gemini ${model}: ${msg}`);
+        console.error("[Gemini]", msg);
+      }
     }
   }
 
-  return { ok: false, error: lastError };
+  const unique = [...new Set(errors)];
+  return {
+    ok: false,
+    error: unique.slice(0, 3).join(" | ") || "Gemini 호출 실패",
+  };
 }
 
 /** 하위 호환 — null 반환 */
