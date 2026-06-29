@@ -79,6 +79,13 @@ export function getR2Config(): R2Config | null {
   };
 }
 
+export function extractR2AccountId(endpoint: string): string | null {
+  const match = endpoint.match(
+    /https?:\/\/([a-f0-9]{32})\.r2\.cloudflarestorage\.com/i
+  );
+  return match?.[1] ?? null;
+}
+
 export function createR2S3Client(
   config: Pick<R2Config, "accessKeyId" | "secretAccessKey" | "endpoint">
 ) {
