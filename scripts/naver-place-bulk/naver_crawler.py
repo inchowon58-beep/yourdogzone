@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -10,11 +11,10 @@ from urllib.parse import quote
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 @dataclass
@@ -38,28 +38,125 @@ class PlaceData:
         }
 
 
+def _find_chrome_binary() -> str | None:
+    candidates = [
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+def _resolve_chromedriver_path() -> str | None:
+    """webdriver-manager 캐시에서 chromedriver.exe 직접 탐색 (폴백용)"""
+    home = os.path.expanduser("~")
+    cache_root = os.path.join(home, ".wdm", "drivers", "chromedriver")
+    if not os.path.isdir(cache_root):
+        return None
+
+    newest: str | None = None
+    newest_mtime = 0.0
+    for root, _dirs, files in os.walk(cache_root):
+        for name in files:
+            if name.lower() == "chromedriver.exe":
+                full = os.path.join(root, name)
+                mtime = os.path.getmtime(full)
+                if mtime > newest_mtime:
+                    newest_mtime = mtime
+                    newest = full
+    return newest
+
+
+def create_chrome_driver(headless: bool = True) -> webdriver.Chrome:
+    """
+    Chrome WebDriver 생성.
+    Selenium 4.6+ 내장 드라이버 관리 우선, 실패 시 캐시된 chromedriver.exe 사용.
+    """
+    chrome_path = _find_chrome_binary()
+    if not chrome_path:
+        raise RuntimeError(
+            "Google Chrome이 설치되어 있지 않습니다.\n"
+            "https://www.google.com/chrome/ 에서 설치 후 다시 시도하세요."
+        )
+
+    options = Options()
+    options.binary_location = chrome_path
+    if headless:
+        options.add_argument("--headless=new")
+    options.add_argument("--window-size=1400,900")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--lang=ko-KR")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
+
+    errors: list[str] = []
+
+    # 1) Selenium Manager (권장 — WinError 193 방지)
+    try:
+        return webdriver.Chrome(options=options)
+    except OSError as e:
+        errors.append(f"Selenium Manager: {e}")
+    except Exception as e:
+        errors.append(f"Selenium Manager: {e}")
+
+    # 2) 캐시된 chromedriver.exe
+    driver_path = _resolve_chromedriver_path()
+    if driver_path:
+        try:
+            service = ChromeService(executable_path=driver_path)
+            return webdriver.Chrome(service=service, options=options)
+        except Exception as e:
+            errors.append(f"캐시 chromedriver ({driver_path}): {e}")
+
+    # 3) webdriver-manager (마지막 수단, exe 경로 검증)
+    try:
+        from webdriver_manager.chrome import ChromeDriverManager
+
+        raw_path = ChromeDriverManager().install()
+        driver_path = raw_path
+        if not raw_path.lower().endswith(".exe"):
+            parent = os.path.dirname(raw_path)
+            for root, _dirs, files in os.walk(parent):
+                for name in files:
+                    if name.lower() == "chromedriver.exe":
+                        driver_path = os.path.join(root, name)
+                        break
+        if not driver_path.lower().endswith(".exe"):
+            raise OSError(f"chromedriver.exe 를 찾지 못함: {raw_path}")
+
+        service = ChromeService(executable_path=driver_path)
+        return webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        errors.append(f"webdriver-manager: {e}")
+
+    detail = "\n".join(f"  - {msg}" for msg in errors)
+    raise RuntimeError(
+        "Chrome 드라이버를 시작하지 못했습니다.\n"
+        f"{detail}\n\n"
+        "해결 방법:\n"
+        "  1) Chrome 브라우저 최신 버전으로 업데이트\n"
+        "  2) PowerShell에서: pip install -U selenium\n"
+        "  3) '브라우저 숨김' 체크 해제 후 다시 시도"
+    )
+
+
 class NaverPlaceCrawler:
     def __init__(self, headless: bool = True, delay: float = 1.5):
         self.delay = delay
-        self.driver = self._create_driver(headless)
+        self.driver = create_chrome_driver(headless)
         self.wait = WebDriverWait(self.driver, 15)
 
     def _create_driver(self, headless: bool) -> webdriver.Chrome:
-        options = Options()
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_argument("--window-size=1400,900")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--lang=ko-KR")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        options.add_argument(
-            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
-        service = Service(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
+        return create_chrome_driver(headless)
 
     def close(self) -> None:
         self.driver.quit()
