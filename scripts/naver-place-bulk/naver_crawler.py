@@ -840,6 +840,12 @@ class NaverPlaceCrawler:
 
         return found
 
+    def _normalize_collected_images(self, urls: list[str]) -> list[str]:
+        """프록시 URL → ldb-phinf 원본 URL."""
+        from image_uploader import normalize_image_urls
+
+        return normalize_image_urls(urls, max_count=MAX_PLACE_IMAGES)
+
     def _collect_place_images(self) -> list[str]:
         urls: list[str] = []
         try:
@@ -861,7 +867,7 @@ class NaverPlaceCrawler:
                 urls.append(src)
             if len(urls) >= MAX_PLACE_IMAGES:
                 break
-        return urls
+        return self._normalize_collected_images(urls)
 
     def scrape_place_by_id(
         self,
@@ -1218,7 +1224,7 @@ class NaverPlaceCrawler:
                 urls.append(src)
             if len(urls) >= MAX_PLACE_IMAGES:
                 break
-        return urls
+        return self._normalize_collected_images(urls)
 
     def crawl_many_manual(
         self,
@@ -1337,7 +1343,7 @@ class NaverPlaceCrawler:
             if len(urls) >= MAX_PLACE_IMAGES:
                 break
 
-        return urls
+        return self._normalize_collected_images(urls)
 
     def crawl_query(self, query: str, max_items: int = 5) -> list[PlaceData]:
         """검색 → 목록 순서대로 1곳씩 수집 (광고 제외, 같은 업체 반복 없음)."""

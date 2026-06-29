@@ -34,6 +34,7 @@ export async function GET() {
     endpoint: "/api/admin/bulk-register",
     auth: "x-admin-secret 또는 Authorization: Bearer {ACADEMY_ADMIN_SECRET}",
     storage: isSupabaseConfigured() ? "supabase" : "r2-json",
+    gemini_configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
     limits: { maxBatchSize: MAX_BATCH_SIZE },
     options: {
       refine_with_gemini: "GEMINI_API_KEY 설정 시 소개글 자동 재작성",

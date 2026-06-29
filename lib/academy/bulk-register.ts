@@ -81,13 +81,13 @@ export async function bulkRegisterAcademy(
       input.description,
       address
     );
-    if (refined) {
-      title_copy = refined.title_copy;
-      curriculum = refined.curriculum;
-      tuition_info = refined.tuition_info;
+    if (refined.ok) {
+      title_copy = refined.data.title_copy;
+      curriculum = refined.data.curriculum;
+      tuition_info = refined.data.tuition_info;
       geminiRefined = true;
     } else {
-      geminiSkipReason = "Gemini API 호출 실패 — 원본 소개글로 등록됨";
+      geminiSkipReason = refined.error;
     }
   }
 
@@ -107,7 +107,7 @@ export async function bulkRegisterAcademy(
       if (fallback.length) {
         r2Images.push(...fallback);
         imageErrors.push(
-          "R2 업로드 실패 — 네이버 원본 이미지 URL로 저장했습니다"
+          `R2 미러 실패(${imageErrors[0]?.split(":").pop()?.trim() ?? "원인 불명"}) — 네이버 URL로 저장`
         );
       }
     }
