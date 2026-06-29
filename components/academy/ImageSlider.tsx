@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ACADEMY_NO_IMAGE_URL } from "@/lib/academy/images";
+import { AcademyNoImage } from "@/components/academy/AcademyNoImage";
 
 type ImageSliderProps = {
   images: string[];
@@ -14,14 +14,10 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
 
   if (images.length === 0) {
     return (
-      <div className="overflow-hidden rounded-2xl bg-gray-100 shadow-[var(--card-shadow)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={ACADEMY_NO_IMAGE_URL}
-          alt="이미지 없음"
-          className="h-72 w-full object-cover sm:h-96"
-        />
-      </div>
+      <AcademyNoImage
+        className="h-72 rounded-2xl shadow-[var(--card-shadow)] sm:h-96"
+        iconClassName="h-12 w-12"
+      />
     );
   }
 

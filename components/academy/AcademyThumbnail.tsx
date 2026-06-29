@@ -1,10 +1,12 @@
-import { ACADEMY_NO_IMAGE_URL } from "@/lib/academy/images";
+import { AcademyNoImage } from "@/components/academy/AcademyNoImage";
 
 type AcademyThumbnailProps = {
   src?: string | null;
   alt: string;
   className?: string;
   fit?: "cover" | "contain";
+  /** 이미지 없을 때 placeholder 표시 여부 (인증추천 등은 false) */
+  showPlaceholder?: boolean;
 };
 
 export function AcademyThumbnail({
@@ -12,20 +14,21 @@ export function AcademyThumbnail({
   alt,
   className = "",
   fit = "cover",
+  showPlaceholder = true,
 }: AcademyThumbnailProps) {
-  const url = src?.startsWith("http") || src?.startsWith("/") ? src : ACADEMY_NO_IMAGE_URL;
-  const isPlaceholder = !src;
+  const hasImage = Boolean(src?.startsWith("http") || src?.startsWith("/"));
+
+  if (!hasImage) {
+    if (!showPlaceholder) return null;
+    return <AcademyNoImage className={className} iconClassName="h-7 w-7" />;
+  }
 
   return (
-    <div
-      className={`overflow-hidden bg-gray-100 ${className}`}
-      role="img"
-      aria-label={isPlaceholder ? "이미지 없음" : alt}
-    >
+    <div className={`overflow-hidden bg-gray-100 ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={url}
-        alt={isPlaceholder ? "이미지 없음" : alt}
+        src={src!}
+        alt={alt}
         className={`h-full w-full ${fit === "cover" ? "object-cover" : "object-contain"}`}
         loading="lazy"
       />

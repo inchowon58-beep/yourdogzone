@@ -4,6 +4,12 @@ import type { Academy } from "@/lib/types/academy";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
 
+function galleryGridClass(count: number) {
+  if (count <= 1) return "grid-cols-1";
+  if (count === 2) return "grid-cols-2";
+  return "grid-cols-3";
+}
+
 export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
   if (academies.length === 0) return null;
 
@@ -17,7 +23,6 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {academies.map((academy) => {
           const gallery = getAcademyGalleryImages(academy, 3);
-          const slots = [0, 1, 2].map((i) => gallery[i] ?? null);
 
           return (
             <Link
@@ -30,16 +35,21 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
                 인증 추천 학원
               </span>
 
-              <div className="mb-4 grid grid-cols-3 gap-1.5">
-                {slots.map((url, i) => (
-                  <AcademyThumbnail
-                    key={i}
-                    src={url}
-                    alt={`${academy.name} 사진 ${i + 1}`}
-                    className="aspect-[4/3] rounded-lg"
-                  />
-                ))}
-              </div>
+              {gallery.length > 0 && (
+                <div
+                  className={`mb-4 grid gap-1.5 ${galleryGridClass(gallery.length)}`}
+                >
+                  {gallery.map((url, i) => (
+                    <AcademyThumbnail
+                      key={url}
+                      src={url}
+                      alt={`${academy.name} 사진 ${i + 1}`}
+                      showPlaceholder={false}
+                      className="aspect-[4/3] rounded-lg"
+                    />
+                  ))}
+                </div>
+              )}
 
               <h3 className="text-lg font-bold text-foreground group-hover:text-primary">
                 {academy.name}

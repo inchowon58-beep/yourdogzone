@@ -1,7 +1,5 @@
 import type { Academy } from "@/lib/types/academy";
 
-export const ACADEMY_NO_IMAGE_URL = "/images/academy-no-image.svg";
-
 /** 대표(logo) + 상세(academy_images)를 중복 없이 최대 max장 */
 export function getAcademyGalleryImages(
   academy: Pick<Academy, "logo_image" | "academy_images">,
