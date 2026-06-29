@@ -2,14 +2,26 @@ export const SITE_NAME = "유아독존";
 export const SITE_DESCRIPTION =
   "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.";
 
-export function getSiteUrl(): string {
-  const url =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.VERCEL_URL ??
-    "http://localhost:3000";
+const DEFAULT_PRODUCTION_URL = "https://www.yourdogzone.co.kr";
 
-  if (url.startsWith("http")) return url.replace(/\/$/, "");
-  return `https://${url.replace(/\/$/, "")}`;
+export function getSiteUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (fromEnv) {
+    if (fromEnv.startsWith("http")) return fromEnv.replace(/\/$/, "");
+    return `https://${fromEnv.replace(/\/$/, "")}`;
+  }
+
+  // Vercel 내부 URL(*.vercel.app)은 접근 제한될 수 있으므로 프로덕션은 실제 도메인 사용
+  if (process.env.VERCEL_ENV === "production") {
+    return DEFAULT_PRODUCTION_URL;
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/\/$/, "")}`;
+  }
+
+  return "http://localhost:3000";
 }
 
 export function absoluteUrl(path: string): string {

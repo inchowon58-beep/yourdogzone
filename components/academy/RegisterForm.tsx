@@ -41,9 +41,7 @@ export function RegisterForm() {
   const [form, setForm] = useState<FormData>(INITIAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ slug: string; url: string } | null>(
-    null
-  );
+  const [result, setResult] = useState<{ slug: string } | null>(null);
 
   function update(field: keyof FormData, value: string | string[]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -126,7 +124,7 @@ export function RegisterForm() {
         }
       }
 
-      setResult({ slug: data.slug, url: data.url });
+      setResult({ slug: data.slug });
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -135,6 +133,8 @@ export function RegisterForm() {
   }
 
   if (result) {
+    const detailPath = `/services/academy/${result.slug}`;
+
     return (
       <div className="rounded-2xl bg-white p-8 text-center shadow-[var(--card-shadow)]">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
@@ -145,11 +145,11 @@ export function RegisterForm() {
           학원 상세 페이지가 생성되었습니다.
         </p>
         <p className="mt-4 break-all rounded-xl bg-gray-50 px-4 py-3 text-sm font-medium text-primary">
-          {result.url}
+          {detailPath}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
-            href={result.url}
+            href={detailPath}
             className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white"
           >
             상세 페이지 확인
