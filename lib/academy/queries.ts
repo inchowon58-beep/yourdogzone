@@ -2,6 +2,7 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import {
   fetchAcademiesFromR2,
   fetchAcademyFromR2,
+  prepareAcademyPremiumUpdate,
   prepareAcademyR2Insert,
   type R2UploadTask,
 } from "@/lib/academy/r2-store";
@@ -102,6 +103,40 @@ export async function insertAcademy(
 
   if (error) return { data: null, error: error.message };
   return { data: data as Academy, error: null };
+}
+
+export type SetPremiumResult =
+  | { data: Academy; error: null; uploads?: undefined }
+  | { data: Academy; error: null; uploads: R2UploadTask[] }
+  | { data: null; error: string; uploads?: undefined };
+
+export async function setAcademyPremium(
+  slug: string,
+  isPremium: boolean
+): Promise<SetPremiumResult> {
+  const supabase = createSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("academy_list")
+      .update({ is_premium: isPremium })
+      .eq("slug", slug)
+      .select()
+      .single();
+
+    if (error) return { data: null, error: error.message };
+    return { data: data as Academy, error: null };
+  }
+
+  const prepared = await prepareAcademyPremiumUpdate(slug, isPremium);
+  if (prepared.error || !prepared.record) {
+    return { data: null, error: prepared.error ?? "변경에 실패했습니다." };
+  }
+
+  return {
+    data: prepared.record,
+    error: null,
+    uploads: prepared.uploads,
+  };
 }
 
 function filterAcademies(

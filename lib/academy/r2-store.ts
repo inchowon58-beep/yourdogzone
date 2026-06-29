@@ -22,10 +22,12 @@ function academyPublicUrl(slug: string): string {
   return `${getPublicBaseUrl()}/${academyDataKey(slug)}`;
 }
 
-export async function fetchAcademiesFromR2(): Promise<Academy[]> {
+export async function fetchAcademiesFromR2(options?: {
+  noCache?: boolean;
+}): Promise<Academy[]> {
   try {
     const res = await fetch(indexPublicUrl(), {
-      next: { revalidate: 60 },
+      ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as { academies?: Academy[] };
@@ -125,4 +127,95 @@ export async function prepareAcademyR2Insert(
     ],
     error: null,
   };
+}
+
+async function buildAcademyR2Uploads(
+  record: Academy,
+  allAcademies: Academy[]
+): Promise<
+  | { uploads: R2UploadTask[]; error: null }
+  | { uploads: null; error: string }
+> {
+  const now = new Date().toISOString();
+  const updatedRecord = { ...record, updated_at: now };
+  const updatedList = allAcademies.map((a) =>
+    a.slug === record.slug ? updatedRecord : a
+  );
+
+  const dataBody = JSON.stringify(updatedRecord, null, 2);
+  const indexBody = JSON.stringify(
+    { updatedAt: now, academies: updatedList },
+    null,
+    2
+  );
+
+  const dataPresign = await createPresignedPutObject(
+    academyDataKey(record.slug),
+    "application/json"
+  );
+  if ("error" in dataPresign) {
+    return { uploads: null, error: dataPresign.error };
+  }
+
+  const indexPresign = await createPresignedPutObject(INDEX_KEY, "application/json");
+  if ("error" in indexPresign) {
+    return { uploads: null, error: indexPresign.error };
+  }
+
+  return {
+    uploads: [
+      {
+        uploadUrl: dataPresign.uploadUrl,
+        contentType: dataPresign.contentType,
+        body: dataBody,
+      },
+      {
+        uploadUrl: indexPresign.uploadUrl,
+        contentType: indexPresign.contentType,
+        body: indexBody,
+      },
+    ],
+    error: null,
+  };
+}
+
+export async function prepareAcademyPremiumUpdate(
+  slug: string,
+  isPremium: boolean
+): Promise<
+  | { record: Academy; uploads: R2UploadTask[]; error: null }
+  | { record: null; uploads: null; error: string }
+> {
+  const academies = await fetchAcademiesFromR2({ noCache: true });
+  const target = academies.find((a) => a.slug === slug);
+
+  if (!target) {
+    return {
+      record: null,
+      uploads: null,
+      error: "해당 학원을 찾을 수 없습니다.",
+    };
+  }
+
+  if (target.is_premium === isPremium) {
+    return {
+      record: null,
+      uploads: null,
+      error: isPremium
+        ? "이미 인증 추천 학원으로 설정되어 있습니다."
+        : "이미 일반 학원으로 설정되어 있습니다.",
+    };
+  }
+
+  const record: Academy = { ...target, is_premium: isPremium };
+  const built = await buildAcademyR2Uploads(record, academies);
+  if (built.error || !built.uploads) {
+    return {
+      record: null,
+      uploads: null,
+      error: built.error ?? "R2 업로드 준비에 실패했습니다.",
+    };
+  }
+
+  return { record, uploads: built.uploads, error: null };
 }
