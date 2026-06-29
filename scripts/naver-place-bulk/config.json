@@ -1,0 +1,10 @@
+{
+  "searches": [
+    {
+      "query": "부천 애견미용학원",
+      "max": 1
+    }
+  ],
+  "delay_seconds": 2.0,
+  "refine_with_gemini": true
+}

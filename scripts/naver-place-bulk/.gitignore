@@ -1,0 +1,4 @@
+chrome_profile/
+.env
+crawled_*.json
+__pycache__/

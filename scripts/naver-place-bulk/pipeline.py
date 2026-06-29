@@ -24,7 +24,8 @@ class PipelineSettings:
     max_per_search: int = 3
     delay_seconds: float = 2.0
     refine_with_gemini: bool = True
-    headless: bool = True
+    headless: bool = False
+    use_chrome_profile: bool = True
 
     def apply_env(self) -> None:
         os.environ["YOURDOGZONE_API_URL"] = self.api_url.rstrip("/")
@@ -35,6 +36,8 @@ class PipelineSettings:
             "searches": self.searches,
             "delay_seconds": self.delay_seconds,
             "refine_with_gemini": self.refine_with_gemini,
+            "headless": self.headless,
+            "use_chrome_profile": self.use_chrome_profile,
         }
 
 
@@ -81,6 +84,8 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
         settings.searches = data.get("searches", [])
         settings.delay_seconds = float(data.get("delay_seconds", 2))
         settings.refine_with_gemini = bool(data.get("refine_with_gemini", True))
+        settings.headless = bool(data.get("headless", False))
+        settings.use_chrome_profile = bool(data.get("use_chrome_profile", True))
         if settings.searches:
             settings.max_per_search = int(settings.searches[0].get("max", 3))
 
@@ -114,24 +119,11 @@ def crawl_places(settings: PipelineSettings, log: LogFn) -> list[PlaceData]:
     log("네이버 지도 수집 시작")
     log("=" * 48)
 
-    import sys
-
-    class _LogWriter:
-        def __init__(self, fn: LogFn):
-            self.fn = fn
-
-        def write(self, s: str) -> None:
-            if s and s.strip():
-                self.fn(s.rstrip())
-
-        def flush(self) -> None:
-            pass
-
-    old_stdout = sys.stdout
-    sys.stdout = _LogWriter(log)  # type: ignore[assignment]
     crawler = NaverPlaceCrawler(
         headless=settings.headless,
         delay=settings.delay_seconds,
+        use_profile=settings.use_chrome_profile,
+        log=log,
     )
     try:
         places = crawler.crawl_many(
@@ -139,7 +131,6 @@ def crawl_places(settings: PipelineSettings, log: LogFn) -> list[PlaceData]:
             default_max=settings.max_per_search,
         )
     finally:
-        sys.stdout = old_stdout
         crawler.close()
 
     log(f"\n수집 완료: {len(places)}곳")

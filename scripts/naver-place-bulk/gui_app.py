@@ -109,10 +109,23 @@ class AcademyRegisterApp(tk.Tk):
             side="left", padx=(12, 0)
         )
 
-        self.headless_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(opts, text="브라우저 숨김", variable=self.headless_var, bg="#fff").pack(
+        self.headless_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(opts, text="브라우저 숨김 (비권장)", variable=self.headless_var, bg="#fff").pack(
             side="left", padx=(8, 0)
         )
+
+        self.profile_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(opts, text="네이버 로그인 유지", variable=self.profile_var, bg="#fff").pack(
+            side="left", padx=(8, 0)
+        )
+
+        tk.Label(
+            tab_settings,
+            text="※ 보안문자가 뜨면 Chrome 창에서 직접 입력하세요. 네이버 로그인 시 덜 뜹니다.",
+            bg="#fff",
+            fg="#c62828",
+            font=("Segoe UI", 9),
+        ).pack(padx=16, pady=(0, 8))
 
         tk.Button(
             tab_settings,
@@ -210,6 +223,7 @@ class AcademyRegisterApp(tk.Tk):
         self.delay_var.set(s.delay_seconds)
         self.gemini_var.set(s.refine_with_gemini)
         self.headless_var.set(s.headless)
+        self.profile_var.set(s.use_chrome_profile)
 
         if s.searches:
             lines = []
@@ -237,6 +251,7 @@ class AcademyRegisterApp(tk.Tk):
             delay_seconds=self.delay_var.get(),
             refine_with_gemini=self.gemini_var.get(),
             headless=self.headless_var.get(),
+            use_chrome_profile=self.profile_var.get(),
         )
 
     def _save_settings(self) -> None:

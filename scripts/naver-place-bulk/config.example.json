@@ -5,5 +5,7 @@
     { "query": "서울 강남 애견미용학원", "max": 3 }
   ],
   "delay_seconds": 2,
-  "refine_with_gemini": true
+  "refine_with_gemini": true,
+  "headless": false,
+  "use_chrome_profile": true
 }
