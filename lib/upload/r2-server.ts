@@ -47,7 +47,9 @@ export function getR2Config(): R2Config | null {
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   const rawEndpoint = process.env.R2_ENDPOINT;
   const bucket = process.env.R2_BUCKET_NAME;
-  const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  const publicBase =
+    process.env.NEXT_PUBLIC_R2_PUBLIC_URL ??
+    process.env.NEXT_PUBLIC_S3_PUBLIC_URL;
 
   if (!accessKeyId || !secretAccessKey || !rawEndpoint || !bucket || !publicBase) {
     return null;

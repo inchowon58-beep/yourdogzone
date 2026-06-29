@@ -7,35 +7,15 @@ export type UploadResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
-type PresignResponse = {
-  uploadUrl?: string;
+type DirectUploadResponse = {
   publicUrl?: string;
-  contentType?: string;
   error?: string;
 };
 
 /**
- * Presigned URL PUT 업로드 — 서명에 포함된 Content-Type만 전송합니다.
- * credentials/cache 등 추가 옵션을 넣지 않아 서명 불일치를 방지합니다.
+ * 브라우저 → 우리 서버 → R2 경로로 업로드합니다.
+ * (CORS / Presigned URL 서명 문제를 피하기 위함)
  */
-async function putToPresignedUrl(
-  uploadUrl: string,
-  file: File,
-  contentType: string
-): Promise<Response> {
-  const headers = new Headers();
-  headers.set("Content-Type", contentType);
-
-  return fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers,
-    mode: "cors",
-    credentials: "omit",
-    cache: "no-store",
-  });
-}
-
 export async function uploadImageToR2(file: File): Promise<UploadResult> {
   const resolvedType = resolveImageContentType(file.name, file.type);
   if (!resolvedType) {
@@ -50,42 +30,21 @@ export async function uploadImageToR2(file: File): Promise<UploadResult> {
   }
 
   try {
-    const res = await fetch("/api/upload", {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload/direct", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: resolvedType,
-        fileSize: file.size,
-      }),
+      body: formData,
     });
 
-    const data = (await res.json()) as PresignResponse;
+    const data = (await res.json()) as DirectUploadResponse;
 
-    if (!res.ok || !data.uploadUrl || !data.contentType) {
+    if (!res.ok || !data.publicUrl) {
       return {
         ok: false,
-        error: data.error ?? "업로드 주소를 받지 못했습니다.",
+        error: data.error ?? "업로드에 실패했습니다.",
       };
-    }
-
-    const uploadRes = await putToPresignedUrl(
-      data.uploadUrl,
-      file,
-      data.contentType
-    );
-
-    if (!uploadRes.ok) {
-      const detail = await uploadRes.text().catch(() => "");
-      console.error("R2 PUT 실패:", uploadRes.status, detail);
-      return {
-        ok: false,
-        error: `R2 업로드에 실패했습니다. (${uploadRes.status})`,
-      };
-    }
-
-    if (!data.publicUrl) {
-      return { ok: false, error: "publicUrl을 받지 못했습니다." };
     }
 
     return { ok: true, url: data.publicUrl };

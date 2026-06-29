@@ -1,0 +1,44 @@
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { createR2S3Client, getR2Config } from "@/lib/upload/r2-server";
+import {
+  buildR2Key,
+  resolveImageContentType,
+} from "@/lib/upload/constants";
+
+export async function uploadBufferToR2(
+  buffer: Buffer,
+  filename: string,
+  contentType: string
+): Promise<{ publicUrl: string; key: string } | { error: string }> {
+  const config = getR2Config();
+  if (!config) {
+    return { error: "R2 환경 변수가 설정되지 않았습니다." };
+  }
+
+  const key = buildR2Key(filename);
+  const client = createR2S3Client(config);
+
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      })
+    );
+
+    return {
+      publicUrl: `${config.publicBase}/${key}`,
+      key,
+    };
+  } catch (error) {
+    console.error("R2 서버 업로드 실패:", error);
+    return { error: "R2 업로드에 실패했습니다." };
+  }
+}
+
+export function resolvePublicBaseUrl(): string | null {
+  const config = getR2Config();
+  return config?.publicBase ?? null;
+}
