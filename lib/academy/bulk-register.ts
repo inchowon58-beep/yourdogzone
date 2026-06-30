@@ -32,6 +32,8 @@ export type BulkAcademyInput = {
 export type BulkRegisterOptions = {
   refineWithGemini?: boolean;
   skipImageMirror?: boolean;
+  /** true면 건별 IndexNow 생략 (크롤러 세션 종료 후 일괄 전송) */
+  deferIndexNow?: boolean;
 };
 
 export type BulkRegisterItemResult = {
@@ -171,7 +173,9 @@ export async function bulkRegisterAcademy(
   }
 
   const pageUrl = academyPageUrl(insertResult.data.slug);
-  const indexnow = await submitToIndexNow([pageUrl]);
+  const indexnow = options.deferIndexNow
+    ? { ok: false, status: 0, message: "세션 종료 후 일괄 IndexNow 예정" }
+    : await submitToIndexNow([pageUrl]);
 
   return {
     ok: true,

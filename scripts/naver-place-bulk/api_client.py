@@ -52,7 +52,7 @@ def check_server_ready(log: LogFn = print) -> bool:
         res = requests.get(f"{api}/api/indexnow", timeout=15)
         data = res.json()
         if data.get("enabled"):
-            log("  ✓ IndexNow 준비됨 (등록 후 자동 알림)")
+            log("  ✓ IndexNow 준비됨 (크롤러: 세션 종료 후 일괄 전송)")
         else:
             log("  ⚠ IndexNow 미설정 — Vercel INDEXNOW_KEY 확인")
     except requests.RequestException as e:
@@ -91,6 +91,7 @@ def register_batch(
     *,
     category: str = "academy",
     skip_image_mirror: bool = False,
+    defer_indexnow: bool = True,
 ) -> dict:
     res = requests.post(
         f"{_api_url()}/api/admin/bulk-register",
@@ -99,12 +100,50 @@ def register_batch(
             "category": category,
             "refine_with_gemini": False,
             "skip_image_mirror": skip_image_mirror,
+            "defer_indexnow": defer_indexnow,
             "items": items,
         },
         timeout=180,
     )
     res.raise_for_status()
     return res.json()
+
+
+def submit_indexnow_batch(urls: list[str], log: LogFn = print) -> bool:
+    """세션에서 등록된 URL을 IndexNow에 한 번(또는 1만 건 단위) 전송."""
+    clean = list(dict.fromkeys(u.strip() for u in urls if u and u.startswith("http")))
+    if not clean:
+        log("  IndexNow: 전송할 URL 없음")
+        return False
+
+    secret = _admin_secret()
+    if not secret:
+        log("  ⚠ IndexNow: ACADEMY_ADMIN_SECRET 없음 — 일괄 전송 생략")
+        return False
+
+    chunk_size = 10_000
+    ok_all = True
+    for start in range(0, len(clean), chunk_size):
+        chunk = clean[start : start + chunk_size]
+        label = f" (파트 {start // chunk_size + 1})" if len(clean) > chunk_size else ""
+        log(f"\n[IndexNow 일괄 전송{label}] {len(chunk)}개 URL…")
+        try:
+            res = requests.post(
+                f"{_api_url()}/api/indexnow",
+                headers=_headers(),
+                json={"urls": chunk},
+                timeout=120,
+            )
+            data = res.json()
+            if res.ok and data.get("ok"):
+                log(f"  ✓ IndexNow 전송 완료 — {data.get('submitted', len(chunk))}개")
+            else:
+                ok_all = False
+                log(f"  ⚠ IndexNow 실패: {data.get('message') or data.get('error') or res.status_code}")
+        except requests.RequestException as e:
+            ok_all = False
+            log(f"  ⚠ IndexNow 요청 실패: {e}")
+    return ok_all
 
 
 def register_all(
@@ -145,6 +184,7 @@ def register_all(
 
     succeeded = 0
     failed = 0
+    pending_urls: list[str] = []
     flag_idx = 0
     for i in range(0, len(prepared), BATCH_SIZE):
         batch = prepared[i : i + BATCH_SIZE]
@@ -162,12 +202,10 @@ def register_all(
                         else "Gemini 미적용"
                     )
                     imgs = r.get("imageCount", 0)
-                    log(f"  ✓ {r.get('name')} → {r.get('url')} ({gemini_label}, 사진 {imgs}장)")
-                    idx = r.get("indexnow") or {}
-                    if idx.get("ok"):
-                        log("    ✓ IndexNow 전송 완료")
-                    elif idx:
-                        log(f"    ⚠ IndexNow: {idx.get('message', '실패')}")
+                    url = r.get("url") or ""
+                    if url:
+                        pending_urls.append(url)
+                    log(f"  ✓ {r.get('name')} → {url} ({gemini_label}, 사진 {imgs}장)")
                     for err in r.get("imageErrors") or []:
                         log(f"    ⚠ 이미지: {str(err)[:160]}")
                 else:
@@ -178,6 +216,10 @@ def register_all(
             failed += len(batch)
             log(f"  배치 실패: {e}")
         time.sleep(DELAY_SEC)
+
+    if pending_urls:
+        submit_indexnow_batch(pending_urls, log=log)
+
     return succeeded, failed
 
 

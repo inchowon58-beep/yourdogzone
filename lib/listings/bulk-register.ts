@@ -40,6 +40,10 @@ export type BulkListingItemResult = {
   error?: string;
 };
 
+export type BulkListingRegisterOptions = {
+  deferIndexNow?: boolean;
+};
+
 function splitImages(urls: string[]): {
   logo_image: string | null;
   gallery_images: string[] | null;
@@ -56,7 +60,8 @@ function splitImages(urls: string[]): {
 
 export async function bulkRegisterListing(
   category: ListingCategory,
-  input: BulkListingInput
+  input: BulkListingInput,
+  options: BulkListingRegisterOptions = {}
 ): Promise<BulkListingItemResult> {
   const config = getListingConfig(category);
   const name = input.name?.trim();
@@ -133,7 +138,9 @@ export async function bulkRegisterListing(
   }
 
   const url = listingPageUrl(category, insertResult.data.slug);
-  const indexnow = await submitToIndexNow([url]);
+  const indexnow = options.deferIndexNow
+    ? { ok: false, status: 0, message: "세션 종료 후 일괄 IndexNow 예정" }
+    : await submitToIndexNow([url]);
 
   return {
     ok: true,
@@ -148,7 +155,8 @@ export async function bulkRegisterListing(
 
 export async function bulkRegisterListings(
   category: ListingCategory,
-  items: BulkListingInput[]
+  items: BulkListingInput[],
+  options: BulkListingRegisterOptions = {}
 ): Promise<{
   total: number;
   succeeded: number;
@@ -157,7 +165,7 @@ export async function bulkRegisterListings(
 }> {
   const results: BulkListingItemResult[] = [];
   for (const item of items) {
-    results.push(await bulkRegisterListing(category, item));
+    results.push(await bulkRegisterListing(category, item, options));
   }
   const succeeded = results.filter((r) => r.ok).length;
   return {

@@ -69,6 +69,8 @@ export async function GET() {
     options: {
       refine_with_gemini: "GEMINI_API_KEY 설정 시 소개글 자동 재작성",
       skip_image_mirror: "true면 image_urls 미러링 생략 (이미 R2 URL만 전달할 때)",
+      defer_indexnow:
+        "true(기본) — 건별 IndexNow 생략, 크롤러 세션 종료 후 /api/indexnow 일괄 전송",
     },
     example: {
       refine_with_gemini: true,
@@ -104,6 +106,13 @@ export async function POST(request: Request) {
     const body = (await request.json()) as Record<string, unknown>;
     const categoryRaw =
       typeof body.category === "string" ? body.category : "academy";
+    const deferIndexNow = body.defer_indexnow !== false;
+    const listingOptions = { deferIndexNow };
+    const academyOptions = {
+      refineWithGemini: body.refine_with_gemini !== false,
+      skipImageMirror: body.skip_image_mirror === true,
+      deferIndexNow,
+    };
 
     if (isListingCategory(categoryRaw)) {
       const category = categoryRaw as ListingCategory;
@@ -123,12 +132,12 @@ export async function POST(request: Request) {
       }
 
       if (items.length === 1) {
-        const result = await bulkRegisterListing(category, items[0]);
-        return NextResponse.json({ category, ...result }, { status: result.ok ? 200 : 422 });
+        const result = await bulkRegisterListing(category, items[0], listingOptions);
+        return NextResponse.json({ category, defer_indexnow: deferIndexNow, ...result }, { status: result.ok ? 200 : 422 });
       }
 
-      const batch = await bulkRegisterListings(category, items);
-      return NextResponse.json({ category, ...batch }, {
+      const batch = await bulkRegisterListings(category, items, listingOptions);
+      return NextResponse.json({ category, defer_indexnow: deferIndexNow, ...batch }, {
         status: batch.failed === batch.total ? 422 : 200,
       });
     }
@@ -149,18 +158,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const options = {
-      refineWithGemini: body.refine_with_gemini !== false,
-      skipImageMirror: body.skip_image_mirror === true,
-    };
+    const options = academyOptions;
 
     if (items.length === 1) {
       const result = await bulkRegisterAcademy(items[0], options);
-      return NextResponse.json(result, { status: result.ok ? 200 : 422 });
+      return NextResponse.json({ defer_indexnow: deferIndexNow, ...result }, { status: result.ok ? 200 : 422 });
     }
 
     const batch = await bulkRegisterAcademies(items, options);
-    return NextResponse.json(batch, {
+    return NextResponse.json({ defer_indexnow: deferIndexNow, ...batch }, {
       status: batch.failed === batch.total ? 422 : 200,
     });
   } catch (error) {
