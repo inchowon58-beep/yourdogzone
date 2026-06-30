@@ -78,7 +78,7 @@ export default async function DynamicLandingPage({ params }: PageProps) {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <JsonLd data={jsonLd} />
 
       <Link
@@ -91,7 +91,7 @@ export default async function DynamicLandingPage({ params }: PageProps) {
 
       <article>
         <header className="mb-10">
-          <h1 className="text-3xl font-bold tracking-tight">{data.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{data.title}</h1>
           {"subtitle" in data && data.subtitle && (
             <p className="mt-3 text-lg text-muted">{data.subtitle}</p>
           )}
@@ -113,23 +113,22 @@ export default async function DynamicLandingPage({ params }: PageProps) {
 
         {"info_rows" in data && Array.isArray(data.info_rows) && (
           <section className="mb-10 overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
-            <table className="w-full text-sm">
-              <tbody>
-                {data.info_rows.map((row: { label: string; value: string }) => (
-                  <tr key={row.label} className="border-b border-gray-50 last:border-0">
-                    <th className="w-1/3 bg-gray-50/50 px-6 py-4 text-left font-medium text-muted">
-                      {row.label}
-                    </th>
-                    <td className="px-6 py-4 text-foreground">{row.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <dl className="divide-y divide-gray-50">
+              {data.info_rows.map((row: { label: string; value: string }) => (
+                <div
+                  key={row.label}
+                  className="grid grid-cols-1 gap-1 px-4 py-4 sm:grid-cols-[6.5rem_1fr] sm:items-start sm:gap-4 sm:px-6"
+                >
+                  <dt className="text-sm font-medium text-muted">{row.label}</dt>
+                  <dd className="text-sm text-foreground break-words">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
           </section>
         )}
 
         {"body" in data && data.body && (
-          <section className="rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
+          <section className="rounded-2xl bg-white p-4 shadow-[var(--card-shadow)] sm:p-8">
             <p className="leading-relaxed text-muted whitespace-pre-line">{data.body}</p>
           </section>
         )}

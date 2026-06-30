@@ -25,13 +25,13 @@ export function ImageSlider({ images, alt }: ImageSliderProps) {
   const next = () => setIndex((i) => (i === images.length - 1 ? 0 : i + 1));
 
   return (
-    <div className="flex justify-center">
-      <div className="relative w-fit max-w-full">
+    <div className="flex justify-center overflow-hidden">
+      <div className="relative w-full max-w-full sm:w-fit">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={images[index]}
           alt={`${alt} ${index + 1}`}
-          className="block max-h-[min(70vh,640px)] w-auto max-w-full rounded-2xl bg-white shadow-[var(--card-shadow)]"
+          className="mx-auto block max-h-[min(60vh,640px)] w-full max-w-full rounded-2xl bg-white object-contain shadow-[var(--card-shadow)] sm:max-h-[min(70vh,640px)] sm:w-auto"
         />
         {images.length > 1 && (
           <>

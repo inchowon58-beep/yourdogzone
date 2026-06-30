@@ -28,7 +28,7 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
             <Link
               key={academy.id}
               href={`/services/academy/${academy.slug}`}
-              className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-6 shadow-[var(--card-shadow)] transition-all hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)]"
+              className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-4 shadow-[var(--card-shadow)] transition-all hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)] sm:p-6"
             >
               <span className="mb-4 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
                 <Star className="h-3 w-3 fill-white" />

@@ -40,7 +40,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
   const regular = all.filter((a) => !a.is_premium);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 md:py-14">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
         data={[buildAcademyListJsonLd(all.length), buildAcademyListBreadcrumbJsonLd()]}
       />
@@ -57,7 +57,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
         <p className="mb-3 text-sm font-semibold text-primary">
           Pet Grooming Academy
         </p>
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
           전국 애견미용학원
           <br />
           정보 통합 검색

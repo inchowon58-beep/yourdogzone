@@ -51,7 +51,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
 
   return (
     <main
-      className={`mx-auto max-w-4xl px-6 py-10 ${isPremium ? "pb-4" : "pb-14"}`}
+      className={`mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 ${isPremium ? "pb-4" : "pb-14"}`}
     >
       <JsonLd
         data={[
@@ -86,7 +86,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
           <p className="mb-2 text-sm font-medium text-primary">
             {regionLabel} 애견미용학원
           </p>
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             {seo.h1}
           </h1>
           <p className="mt-3 text-lg leading-relaxed text-muted">
@@ -104,27 +104,25 @@ export default async function AcademyDetailPage({ params }: PageProps) {
           itemScope
           itemType="https://schema.org/PostalAddress"
         >
-          <table className="w-full text-sm">
-            <tbody>
-              <InfoRow label="지역" value={regionLabel} />
+          <dl className="divide-y divide-gray-50">
+            <InfoRow label="지역" value={regionLabel} />
+            <InfoRow
+              label="주소"
+              value={academy.address}
+              icon={<MapPin className="h-4 w-4 shrink-0" />}
+            />
+            <meta itemProp="streetAddress" content={academy.address} />
+            <meta itemProp="addressLocality" content={academy.region_small} />
+            <meta itemProp="addressRegion" content={academy.region_big} />
+            <meta itemProp="addressCountry" content="KR" />
+            {academy.phone && (
               <InfoRow
-                label="주소"
-                value={academy.address}
-                icon={<MapPin className="h-4 w-4" />}
+                label="연락처"
+                value={academy.phone}
+                icon={<Phone className="h-4 w-4 shrink-0" />}
               />
-              <meta itemProp="streetAddress" content={academy.address} />
-              <meta itemProp="addressLocality" content={academy.region_small} />
-              <meta itemProp="addressRegion" content={academy.region_big} />
-              <meta itemProp="addressCountry" content="KR" />
-              {academy.phone && (
-                <InfoRow
-                  label="연락처"
-                  value={academy.phone}
-                  icon={<Phone className="h-4 w-4" />}
-                />
-              )}
-            </tbody>
-          </table>
+            )}
+          </dl>
         </section>
 
         {academy.curriculum && (
@@ -192,17 +190,15 @@ function InfoRow({
   icon?: React.ReactNode;
 }) {
   return (
-    <tr className="border-b border-gray-50 last:border-0">
-      <th className="w-28 bg-gray-50/50 px-6 py-4 text-left font-medium text-muted">
-        {label}
-      </th>
-      <td className="px-6 py-4 text-foreground">
-        <span className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-1 px-4 py-4 sm:grid-cols-[6.5rem_1fr] sm:items-start sm:gap-4 sm:px-6">
+      <dt className="text-sm font-medium text-muted">{label}</dt>
+      <dd className="text-sm text-foreground break-words">
+        <span className="flex items-start gap-2">
           {icon}
-          {value}
+          <span>{value}</span>
         </span>
-      </td>
-    </tr>
+      </dd>
+    </div>
   );
 }
 
@@ -214,8 +210,8 @@ function ContentSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-8 rounded-2xl bg-white p-6 shadow-[var(--card-shadow)] sm:p-8">
-      <h2 className="mb-4 text-xl font-bold text-foreground">{title}</h2>
+    <section className="mb-8 rounded-2xl bg-white p-4 shadow-[var(--card-shadow)] sm:p-6 md:p-8">
+      <h2 className="mb-4 text-lg font-bold text-foreground sm:text-xl">{title}</h2>
       {children}
     </section>
   );

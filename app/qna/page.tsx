@@ -33,7 +33,7 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function QnaPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
       <JsonLd data={buildFaqPageJsonLd(SAMPLE_QNA)} />
 
       <Link
@@ -53,10 +53,10 @@ export default function QnaPage() {
             key={item.question}
             className="group rounded-2xl bg-white shadow-[var(--card-shadow)] open:shadow-[var(--card-shadow-hover)]"
           >
-            <summary className="cursor-pointer list-none px-6 py-5 font-semibold text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none px-4 py-4 font-semibold text-foreground marker:content-none sm:px-6 sm:py-5 [&::-webkit-details-marker]:hidden">
               {item.question}
             </summary>
-            <div className="border-t border-gray-50 px-6 pb-5 pt-4 text-sm leading-relaxed text-muted">
+            <div className="border-t border-gray-50 px-4 pb-4 pt-3 text-sm leading-relaxed text-muted sm:px-6 sm:pb-5 sm:pt-4">
               {item.answer}
             </div>
           </details>

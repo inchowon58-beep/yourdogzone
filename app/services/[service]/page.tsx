@@ -59,14 +59,14 @@ export default async function ServicePage({ params }: PageProps) {
 
   if (!meta) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <p>서비스를 찾을 수 없습니다.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <Link
         href="/"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
@@ -90,7 +90,7 @@ export default async function ServicePage({ params }: PageProps) {
         ))}
       </div>
 
-      <div className="mt-8 rounded-2xl bg-white p-12 text-center shadow-[var(--card-shadow)]">
+      <div className="mt-8 rounded-2xl bg-white p-8 text-center shadow-[var(--card-shadow)] sm:p-12">
         <p className="text-muted">리스트 데이터 연동 준비 중입니다.</p>
       </div>
     </main>
