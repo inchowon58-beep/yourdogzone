@@ -157,6 +157,10 @@ export function AcademyGuideTabs({
       className="mb-10 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[var(--card-shadow)]"
       aria-label="애견미용학원 선택 가이드"
     >
+      <p className="border-b border-gray-100 px-4 py-3 text-sm text-muted sm:px-4">
+        아래 학원 선택 가이드를 참고하세요.
+      </p>
+
       <div
         role="tablist"
         aria-label="가이드 카테고리"
