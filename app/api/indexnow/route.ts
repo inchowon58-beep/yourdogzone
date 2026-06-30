@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
 import { getAcademySlugs } from "@/lib/academy/queries";
-import { academyPageUrl, submitToIndexNow } from "@/lib/indexnow/submit";
-import { absoluteUrl } from "@/lib/site/config";
+import { academyPageUrl, indexNowKeyLocation, submitToIndexNow } from "@/lib/indexnow/submit";
 
 function unauthorized() {
   return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
@@ -57,9 +56,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   const key = process.env.INDEXNOW_KEY;
+  const keyLocation = indexNowKeyLocation();
   return NextResponse.json({
     enabled: Boolean(key),
-    keyLocation: key ? absoluteUrl("/api/indexnow/key-file") : null,
+    keyLocation,
+    keyFileHint: keyLocation
+      ? `${keyLocation} (표준 경로 /{INDEXNOW_KEY}.txt 로도 접근 가능)`
+      : null,
     usage: {
       post: {
         auth: "x-admin-secret 또는 Authorization: Bearer {ACADEMY_ADMIN_SECRET}",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
@@ -265,7 +266,10 @@ def crawl_places(
     settings: PipelineSettings,
     log: LogFn,
     on_browser_ready: Callable[[str], None] | None = None,
-) -> list[PlaceData]:
+    *,
+    stop_event: threading.Event | None = None,
+) -> tuple[list[PlaceData], bool]:
+    """반환: (수집 목록, 중지 여부)"""
     if not settings.searches:
         raise ValueError("검색어를 1개 이상 입력하세요.")
 
@@ -280,18 +284,37 @@ def crawl_places(
         use_profile=settings.use_chrome_profile,
         log=log,
         on_user_ready=on_browser_ready,
+        stop_event=stop_event,
     )
+    stopped = False
+    places: list[PlaceData] = []
     try:
         places = crawler.crawl_many(
             settings.searches,
             default_max=settings.max_per_search,
             skip_place_ids=known_ids,
         )
+        stopped = bool(stop_event and stop_event.is_set())
+    except Exception as e:
+        log(f"\n⚠ 수집 중 예기치 않은 오류: {e}")
+        stopped = True
     finally:
         crawler.close()
 
-    log(f"\n수집 완료: {len(places)}곳")
-    return places
+    log(f"\n수집 완료: {len(places)}곳" + (" (중지됨)" if stopped else ""))
+    return places, stopped
+
+
+def _save_collect_results(
+    places: list[PlaceData],
+    category: str,
+    log: LogFn,
+) -> Path | None:
+    if not places:
+        return None
+    path = save_places_json(places, log, category=category)
+    _merge_places_to_master(places, category, log)
+    return path
 
 
 def save_places_json(
@@ -415,14 +438,19 @@ def run_collect(
     settings: PipelineSettings,
     log: LogFn,
     on_browser_ready: Callable[[str], None] | None = None,
+    *,
+    stop_event: threading.Event | None = None,
 ) -> Path | None:
     settings.apply_env()
-    places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
-    if not places:
+    places, stopped = crawl_places(
+        settings, log, on_browser_ready=on_browser_ready, stop_event=stop_event
+    )
+    if not places and not stopped:
         log(f"수집된 {category_label(settings.category)} 항목이 없습니다.")
         return None
-    path = save_places_json(places, log, category=settings.category)
-    _merge_places_to_master(places, settings.category, log)
+    path = _save_collect_results(places, settings.category, log)
+    if stopped:
+        log("⏹ 수집이 중지되었습니다. 「지금까지 등록」으로 등록할 수 있습니다.")
     return path
 
 
@@ -430,27 +458,48 @@ def run_collect_and_register(
     settings: PipelineSettings,
     log: LogFn,
     on_browser_ready: Callable[[str], None] | None = None,
+    *,
+    stop_event: threading.Event | None = None,
 ) -> bool:
     """수집 → 마스터 병합 → 중복 제거 후 미등록 신규만 사이트 등록."""
     settings.apply_env()
-    places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
+    places, stopped = crawl_places(
+        settings, log, on_browser_ready=on_browser_ready, stop_event=stop_event
+    )
 
     if places:
-        save_places_json(places, log, category=settings.category)
-        _merge_places_to_master(places, settings.category, log)
+        _save_collect_results(places, settings.category, log)
         log(f"\n③ 이번 수집: {len(places)}곳 (마스터에 반영됨)")
+    elif stopped:
+        log("\n③ 수집 중지 — 이번 세션 신규 없음")
     else:
         log(
             f"\n③ 이번 수집 신규 없음 — "
             f"이미 수집한 업체이거나 검색 결과가 없습니다."
         )
 
-    log("\n④ 사이트 등록 (미등록 신규만, 중복 자동 제외)")
+    if stopped:
+        log("\n④ 중지됨 — 지금까지 수집분 등록 진행")
+    else:
+        log("\n④ 사이트 등록 (미등록 신규만, 중복 자동 제외)")
+
     ok, fail = register_master_pending(settings, log)
     if ok == 0 and fail == 0:
         log("등록할 새 업체가 없습니다. (모두 이미 등록됨)")
         return True
     return fail == 0
+
+
+def run_register_pending(
+    settings: PipelineSettings,
+    log: LogFn,
+) -> tuple[int, int]:
+    """수집 없이 마스터 미등록 항목만 등록."""
+    if not settings.admin_secret:
+        raise ValueError("관리자 비밀키(ACADEMY_ADMIN_SECRET)를 입력하세요.")
+    settings.apply_env()
+    log("\n④ 마스터 미등록 항목 등록")
+    return register_master_pending(settings, log)
 
 
 def list_crawled_files() -> list[Path]:

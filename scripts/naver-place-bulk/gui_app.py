@@ -21,6 +21,7 @@ from pipeline import (
     register_from_json,
     run_collect,
     run_collect_and_register,
+    run_register_pending,
     save_settings,
 )
 
@@ -41,6 +42,7 @@ class AcademyRegisterApp(tk.Tk):
         self.log_queue: queue.Queue[str] = queue.Queue()
         self.worker: threading.Thread | None = None
         self.running = False
+        self.stop_event = threading.Event()
         self.last_json: Path | None = None
 
         self._build_ui()
@@ -257,6 +259,33 @@ class AcademyRegisterApp(tk.Tk):
         )
         self.btn_json_register.pack(side="left", padx=6)
 
+        self.btn_stop = tk.Button(
+            btn_frame,
+            text="⏹  작업 중지",
+            font=("Segoe UI", 10, "bold"),
+            bg="#c62828",
+            fg="white",
+            relief="flat",
+            padx=12,
+            pady=10,
+            command=self._on_stop,
+            state="disabled",
+        )
+        self.btn_stop.pack(side="left", padx=6)
+
+        self.btn_register_now = tk.Button(
+            btn_frame,
+            text="📤 지금까지 등록",
+            font=("Segoe UI", 10),
+            bg="#6a1b9a",
+            fg="white",
+            relief="flat",
+            padx=12,
+            pady=10,
+            command=self._on_register_now,
+        )
+        self.btn_register_now.pack(side="left", padx=6)
+
         # --- 로그 ---
         log_frame = tk.LabelFrame(self, text=" 진행 로그 ", bg="#f5f5f7", padx=8, pady=8)
         log_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
@@ -429,8 +458,17 @@ class AcademyRegisterApp(tk.Tk):
         self.btn_collect.configure(state=state)
         self.btn_register.configure(state=state)
         self.btn_json_register.configure(state=state)
+        self.btn_register_now.configure(state=state)
+        self.btn_stop.configure(state="disabled" if enabled else "normal")
 
-    def _run_async(self, target) -> None:
+    def _on_stop(self) -> None:
+        if not self.running:
+            return
+        self.stop_event.set()
+        self._log("\n⏹ 중지 요청 — 현재 업체 처리 후 멈춥니다…")
+        self.btn_stop.configure(state="disabled")
+
+    def _run_async(self, target, *, uses_crawler: bool = False) -> None:
         if self.running:
             messagebox.showwarning("실행 중", "이미 작업이 진행 중입니다.")
             return
@@ -443,7 +481,10 @@ class AcademyRegisterApp(tk.Tk):
             return
 
         self.running = True
+        self.stop_event.clear()
         self._set_buttons(False)
+        if uses_crawler:
+            self.btn_stop.configure(state="normal")
         self._log("\n" + "—" * 40)
         self._log(f"카테고리: {category_label(settings.category)} ({settings.category})")
 
@@ -454,6 +495,7 @@ class AcademyRegisterApp(tk.Tk):
                 self._log(f"\n✗ 오류: {e}")
             finally:
                 self.running = False
+                self.stop_event.clear()
                 self.after(0, lambda: self._set_buttons(True))
                 self.after(0, self._refresh_json_list)
                 self._log("—" * 40 + "\n작업 종료.\n")
@@ -467,12 +509,15 @@ class AcademyRegisterApp(tk.Tk):
                 settings,
                 self._log,
                 on_browser_ready=self._wait_user_confirm,
+                stop_event=self.stop_event,
             )
             if path:
                 self.last_json = path
-                self._log(f"\n✓ 수집 완료. 마스터에 누적됨 (등록은 '수집 + 등록' 사용)")
+                self._log(f"\n✓ 수집 완료. 마스터에 누적됨")
+            elif self.stop_event.is_set():
+                self._log(f"\n⏹ 중지됨 — 「지금까지 등록」으로 등록하세요")
 
-        self._run_async(job)
+        self._run_async(job, uses_crawler=True)
 
     def _on_collect_register(self) -> None:
         def job(settings: PipelineSettings):
@@ -482,11 +527,26 @@ class AcademyRegisterApp(tk.Tk):
                 settings,
                 self._log,
                 on_browser_ready=self._wait_user_confirm,
+                stop_event=self.stop_event,
             )
-            if ok:
+            if self.stop_event.is_set():
+                self._log(f"\n✓ 중지 후 등록 완료 ({category_label(settings.category)})")
+            elif ok:
                 self._log(f"\n✓ 수집 및 신규 등록 완료! ({category_label(settings.category)})")
             else:
                 self._log("\n⚠ 등록 중 일부 실패 — 로그를 확인하세요")
+
+        self._run_async(job, uses_crawler=True)
+
+    def _on_register_now(self) -> None:
+        def job(settings: PipelineSettings):
+            if not settings.admin_secret:
+                raise ValueError("관리자 비밀키를 입력하세요.")
+            ok, fail = run_register_pending(settings, self._log)
+            if ok and not fail:
+                self._log("\n✓ 지금까지 수집분 등록 완료!")
+            elif ok == 0 and fail == 0:
+                self._log("\n등록할 미등록 항목이 없습니다.")
 
         self._run_async(job)
 

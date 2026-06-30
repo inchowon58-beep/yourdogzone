@@ -176,7 +176,10 @@ def submit_indexnow_batch(urls: list[str], log: LogFn = print) -> bool:
                 log(f"  ✓ IndexNow 전송 완료 — {data.get('submitted', len(chunk))}개")
             else:
                 ok_all = False
-                log(f"  ⚠ IndexNow 실패: {data.get('message') or data.get('error') or res.status_code}")
+                detail = data.get("message") or data.get("error") or res.status_code
+                if data.get("status"):
+                    detail = f"{detail} (status={data.get('status')})"
+                log(f"  ⚠ IndexNow 실패: {detail}")
         except requests.RequestException as e:
             ok_all = False
             log(f"  ⚠ IndexNow 요청 실패: {e}")

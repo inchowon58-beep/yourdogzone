@@ -48,6 +48,16 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "12mb",
     },
   },
+  async rewrites() {
+    const key = process.env.INDEXNOW_KEY?.trim();
+    if (!key) return [];
+    return [
+      {
+        source: `/${key}.txt`,
+        destination: "/api/indexnow/key-file",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

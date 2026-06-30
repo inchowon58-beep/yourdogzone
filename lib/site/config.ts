@@ -7,8 +7,17 @@ const DEFAULT_PRODUCTION_URL = "https://www.yourdogzone.co.kr";
 export function getSiteUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (fromEnv) {
-    if (fromEnv.startsWith("http")) return fromEnv.replace(/\/$/, "");
-    return `https://${fromEnv.replace(/\/$/, "")}`;
+    const normalized = fromEnv.startsWith("http")
+      ? fromEnv.replace(/\/$/, "")
+      : `https://${fromEnv.replace(/\/$/, "")}`;
+    // IndexNow·OG·canonical — 프로덕션은 www 고정
+    if (
+      normalized.includes("yourdogzone.co.kr") &&
+      !normalized.includes("www.yourdogzone.co.kr")
+    ) {
+      return DEFAULT_PRODUCTION_URL;
+    }
+    return normalized;
   }
 
   // Vercel 내부 URL(*.vercel.app)은 접근 제한될 수 있으므로 프로덕션은 실제 도메인 사용

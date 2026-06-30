@@ -6,6 +6,7 @@ import random
 import re
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Any, Callable
 from urllib.parse import quote
 
 from selenium import webdriver
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -29,6 +31,10 @@ MAX_PLACE_IMAGES = 3
 LogFn = Callable[[str], None]
 ReadyFn = Callable[[str], None]  # 사용자 [확인] 대기 (GUI에서 구현)
 PlacePromptFn = Callable[[str], str]  # "collect" | "skip" | "done"
+
+
+class CrawlStopped(Exception):
+    """사용자가 수집 중지를 요청함."""
 
 
 @dataclass
@@ -287,10 +293,12 @@ class NaverPlaceCrawler:
         use_profile: bool = True,
         log: LogFn = print,
         on_user_ready: ReadyFn | None = None,
+        stop_event: threading.Event | None = None,
     ):
         self.delay = delay
         self.log = log
         self.on_user_ready = on_user_ready
+        self.stop_event = stop_event
         self._map_ready = False
         self.driver = start_naver_browser(log)
         self.wait = WebDriverWait(self.driver, 25)
@@ -305,6 +313,13 @@ class NaverPlaceCrawler:
 
     def _sleep(self, extra: float = 0) -> None:
         time.sleep(self.delay + extra + random.uniform(0.5, 1.5))
+
+    def _check_stop(self) -> None:
+        if self.stop_event and self.stop_event.is_set():
+            raise CrawlStopped()
+
+    def stop_requested(self) -> bool:
+        return bool(self.stop_event and self.stop_event.is_set())
 
     def _page_has_captcha(self) -> bool:
         try:
@@ -383,9 +398,18 @@ class NaverPlaceCrawler:
         self._safe_click(element)
         self._sleep(0.3)
 
+    def _is_dom_error(self, exc: BaseException) -> bool:
+        msg = str(exc).lower()
+        return (
+            isinstance(exc, StaleElementReferenceException)
+            or "stale element" in msg
+            or "no such element" in msg
+            or "element not found" in msg
+        )
+
     def _safe_click(self, element) -> None:
-        """stale element 대비 — JS 클릭 우선."""
-        for attempt in range(2):
+        """stale / element not found 대비 — JS 클릭 우선."""
+        for attempt in range(3):
             try:
                 self.driver.execute_script(
                     "arguments[0].scrollIntoView({block:'center', behavior:'instant'});",
@@ -398,12 +422,18 @@ class NaverPlaceCrawler:
                     self.driver.execute_script("arguments[0].click();", element)
                 self._sleep(0.5)
                 return
-            except Exception:
-                if attempt == 0:
+            except Exception as exc:
+                if attempt < 2 and self._is_dom_error(exc):
+                    self._sleep(0.5)
+                    continue
+                if attempt < 2:
                     self._sleep(0.4)
                     continue
-                ActionChains(self.driver).move_to_element(element).click().perform()
-                self._sleep(0.5)
+                try:
+                    ActionChains(self.driver).move_to_element(element).click().perform()
+                    self._sleep(0.5)
+                except Exception:
+                    raise exc from exc
                 return
 
     def _human_type(self, element, text: str) -> None:
@@ -736,6 +766,73 @@ class NaverPlaceCrawler:
 
         return rows
 
+    def _snapshot_list_rows(self) -> list[dict[str, str]]:
+        """현재 화면 목록을 place_id·이름만 추출 (DOM 참조 보관 안 함)."""
+        snapshots: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for row in self._list_non_ad_rows():
+            try:
+                pid = self._extract_id_from_row(row)
+                title = (row.text or "").split("\n")[0].strip()[:40]
+                key = pid or title
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                snapshots.append({"place_id": pid or "", "title": title})
+            except Exception:
+                continue
+        return snapshots
+
+    def _click_row_fresh(self, *, place_id: str = "", title: str = "") -> str:
+        """목록을 다시 읽고 해당 행 클릭 → place_id."""
+        target = (place_id or "").strip()
+        title_key = (title or "").strip()[:40]
+
+        for attempt in range(3):
+            if not self._switch_frame("searchIframe"):
+                return ""
+            rows = self._list_non_ad_rows()
+            for row in rows:
+                try:
+                    pid = self._extract_id_from_row(row)
+                    row_title = (row.text or "").split("\n")[0].strip()[:40]
+                    matched = False
+                    if target and pid == target:
+                        matched = True
+                    elif title_key and row_title == title_key:
+                        matched = True
+                    elif target and not pid and title_key and title_key in row_title:
+                        matched = True
+                    if not matched:
+                        continue
+
+                    label = row_title or target or "(업체)"
+                    try:
+                        link = row.find_element(
+                            By.CSS_SELECTOR,
+                            "a.place_bluelink, a.YwYLL, a[class*='place_bluelink'], a",
+                        )
+                        self.log(f"    → 목록 클릭: {label}")
+                        self._safe_click(link)
+                    except Exception:
+                        self.log(f"    → 목록 클릭: {label}")
+                        self._safe_click(row)
+
+                    self._sleep(2.0)
+                    self._wait_captcha_if_needed()
+                    return (
+                        self._place_id_from_url(self.driver.current_url or "")
+                        or pid
+                        or target
+                    )
+                except Exception as exc:
+                    if self._is_dom_error(exc):
+                        break
+                    continue
+            self._sleep(0.6)
+
+        return ""
+
     def _extract_id_from_row(self, row) -> str:
         """목록 행 HTML에서 place ID 추출 (클릭 없음)."""
         try:
@@ -790,12 +887,47 @@ class NaverPlaceCrawler:
         return pid
 
     def _return_to_search(self, search_url: str) -> None:
+        """검색 목록으로 복귀 — 뒤로가기 우선(스크롤 위치 유지), 실패 시 URL 이동."""
         self.log("    ← 검색 목록으로 복귀")
         self._top_document()
-        self.driver.get(search_url)
-        self._sleep(2)
+        restored = False
+        for _ in range(3):
+            try:
+                url = self.driver.current_url or ""
+                if "/search/" in url and "/place/" not in url:
+                    restored = True
+                    break
+                self.driver.back()
+                self._sleep(1.2)
+            except Exception:
+                break
+        if not restored:
+            self.driver.get(search_url)
+            self._sleep(2)
         self._wait_captcha_if_needed()
         self._switch_frame("searchIframe")
+
+    def _open_row(self, row) -> tuple[str, bool]:
+        """목록 행 클릭 → (place_id, 이미 상세 열림 여부)."""
+        pid = self._extract_id_from_row(row)
+        if pid:
+            title = (row.text or "").split("\n")[0].strip()[:36]
+            try:
+                link = row.find_element(
+                    By.CSS_SELECTOR,
+                    "a.place_bluelink, a.YwYLL, a[class*='place_bluelink'], a",
+                )
+                title = (link.text or title).split("\n")[0].strip()[:36]
+                self.log(f"    → 목록 클릭: {title}")
+                self._safe_click(link)
+            except Exception:
+                self.log(f"    → 목록 클릭: {title or '(업체)'}")
+                self._safe_click(row)
+            self._sleep(2.0)
+            self._wait_captcha_if_needed()
+            opened = self._place_id_from_url(self.driver.current_url or "") or pid
+            return opened, True
+        return self._click_row_get_id(row), True
 
     def _find_place_links_in_frame(self) -> list:
         """검색 iframe 안의 업체 링크 (광고 제외)."""
@@ -998,9 +1130,10 @@ class NaverPlaceCrawler:
             try:
                 container = self.driver.find_element(By.CSS_SELECTOR, sel)
                 self.driver.execute_script(
-                    "arguments[0].scrollTop = arguments[0].scrollTop + 320;", container
+                    "arguments[0].scrollTop = arguments[0].scrollTop + 520;",
+                    container,
                 )
-                self._sleep(1.5)
+                self._sleep(1.2)
                 return True
             except Exception:
                 continue
@@ -1346,10 +1479,18 @@ class NaverPlaceCrawler:
 
         return self._normalize_collected_images(urls)
 
-    def crawl_query(self, query: str, max_items: int = 5) -> list[PlaceData]:
-        """검색 → 목록 순서대로 1곳씩 수집 (광고 제외, 같은 업체 반복 없음)."""
+    def crawl_query(
+        self,
+        query: str,
+        max_items: int = 5,
+        *,
+        skip_place_ids: set[str] | None = None,
+    ) -> list[PlaceData]:
+        """검색 목록을 위→아래로 스크롤하며 신규만 수집 (이미 수집한 ID는 건너뜀)."""
         results: list[PlaceData] = []
-        seen_ids: set[str] = set()
+        known_ids = set(skip_place_ids or ())
+        processed_ids: set[str] = set(known_ids)
+        skipped_known = 0
 
         self.log(f"  ① 지도에서 검색: {query}")
         self._search_on_map(query)
@@ -1358,78 +1499,133 @@ class NaverPlaceCrawler:
             or f"https://map.naver.com/p/search/{quote(query)}"
         )
 
-        row_offset = 0
+        self.log(
+            f"  ② 목록 순서대로 수집 (최대 {max_items}곳, "
+            f"이미 수집 {len(known_ids)}곳은 클릭 없이 건너뜀)"
+        )
+
+        no_progress_rounds = 0
         scroll_rounds = 0
-        self.log(f"  ② 업체 수집 (광고 제외, 최대 {max_items}곳)")
+        max_scroll_rounds = max(80, max_items // 3 + 20)
 
-        while len(results) < max_items and scroll_rounds <= 12:
-            if not self._switch_frame("searchIframe"):
-                self._wait_captcha_if_needed()
+        try:
+            while len(results) < max_items and scroll_rounds <= max_scroll_rounds:
+                self._check_stop()
+
                 if not self._switch_frame("searchIframe"):
-                    self.log("  ⚠ 검색 목록을 찾지 못했습니다.")
+                    self._wait_captcha_if_needed()
+                    if not self._switch_frame("searchIframe"):
+                        self.log("  ⚠ 검색 목록을 찾지 못했습니다.")
+                        break
+
+                snapshots = self._snapshot_list_rows()
+                if not snapshots:
+                    self.log("  ⚠ 검색 결과 행이 없습니다.")
                     break
 
-            rows = self._list_non_ad_rows()
-            if not rows:
-                self.log("  ⚠ 검색 결과 행이 없습니다.")
-                break
+                new_in_round = 0
+                for snap in snapshots:
+                    self._check_stop()
+                    if len(results) >= max_items:
+                        break
 
-            if row_offset >= len(rows):
-                self.log("  ③ 목록 스크롤 — 다음 업체 탐색")
-                if not self._scroll_list_down():
-                    break
-                scroll_rounds += 1
-                row_offset = 0
-                continue
+                    pid = snap.get("place_id") or ""
+                    title = snap.get("title") or ""
 
-            row = rows[row_offset]
-            row_offset += 1
-            title = (row.text or "").split("\n")[0].strip()[:40]
+                    if pid and pid in processed_ids:
+                        continue
 
-            try:
-                pid = self._extract_id_from_row(row)
-                already_open = False
+                    if pid and pid in known_ids:
+                        processed_ids.add(pid)
+                        skipped_known += 1
+                        if skipped_known == 1 or skipped_known % 25 == 0:
+                            self.log(
+                                f"    ⊘ 이미 수집된 업체 건너뜀 "
+                                f"({skipped_known}곳) — 목록 계속 진행"
+                            )
+                        continue
 
-                if pid:
-                    self.log(f"  → [{len(results) + 1}/{max_items}] {title} (ID: {pid})")
-                else:
-                    pid = self._click_row_get_id(row)
-                    already_open = bool(pid)
-                    if pid:
-                        self.log(f"  → [{len(results) + 1}/{max_items}] {title} (ID: {pid})")
+                    try:
+                        if pid:
+                            processed_ids.add(pid)
+                            opened = self._click_row_fresh(place_id=pid, title=title)
+                            if not opened:
+                                self.log(f"    ⚠ 목록 클릭 실패 — 스킵: {title or pid}")
+                                continue
+                            pid = opened
+                        else:
+                            opened = self._click_row_fresh(title=title)
+                            if not opened:
+                                self.log(f"    ⚠ ID 없음 — 스킵: {title}")
+                                continue
+                            pid = opened
+                            if pid in processed_ids:
+                                self._return_to_search(search_url)
+                                continue
+                            processed_ids.add(pid)
+                            if pid in known_ids:
+                                skipped_known += 1
+                                self._return_to_search(search_url)
+                                continue
 
-                if not pid:
-                    self.log(f"    ⚠ ID 없음 — 스킵: {title}")
-                    continue
-
-                if pid in seen_ids:
-                    self.log(f"    ⚠ 이미 수집함 — 스킵: {title}")
-                    if already_open:
+                        self.log(
+                            f"  → [{len(results) + 1}/{max_items}] "
+                            f"{title} (ID: {pid})"
+                        )
+                        place = self.scrape_place_by_id(
+                            pid,
+                            query,
+                            already_open=True,
+                            fallback_name=title,
+                        )
                         self._return_to_search(search_url)
-                    continue
 
-                seen_ids.add(pid)
-                place = self.scrape_place_by_id(
-                    pid, query, already_open=already_open, fallback_name=title
-                )
+                        if place:
+                            results.append(place)
+                            known_ids.add(pid)
+                            new_in_round += 1
+                            self.log(
+                                f"    ✓ 수집 완료: {place.name} | "
+                                f"사진 {len(place.image_urls)}장"
+                            )
+                        else:
+                            self.log(f"    ⚠ 수집 실패: {title}")
 
-                if place:
-                    results.append(place)
-                    self.log(
-                        f"    ✓ 수집 완료: {place.name} | "
-                        f"사진 {len(place.image_urls)}장"
-                    )
+                    except CrawlStopped:
+                        raise
+                    except Exception as e:
+                        if self._is_dom_error(e):
+                            self.log(f"    ⚠ 목록 갱신됨 — 다음 업체로 ({title or pid})")
+                        else:
+                            self.log(f"    ✗ 오류: {e}")
+                        try:
+                            self._return_to_search(search_url)
+                        except Exception:
+                            pass
+
+                    self._sleep(0.5)
+
+                if len(results) >= max_items:
+                    break
+
+                if new_in_round == 0:
+                    no_progress_rounds += 1
+                    if no_progress_rounds >= 10:
+                        self.log("  목록 끝 — 더 이상 신규 업체가 없습니다.")
+                        break
                 else:
-                    self.log(f"    ⚠ 수집 실패: {title}")
+                    no_progress_rounds = 0
 
-            except Exception as e:
-                self.log(f"    ✗ 오류: {e}")
+                self.log("  ③ 목록 아래로 스크롤 — 다음 업체 탐색")
+                if not self._scroll_list_down():
+                    no_progress_rounds += 1
+                scroll_rounds += 1
 
-            if len(results) < max_items:
-                self._return_to_search(search_url)
+        except CrawlStopped:
+            self.log(f"  ⏹ 수집 중지 — 이 검색어에서 {len(results)}곳 확보")
 
-            self._sleep(1)
-
+        if skipped_known:
+            self.log(f"  ⊘ 이전에 수집한 업체 {skipped_known}곳 건너뜀 (목록 위치 유지)")
         self.log(f"  → {len(results)}곳 수집 완료")
         return results
 
@@ -1442,30 +1638,45 @@ class NaverPlaceCrawler:
     ) -> list[PlaceData]:
         all_places: list[PlaceData] = []
         seen_ids: set[str] = set(skip_place_ids or ())
-        skipped_master = 0
 
         if seen_ids:
-            self.log(f"  마스터에 이미 있는 place {len(seen_ids)}곳 — 수집 시 건너뜀")
+            self.log(f"  마스터에 이미 있는 place {len(seen_ids)}곳 — 목록에서 자동 건너뜀")
 
+        stopped = False
         for q in queries:
+            if self.stop_requested():
+                stopped = True
+                break
+
             query = str(q.get("query", "")).strip()
             max_items = int(q.get("max", default_max))
             if not query:
                 continue
 
             self.log(f"\n--- 검색: {query} (최대 {max_items}곳) ---")
-            for place in self.crawl_query(query, max_items):
+            try:
+                batch = self.crawl_query(
+                    query,
+                    max_items,
+                    skip_place_ids=seen_ids,
+                )
+            except Exception as e:
+                self.log(f"⚠ 검색 '{query}' 오류: {e}")
+                batch = []
+            for place in batch:
                 if not place.place_id:
                     continue
                 if place.place_id in seen_ids:
-                    skipped_master += 1
-                    self.log(f"  ⊘ 마스터 중복 스킵: {place.name}")
                     continue
                 seen_ids.add(place.place_id)
                 all_places.append(place)
 
+            if self.stop_requested():
+                stopped = True
+                break
+
             self._sleep(3)
 
-        if skipped_master:
-            self.log(f"\n마스터 중복으로 스킵: {skipped_master}곳")
+        if stopped:
+            self.log(f"\n⏹ 수집 중지됨 — 지금까지 {len(all_places)}곳")
         return all_places
