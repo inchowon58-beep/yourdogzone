@@ -20,6 +20,7 @@ LogFn = Callable[[str], None]
 class PipelineSettings:
     api_url: str = "https://www.yourdogzone.co.kr"
     admin_secret: str = ""
+    gemini_api_key: str = ""
     searches: list[dict] = field(default_factory=list)
     max_per_search: int = 3
     delay_seconds: float = 2.0
@@ -29,6 +30,8 @@ class PipelineSettings:
     def apply_env(self) -> None:
         os.environ["YOURDOGZONE_API_URL"] = self.api_url.rstrip("/")
         os.environ["ACADEMY_ADMIN_SECRET"] = self.admin_secret
+        if self.gemini_api_key:
+            os.environ["GEMINI_API_KEY"] = self.gemini_api_key
 
     def to_config_dict(self) -> dict:
         return {
@@ -75,6 +78,8 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
                 settings.api_url = val
             elif key == "ACADEMY_ADMIN_SECRET":
                 settings.admin_secret = val
+            elif key == "GEMINI_API_KEY":
+                settings.gemini_api_key = val
 
     config_path = base / "config.json"
     if config_path.exists():
@@ -93,7 +98,8 @@ def save_settings(settings: PipelineSettings, script_dir: Path | None = None) ->
     base = script_dir or SCRIPT_DIR
     (base / ".env").write_text(
         f"YOURDOGZONE_API_URL={settings.api_url.rstrip('/')}\n"
-        f"ACADEMY_ADMIN_SECRET={settings.admin_secret}\n",
+        f"ACADEMY_ADMIN_SECRET={settings.admin_secret}\n"
+        f"GEMINI_API_KEY={settings.gemini_api_key}\n",
         encoding="utf-8",
     )
     (base / "config.json").write_text(
@@ -171,7 +177,7 @@ def register_places(
         log("등록할 새 학원이 없습니다.")
         return 0, 0
 
-    log(f"\n등록 시작 ({len(targets)}건, Gemini={'ON' if settings.refine_with_gemini else 'OFF'})")
+    log(f"\n등록 시작 ({len(targets)}건, Gemini 로컬={'ON' if settings.refine_with_gemini else 'OFF'})")
     items = [p.to_api_payload() for p in targets]
     ok, fail = register_all(items, refine_gemini=settings.refine_with_gemini, log=log)
     log(f"\n등록 결과: 성공 {ok} | 실패 {fail}")

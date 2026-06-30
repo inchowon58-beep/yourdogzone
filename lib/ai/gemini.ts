@@ -8,12 +8,8 @@ export type GeminiRefineResult =
   | { ok: true; data: RefinedCopy }
   | { ok: false; error: string };
 
-/** Google AI Studio에서 사용 가능한 안정(stable) 모델 */
-const DEFAULT_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-];
+/** Google AI Studio — 서버 폴백용 (로컬 프로그램 권장) */
+const DEFAULT_MODELS = ["gemini-2.5-flash"];
 
 function parseRefinedCopy(text: string, model: string): GeminiRefineResult {
   try {

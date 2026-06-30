@@ -46,7 +46,7 @@ class AcademyRegisterApp(tk.Tk):
 
         header = tk.Label(
             self,
-            text="네이버 플레이스 → 수집 → Gemini 가공 → 사이트 등록",
+            text="네이버 플레이스 → 수집 → 로컬 Gemini 변환 → 사이트 등록",
             font=("Segoe UI", 11, "bold"),
             bg="#f5f5f7",
             fg="#333",
@@ -79,9 +79,26 @@ class AcademyRegisterApp(tk.Tk):
             font=("Segoe UI", 8),
         ).grid(row=2, column=1, sticky="w", padx=12)
 
-        tk.Label(frm, text="검색어 (줄마다 1개)", bg="#fff", anchor="nw").grid(row=3, column=0, sticky="nw", **pad)
+        tk.Label(frm, text="Gemini API 키", bg="#fff", anchor="w").grid(
+            row=3, column=0, sticky="w", **pad
+        )
+        self.gemini_key_var = tk.StringVar()
+        tk.Entry(frm, textvariable=self.gemini_key_var, width=52, show="•").grid(
+            row=3, column=1, **pad
+        )
+        tk.Label(
+            frm,
+            text="(로컬 PC에서 gemini-2.5-flash 변환 — Google AI Studio 키)",
+            bg="#fff",
+            fg="#888",
+            font=("Segoe UI", 8),
+        ).grid(row=4, column=1, sticky="w", padx=12)
+
+        tk.Label(frm, text="검색어 (줄마다 1개)", bg="#fff", anchor="nw").grid(
+            row=5, column=0, sticky="nw", **pad
+        )
         self.search_text = scrolledtext.ScrolledText(frm, width=40, height=8, font=("Segoe UI", 10))
-        self.search_text.grid(row=3, column=1, **pad)
+        self.search_text.grid(row=5, column=1, **pad)
         tk.Label(
             frm,
             text="예: 부천 애견미용학원\n     인천 애견미용학원|5  (← |5 는 최대 5곳)",
@@ -89,10 +106,10 @@ class AcademyRegisterApp(tk.Tk):
             fg="#888",
             font=("Segoe UI", 8),
             justify="left",
-        ).grid(row=4, column=1, sticky="w", padx=12)
+        ).grid(row=6, column=1, sticky="w", padx=12)
 
         opts = tk.Frame(frm, bg="#fff")
-        opts.grid(row=5, column=1, sticky="w", **pad)
+        opts.grid(row=7, column=1, sticky="w", **pad)
 
         tk.Label(opts, text="검색당 최대", bg="#fff").pack(side="left")
         self.max_var = tk.IntVar(value=3)
@@ -105,10 +122,10 @@ class AcademyRegisterApp(tk.Tk):
         )
 
         opts2 = tk.Frame(frm, bg="#fff")
-        opts2.grid(row=6, column=1, sticky="w", padx=12, pady=(0, 6))
+        opts2.grid(row=8, column=1, sticky="w", padx=12, pady=(0, 6))
 
         self.gemini_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(opts2, text="Gemini 소개글 편집", variable=self.gemini_var, bg="#fff").pack(
+        tk.Checkbutton(opts2, text="Gemini 소개글 편집 (로컬)", variable=self.gemini_var, bg="#fff").pack(
             side="left"
         )
 
@@ -213,6 +230,7 @@ class AcademyRegisterApp(tk.Tk):
         s = load_settings_from_files()
         self.api_url_var.set(s.api_url)
         self.secret_var.set(s.admin_secret)
+        self.gemini_key_var.set(s.gemini_api_key)
         self.max_var.set(s.max_per_search)
         self.delay_var.set(s.delay_seconds)
         self.gemini_var.set(s.refine_with_gemini)
@@ -238,6 +256,7 @@ class AcademyRegisterApp(tk.Tk):
         return PipelineSettings(
             api_url=self.api_url_var.get().strip(),
             admin_secret=self.secret_var.get().strip(),
+            gemini_api_key=self.gemini_key_var.get().strip(),
             searches=searches,
             max_per_search=self.max_var.get(),
             delay_seconds=self.delay_var.get(),

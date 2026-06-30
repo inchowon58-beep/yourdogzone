@@ -9,6 +9,7 @@ from typing import Callable
 import requests
 from dotenv import load_dotenv
 
+from gemini_refine import apply_refine_to_item
 from image_uploader import prepare_register_payload
 
 load_dotenv()
@@ -31,7 +32,7 @@ def _headers() -> dict[str, str]:
 
 
 def check_server_ready(log: LogFn = print) -> bool:
-    """R2 업로드·서버 상태 확인."""
+    """R2·IndexNow·서버 상태 확인."""
     api = _api_url()
     ok = True
     try:
@@ -46,6 +47,17 @@ def check_server_ready(log: LogFn = print) -> bool:
     except requests.RequestException as e:
         ok = False
         log(f"  ⚠ /api/upload 확인 실패: {e}")
+
+    try:
+        res = requests.get(f"{api}/api/indexnow", timeout=15)
+        data = res.json()
+        if data.get("enabled"):
+            log("  ✓ IndexNow 준비됨 (등록 후 자동 알림)")
+        else:
+            log("  ⚠ IndexNow 미설정 — Vercel INDEXNOW_KEY 확인")
+    except requests.RequestException as e:
+        log(f"  ⚠ /api/indexnow 확인 실패: {e}")
+
     return ok
 
 
@@ -70,7 +82,6 @@ def fetch_registered_names(log: LogFn = print) -> set[str]:
 
 def register_batch(
     items: list[dict],
-    refine_gemini: bool = True,
     *,
     skip_image_mirror: bool = False,
 ) -> dict:
@@ -78,7 +89,7 @@ def register_batch(
         f"{_api_url()}/api/admin/bulk-register",
         headers=_headers(),
         json={
-            "refine_with_gemini": refine_gemini,
+            "refine_with_gemini": False,
             "skip_image_mirror": skip_image_mirror,
             "items": items,
         },
@@ -99,42 +110,56 @@ def register_all(
 
     prepared: list[dict] = []
     skip_mirror = False
+    local_gemini_flags: list[bool] = []
+
     for item in items:
         log(f"\n▶ {item.get('name', '(이름 없음)')} 등록 준비")
-        payload = prepare_register_payload(item, api, log=log)
-        if payload.get("academy_images"):
+        working = dict(item)
+        gemini_ok = False
+
+        if refine_gemini:
+            if os.getenv("GEMINI_API_KEY", "").strip():
+                working, gemini_ok = apply_refine_to_item(working, log=log)
+            else:
+                log("    ⚠ GEMINI_API_KEY 없음 — 원문 그대로 등록")
+
+        local_gemini_flags.append(gemini_ok)
+        payload = prepare_register_payload(working, api, log=log)
+        if payload.get("academy_images") or payload.get("logo_image"):
             skip_mirror = True
         prepared.append(payload)
 
     succeeded = 0
     failed = 0
+    flag_idx = 0
     for i in range(0, len(prepared), BATCH_SIZE):
         batch = prepared[i : i + BATCH_SIZE]
+        batch_flags = local_gemini_flags[i : i + BATCH_SIZE]
         log(f"\n[등록 배치 {i // BATCH_SIZE + 1}] {len(batch)}건 전송…")
         try:
-            result = register_batch(
-                batch,
-                refine_gemini,
-                skip_image_mirror=skip_mirror,
-            )
+            result = register_batch(batch, skip_image_mirror=skip_mirror)
             rows = result.get("results", [result])
-            for r in rows:
+            for r, local_gemini in zip(rows, batch_flags):
                 if r.get("ok"):
                     succeeded += 1
-                    gemini = (
-                        "Gemini 적용"
-                        if r.get("geminiRefined")
+                    gemini_label = (
+                        "Gemini 적용(로컬)"
+                        if local_gemini
                         else "Gemini 미적용"
                     )
                     imgs = r.get("imageCount", 0)
-                    log(f"  ✓ {r.get('name')} → {r.get('url')} ({gemini}, 사진 {imgs}장)")
-                    if r.get("geminiSkipReason"):
-                        log(f"    ⚠ Gemini: {r['geminiSkipReason']}")
+                    log(f"  ✓ {r.get('name')} → {r.get('url')} ({gemini_label}, 사진 {imgs}장)")
+                    idx = r.get("indexnow") or {}
+                    if idx.get("ok"):
+                        log("    ✓ IndexNow 전송 완료")
+                    elif idx:
+                        log(f"    ⚠ IndexNow: {idx.get('message', '실패')}")
                     for err in r.get("imageErrors") or []:
                         log(f"    ⚠ 이미지: {str(err)[:160]}")
                 else:
                     failed += 1
                     log(f"  ✗ {r.get('name')}: {r.get('error')}")
+                flag_idx += 1
         except requests.RequestException as e:
             failed += len(batch)
             log(f"  배치 실패: {e}")

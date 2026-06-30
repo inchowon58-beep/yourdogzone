@@ -6,6 +6,7 @@ import {
 } from "@/lib/academy/bulk-register";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { absoluteUrl } from "@/lib/site/config";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,6 +36,10 @@ export async function GET() {
     auth: "x-admin-secret 또는 Authorization: Bearer {ACADEMY_ADMIN_SECRET}",
     storage: isSupabaseConfigured() ? "supabase" : "r2-json",
     gemini_configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
+    indexnow_configured: Boolean(process.env.INDEXNOW_KEY?.trim()),
+    indexnow_key_location: process.env.INDEXNOW_KEY
+      ? absoluteUrl("/api/indexnow/key-file")
+      : null,
     limits: { maxBatchSize: MAX_BATCH_SIZE },
     options: {
       refine_with_gemini: "GEMINI_API_KEY 설정 시 소개글 자동 재작성",

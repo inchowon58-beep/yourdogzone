@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const url = academyPageUrl(data.slug);
+    const indexResult = await submitToIndexNow([url]);
 
     if (insertResult.uploads?.length) {
       return NextResponse.json({
@@ -74,10 +75,9 @@ export async function POST(request: NextRequest) {
         url,
         storage: "r2",
         uploads: insertResult.uploads,
+        indexnow: indexResult,
       });
     }
-
-    const indexResult = await submitToIndexNow([url]);
 
     return NextResponse.json({
       slug: data.slug,

@@ -3,7 +3,7 @@ import { countAcademyImages, splitAcademyImages } from "@/lib/academy/images";
 import { insertAcademy } from "@/lib/academy/queries";
 import { parseKoreanAddress } from "@/lib/academy/parse-address";
 import { generateAcademySlug } from "@/lib/academy/slug";
-import { academyPageUrl } from "@/lib/indexnow/submit";
+import { academyPageUrl, submitToIndexNow } from "@/lib/indexnow/submit";
 import {
   completeR2Uploads,
   mirrorExternalImagesToR2,
@@ -43,6 +43,7 @@ export type BulkRegisterItemResult = {
   imageErrors?: string[];
   geminiRefined?: boolean;
   geminiSkipReason?: string;
+  indexnow?: { ok: boolean; status: number; message: string };
   error?: string;
 };
 
@@ -71,7 +72,12 @@ export async function bulkRegisterAcademy(
   let geminiRefined = false;
   let geminiSkipReason: string | undefined;
 
-  const geminiRequested = options.refineWithGemini !== false;
+  const clientPreRefined = Boolean(
+    input.title_copy?.trim() && input.curriculum?.trim()
+  );
+
+  const geminiRequested =
+    options.refineWithGemini !== false && !clientPreRefined;
   const geminiAvailable = Boolean(process.env.GEMINI_API_KEY?.trim());
 
   if (geminiRequested && !geminiAvailable) {
@@ -162,16 +168,20 @@ export async function bulkRegisterAcademy(
     };
   }
 
+  const pageUrl = academyPageUrl(insertResult.data.slug);
+  const indexnow = await submitToIndexNow([pageUrl]);
+
   return {
     ok: true,
     name,
     slug: insertResult.data.slug,
-    url: academyPageUrl(insertResult.data.slug),
+    url: pageUrl,
     storage: insertResult.uploads?.length ? "r2" : "supabase",
     imageCount: countAcademyImages(logo_image, academy_images),
     imageErrors: imageErrors.length ? imageErrors : undefined,
-    geminiRefined,
+    geminiRefined: clientPreRefined || geminiRefined,
     geminiSkipReason,
+    indexnow,
   };
 }
 
