@@ -190,6 +190,8 @@ def prepare_register_payload(
     item: dict,
     api_url: str,
     log: LogFn = print,
+    *,
+    category: str = "academy",
 ) -> dict:
     """등록 payload — 이미지는 R2 URL로 치환."""
     payload = dict(item)
@@ -200,5 +202,9 @@ def prepare_register_payload(
     r2_urls = mirror_images_for_register(raw_urls, api_url, log=log)
     if r2_urls:
         payload["logo_image"] = r2_urls[0]
-        payload["academy_images"] = r2_urls[1:3]
+        gallery = r2_urls[1:3]
+        if category == "academy":
+            payload["academy_images"] = gallery
+        else:
+            payload["gallery_images"] = gallery
     return payload

@@ -1,6 +1,15 @@
 import { createPresignedPutObject } from "@/lib/upload/presign";
-import { getPublicBaseUrl } from "@/lib/upload/r2-server";
 import type { Listing, ListingCategory, ListingInsert } from "@/lib/types/listing";
+import {
+  fetchListingFromR2,
+  loadLatestListingList,
+} from "@/lib/listings/r2-read";
+
+export {
+  fetchListingsFromR2,
+  fetchListingFromR2,
+  loadLatestListingList,
+} from "@/lib/listings/r2-read";
 
 export type R2UploadTask = {
   uploadUrl: string;
@@ -8,76 +17,12 @@ export type R2UploadTask = {
   body: string;
 };
 
-function indexKey(category: ListingCategory): string {
-  return `listings/${category}/index.json`;
-}
-
 function dataKey(category: ListingCategory, slug: string): string {
   return `listings/${category}/data/${slug}.json`;
 }
 
-function indexPublicUrl(category: ListingCategory): string {
-  return `${getPublicBaseUrl()}/${indexKey(category)}`;
-}
-
-function dataPublicUrl(category: ListingCategory, slug: string): string {
-  return `${getPublicBaseUrl()}/${dataKey(category, slug)}`;
-}
-
-export async function fetchListingsFromR2(
-  category: ListingCategory,
-  options?: { noCache?: boolean }
-): Promise<Listing[]> {
-  try {
-    const res = await fetch(indexPublicUrl(category), {
-      ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { listings?: Listing[] };
-    return Array.isArray(data.listings) ? data.listings : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchListingFromR2(
-  category: ListingCategory,
-  slug: string,
-  options?: { noCache?: boolean }
-): Promise<Listing | null> {
-  try {
-    const res = await fetch(dataPublicUrl(category, slug), {
-      ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as Listing & { deleted?: boolean };
-      if (data.deleted) return null;
-      return data;
-    }
-  } catch {
-    // fall through
-  }
-
-  const list = await fetchListingsFromR2(category, options);
-  return list.find((item) => item.slug === slug) ?? null;
-}
-
-export async function loadLatestListingList(
-  category: ListingCategory
-): Promise<Listing[]> {
-  const indexList = await fetchListingsFromR2(category, { noCache: true });
-  if (indexList.length === 0) return [];
-
-  const merged = await Promise.all(
-    indexList.map(async (summary) => {
-      const latest = await fetchListingFromR2(category, summary.slug, {
-        noCache: true,
-      });
-      return latest ?? summary;
-    })
-  );
-
-  return merged;
+function indexKey(category: ListingCategory): string {
+  return `listings/${category}/index.json`;
 }
 
 async function buildListingR2Uploads(

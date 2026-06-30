@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YourDogZone 애견미용학원 자동 수집·등록 GUI"""
+"""YourDogZone 네이버 플레이스 자동 수집·등록 GUI"""
 
 from __future__ import annotations
 
@@ -10,9 +10,13 @@ from pathlib import Path
 from tkinter import messagebox, scrolledtext, ttk
 
 from pipeline import (
+    LISTING_CATEGORIES,
     PipelineSettings,
+    category_label,
+    format_category_option,
     list_crawled_files,
     load_settings_from_files,
+    parse_category_option,
     parse_search_lines,
     register_from_json,
     run_collect,
@@ -21,15 +25,17 @@ from pipeline import (
 )
 
 SCRIPT_DIR = Path(__file__).parent
-APP_TITLE = "유아독존 — 애견미용학원 자동 등록"
+APP_TITLE = "유아독존 — 네이버 플레이스 자동 등록"
+
+CATEGORY_OPTIONS = [format_category_option(k) for k in LISTING_CATEGORIES]
 
 
 class AcademyRegisterApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("720x820")
-        self.minsize(640, 680)
+        self.geometry("720x860")
+        self.minsize(640, 700)
         self.configure(bg="#f5f5f7")
 
         self.log_queue: queue.Queue[str] = queue.Queue()
@@ -46,7 +52,7 @@ class AcademyRegisterApp(tk.Tk):
 
         header = tk.Label(
             self,
-            text="네이버 플레이스 → 수집 → 로컬 Gemini 변환 → 사이트 등록",
+            text="네이버 플레이스 → 수집 → 로컬 Gemini 변환 → 카테고리별 사이트 등록",
             font=("Segoe UI", 11, "bold"),
             bg="#f5f5f7",
             fg="#333",
@@ -63,13 +69,36 @@ class AcademyRegisterApp(tk.Tk):
         frm = tk.Frame(tab_settings, bg="#fff")
         frm.pack(fill="x", padx=16, pady=12)
 
-        tk.Label(frm, text="사이트 URL", bg="#fff", anchor="w").grid(row=0, column=0, sticky="w", **pad)
-        self.api_url_var = tk.StringVar()
-        tk.Entry(frm, textvariable=self.api_url_var, width=52).grid(row=0, column=1, **pad)
+        tk.Label(frm, text="등록 카테고리", bg="#fff", anchor="w").grid(
+            row=0, column=0, sticky="w", **pad
+        )
+        self.category_var = tk.StringVar()
+        self.category_combo = ttk.Combobox(
+            frm,
+            textvariable=self.category_var,
+            values=CATEGORY_OPTIONS,
+            state="readonly",
+            width=30,
+        )
+        self.category_combo.grid(row=0, column=1, sticky="w", **pad)
+        self.category_combo.bind("<<ComboboxSelected>>", self._on_category_change)
+        tk.Label(
+            frm,
+            text="선택한 카테고리로 사이트에 저장됩니다 (academy / adoption / shelter / funeral / breeder / hospital)",
+            bg="#fff",
+            fg="#888",
+            font=("Segoe UI", 8),
+            wraplength=420,
+            justify="left",
+        ).grid(row=1, column=1, sticky="w", padx=12)
 
-        tk.Label(frm, text="관리자 비밀키", bg="#fff", anchor="w").grid(row=1, column=0, sticky="w", **pad)
+        tk.Label(frm, text="사이트 URL", bg="#fff", anchor="w").grid(row=2, column=0, sticky="w", **pad)
+        self.api_url_var = tk.StringVar()
+        tk.Entry(frm, textvariable=self.api_url_var, width=52).grid(row=2, column=1, **pad)
+
+        tk.Label(frm, text="관리자 비밀키", bg="#fff", anchor="w").grid(row=3, column=0, sticky="w", **pad)
         self.secret_var = tk.StringVar()
-        tk.Entry(frm, textvariable=self.secret_var, width=52, show="•").grid(row=1, column=1, **pad)
+        tk.Entry(frm, textvariable=self.secret_var, width=52, show="•").grid(row=3, column=1, **pad)
 
         tk.Label(
             frm,
@@ -77,14 +106,14 @@ class AcademyRegisterApp(tk.Tk):
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),
-        ).grid(row=2, column=1, sticky="w", padx=12)
+        ).grid(row=4, column=1, sticky="w", padx=12)
 
         tk.Label(frm, text="Gemini API 키", bg="#fff", anchor="w").grid(
-            row=3, column=0, sticky="w", **pad
+            row=5, column=0, sticky="w", **pad
         )
         self.gemini_key_var = tk.StringVar()
         tk.Entry(frm, textvariable=self.gemini_key_var, width=52, show="•").grid(
-            row=3, column=1, **pad
+            row=5, column=1, **pad
         )
         tk.Label(
             frm,
@@ -92,13 +121,13 @@ class AcademyRegisterApp(tk.Tk):
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),
-        ).grid(row=4, column=1, sticky="w", padx=12)
+        ).grid(row=6, column=1, sticky="w", padx=12)
 
         tk.Label(frm, text="타이틀 추가 문구", bg="#fff", anchor="w").grid(
-            row=5, column=0, sticky="w", **pad
+            row=7, column=0, sticky="w", **pad
         )
         self.seo_suffix_var = tk.StringVar()
-        tk.Entry(frm, textvariable=self.seo_suffix_var, width=52).grid(row=5, column=1, **pad)
+        tk.Entry(frm, textvariable=self.seo_suffix_var, width=52).grid(row=7, column=1, **pad)
         tk.Label(
             frm,
             text='페이지 title 뒤에 붙는 문구 (예: "반려견 미용 추천" → 업체명|지역|추가문구|유아독존)',
@@ -107,24 +136,25 @@ class AcademyRegisterApp(tk.Tk):
             font=("Segoe UI", 8),
             wraplength=420,
             justify="left",
-        ).grid(row=6, column=1, sticky="w", padx=12)
+        ).grid(row=8, column=1, sticky="w", padx=12)
 
         tk.Label(frm, text="검색어 (줄마다 1개)", bg="#fff", anchor="nw").grid(
-            row=7, column=0, sticky="nw", **pad
+            row=9, column=0, sticky="nw", **pad
         )
         self.search_text = scrolledtext.ScrolledText(frm, width=40, height=8, font=("Segoe UI", 10))
-        self.search_text.grid(row=7, column=1, **pad)
-        tk.Label(
+        self.search_text.grid(row=9, column=1, **pad)
+        self.search_hint_label = tk.Label(
             frm,
-            text="예: 부천 애견미용학원\n     인천 애견미용학원|5  (← |5 는 최대 5곳)",
+            text="",
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),
             justify="left",
-        ).grid(row=8, column=1, sticky="w", padx=12)
+        )
+        self.search_hint_label.grid(row=10, column=1, sticky="w", padx=12)
 
         opts = tk.Frame(frm, bg="#fff")
-        opts.grid(row=9, column=1, sticky="w", **pad)
+        opts.grid(row=11, column=1, sticky="w", **pad)
 
         tk.Label(opts, text="검색당 최대", bg="#fff").pack(side="left")
         self.max_var = tk.IntVar(value=3)
@@ -137,7 +167,7 @@ class AcademyRegisterApp(tk.Tk):
         )
 
         opts2 = tk.Frame(frm, bg="#fff")
-        opts2.grid(row=10, column=1, sticky="w", padx=12, pady=(0, 6))
+        opts2.grid(row=12, column=1, sticky="w", padx=12, pady=(0, 6))
 
         self.gemini_var = tk.BooleanVar(value=True)
         tk.Checkbutton(opts2, text="Gemini 소개글 편집 (로컬)", variable=self.gemini_var, bg="#fff").pack(
@@ -169,7 +199,7 @@ class AcademyRegisterApp(tk.Tk):
 
         tk.Label(
             tab_files,
-            text="이전에 수집한 JSON 파일만 등록할 때 선택하세요.",
+            text="이전에 수집한 JSON 파일만 등록할 때 선택하세요. (파일명·내용의 category 기준)",
             bg="#fff",
             fg="#666",
         ).pack(pady=8)
@@ -241,8 +271,29 @@ class AcademyRegisterApp(tk.Tk):
         )
         self.log_text.pack(fill="both", expand=True)
 
+    def _current_category_id(self) -> str:
+        return parse_category_option(self.category_var.get())
+
+    def _set_category_id(self, category_id: str) -> None:
+        if category_id not in LISTING_CATEGORIES:
+            category_id = "academy"
+        self.category_var.set(format_category_option(category_id))
+        self._update_search_hint(category_id)
+
+    def _update_search_hint(self, category_id: str | None = None) -> None:
+        cat = category_id or self._current_category_id()
+        cfg = LISTING_CATEGORIES.get(cat, LISTING_CATEGORIES["academy"])
+        hint = cfg["search_hint"]
+        self.search_hint_label.config(
+            text=f"예: 부천 {hint}\n     인천 {hint}|5  (← |5 는 최대 5곳)"
+        )
+
+    def _on_category_change(self, _event=None) -> None:
+        self._update_search_hint()
+
     def _load_initial_settings(self) -> None:
         s = load_settings_from_files()
+        self._set_category_id(s.category)
         self.api_url_var.set(s.api_url)
         self.secret_var.set(s.admin_secret)
         self.gemini_key_var.set(s.gemini_api_key)
@@ -259,13 +310,16 @@ class AcademyRegisterApp(tk.Tk):
                 lines.append(f"{q}|{m}" if m != s.max_per_search else q)
             self.search_text.insert("1.0", "\n".join(lines))
         else:
+            hint = LISTING_CATEGORIES.get(s.category, LISTING_CATEGORIES["academy"])["search_hint"]
             self.search_text.insert(
                 "1.0",
-                "부천 애견미용학원\n인천 애견미용학원\n서울 강남 애견미용학원",
+                f"부천 {hint}\n인천 {hint}\n서울 강남 {hint}",
             )
 
         self._refresh_json_list()
-        self._log("프로그램 준비 완료. 설정 확인 후 버튼을 누르세요.")
+        self._log(
+            f"프로그램 준비 완료. 카테고리: {category_label(s.category)} — 설정 확인 후 버튼을 누르세요."
+        )
 
     def _get_settings(self) -> PipelineSettings:
         searches = parse_search_lines(self.search_text.get("1.0", "end"), self.max_var.get())
@@ -274,6 +328,7 @@ class AcademyRegisterApp(tk.Tk):
             admin_secret=self.secret_var.get().strip(),
             gemini_api_key=self.gemini_key_var.get().strip(),
             seo_title_suffix=self.seo_suffix_var.get().strip(),
+            category=self._current_category_id(),
             searches=searches,
             max_per_search=self.max_var.get(),
             delay_seconds=self.delay_var.get(),
@@ -285,8 +340,10 @@ class AcademyRegisterApp(tk.Tk):
         try:
             s = self._get_settings()
             save_settings(s)
-            self._log("✓ 설정 저장 완료 (.env + config.json)")
-            messagebox.showinfo("저장", "설정이 저장되었습니다.")
+            self._log(
+                f"✓ 설정 저장 완료 — 카테고리: {category_label(s.category)} (.env + config.json)"
+            )
+            messagebox.showinfo("저장", f"설정이 저장되었습니다.\n카테고리: {category_label(s.category)}")
         except Exception as e:
             messagebox.showerror("오류", str(e))
 
@@ -385,6 +442,7 @@ class AcademyRegisterApp(tk.Tk):
         self.running = True
         self._set_buttons(False)
         self._log("\n" + "—" * 40)
+        self._log(f"카테고리: {category_label(settings.category)} ({settings.category})")
 
         def worker():
             try:
@@ -423,7 +481,7 @@ class AcademyRegisterApp(tk.Tk):
                 on_browser_ready=self._wait_user_confirm,
             )
             if ok:
-                self._log("\n✓ 수집 및 등록 완료!")
+                self._log(f"\n✓ 수집 및 등록 완료! ({category_label(settings.category)})")
             else:
                 self._log("\n⚠ 일부 실패 또는 등록할 항목 없음")
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -14,6 +14,58 @@ from naver_crawler import NaverPlaceCrawler, PlaceData
 
 SCRIPT_DIR = Path(__file__).parent
 LogFn = Callable[[str], None]
+
+LISTING_CATEGORIES: dict[str, dict[str, str]] = {
+    "academy": {
+        "label": "애견미용학원",
+        "search_hint": "애견미용학원",
+        "default_suffix": "반려견 미용 추천",
+    },
+    "adoption": {
+        "label": "강아지분양",
+        "search_hint": "강아지분양",
+        "default_suffix": "강아지분양",
+    },
+    "shelter": {
+        "label": "강아지보호소",
+        "search_hint": "강아지보호소",
+        "default_suffix": "강아지보호소",
+    },
+    "funeral": {
+        "label": "강아지장례식장",
+        "search_hint": "강아지장례",
+        "default_suffix": "강아지장례",
+    },
+    "breeder": {
+        "label": "브리더정보",
+        "search_hint": "애견브리더",
+        "default_suffix": "브리더",
+    },
+    "hospital": {
+        "label": "동물병원",
+        "search_hint": "동물병원",
+        "default_suffix": "동물병원",
+    },
+}
+
+
+def category_label(category: str) -> str:
+    return LISTING_CATEGORIES.get(category, {}).get("label", category)
+
+
+def format_category_option(category: str) -> str:
+    return f"{category_label(category)} ({category})"
+
+
+def parse_category_option(text: str) -> str:
+    text = text.strip()
+    if text in LISTING_CATEGORIES:
+        return text
+    if "(" in text and text.endswith(")"):
+        key = text.rsplit("(", 1)[-1].rstrip(")")
+        if key in LISTING_CATEGORIES:
+            return key
+    return "academy"
 
 
 @dataclass
@@ -150,12 +202,20 @@ def crawl_places(
     return places
 
 
-def save_places_json(places: list[PlaceData], log: LogFn) -> Path:
+def save_places_json(
+    places: list[PlaceData],
+    log: LogFn,
+    *,
+    category: str = "academy",
+) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = SCRIPT_DIR / f"crawled_{timestamp}.json"
-    payload = [p.to_api_payload() for p in places]
+    path = SCRIPT_DIR / f"crawled_{category}_{timestamp}.json"
+    payload = {
+        "category": category,
+        "items": [p.to_api_payload() for p in places],
+    }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    log(f"저장: {path.name}")
+    log(f"저장: {path.name} ({category_label(category)})")
     return path
 
 
@@ -177,13 +237,16 @@ def register_places(
         targets = [p for p in places if p.name.strip() not in existing]
         skipped = len(places) - len(targets)
         if skipped:
-            log(f"이미 등록된 학원 {skipped}곳 건너뜀")
+            log(f"이미 등록된 {category_label(settings.category)} {skipped}곳 건너뜀")
 
     if not targets:
-        log("등록할 새 학원이 없습니다.")
+        log(f"등록할 새 {category_label(settings.category)} 항목이 없습니다.")
         return 0, 0
 
-    log(f"\n등록 시작 ({len(targets)}건, Gemini 로컬={'ON' if settings.refine_with_gemini else 'OFF'})")
+    log(
+        f"\n등록 시작 — {category_label(settings.category)} ({settings.category}), "
+        f"{len(targets)}건, Gemini 로컬={'ON' if settings.refine_with_gemini else 'OFF'})"
+    )
     if settings.seo_title_suffix.strip():
         log(f"  타이틀 추가 문구: {settings.seo_title_suffix.strip()}")
     items = [p.to_api_payload() for p in targets]
@@ -206,7 +269,12 @@ def register_places(
 
 def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tuple[int, int]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    items = data if isinstance(data, list) else data.get("items", [])
+    category = settings.category
+    if isinstance(data, dict):
+        category = str(data.get("category") or settings.category)
+        items = data.get("items", [])
+    else:
+        items = data
     places = [
         PlaceData(
             name=i["name"],
@@ -219,8 +287,8 @@ def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tu
         for i in items
         if i.get("name") and i.get("address")
     ]
-    log(f"JSON에서 {len(places)}건 로드: {path.name}")
-    return register_places(places, settings, log)
+    log(f"JSON에서 {len(places)}건 로드: {path.name} ({category_label(category)})")
+    return register_places(places, replace(settings, category=category), log)
 
 
 def run_collect(
@@ -231,9 +299,9 @@ def run_collect(
     settings.apply_env()
     places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
     if not places:
-        log("수집된 학원이 없습니다.")
+        log(f"수집된 {category_label(settings.category)} 항목이 없습니다.")
         return None
-    return save_places_json(places, log)
+    return save_places_json(places, log, category=settings.category)
 
 
 def run_collect_and_register(
@@ -244,9 +312,9 @@ def run_collect_and_register(
     settings.apply_env()
     places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
     if not places:
-        log("수집된 학원이 없습니다.")
+        log(f"수집된 {category_label(settings.category)} 항목이 없습니다.")
         return False
-    save_places_json(places, log)
+    save_places_json(places, log, category=settings.category)
     log(f"\n④ 수집 완료 ({len(places)}곳) → 사이트 등록 시작")
     ok, fail = register_places(places, settings, log)
     return fail == 0 and ok > 0

@@ -129,14 +129,16 @@ def register_all(
 
         if refine_gemini:
             if os.getenv("GEMINI_API_KEY", "").strip():
-                working, gemini_ok = apply_refine_to_item(working, log=log)
+                working, gemini_ok = apply_refine_to_item(
+                    working, log=log, category=category
+                )
             else:
                 log("    ⚠ GEMINI_API_KEY 없음 — 원문 그대로 등록")
 
         local_gemini_flags.append(gemini_ok)
         if seo_title_suffix:
             working["seo_title_suffix"] = seo_title_suffix
-        payload = prepare_register_payload(working, api, log=log)
+        payload = prepare_register_payload(working, api, log=log, category=category)
         if payload.get("academy_images") or payload.get("logo_image"):
             skip_mirror = True
         prepared.append(payload)

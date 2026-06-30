@@ -2,6 +2,10 @@ import type { Listing, ListingCategory, ListingInsert } from "@/lib/types/listin
 import type { Academy } from "@/lib/types/academy";
 import {
   loadLatestListingList,
+  fetchListingFromR2,
+  normalizeListingSlug,
+} from "@/lib/listings/r2-read";
+import {
   prepareListingPremiumUpdate,
   prepareListingR2Deletes,
   prepareListingR2Insert,
@@ -25,8 +29,14 @@ export async function getListingBySlug(
   category: ListingCategory,
   slug: string
 ): Promise<Listing | null> {
+  const normalized = normalizeListingSlug(slug);
+  const direct = await fetchListingFromR2(category, normalized, { noCache: true });
+  if (direct) return direct;
+
   const list = await loadLatestListingList(category);
-  return list.find((item) => item.slug === slug) ?? null;
+  return (
+    list.find((item) => normalizeListingSlug(item.slug) === normalized) ?? null
+  );
 }
 
 export async function getListingSlugs(
@@ -158,7 +168,10 @@ export function getGalleryImages(listing: Listing, max = 3): string[] {
     result.push(url);
   };
   add(listing.logo_image);
-  for (const url of listing.gallery_images ?? []) add(url);
+  const gallery = listing.gallery_images;
+  if (Array.isArray(gallery)) {
+    for (const url of gallery) add(url);
+  }
   return result.slice(0, max);
 }
 

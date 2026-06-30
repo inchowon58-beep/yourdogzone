@@ -8,34 +8,18 @@ import {
   getListingConfig,
   isListingCategory,
   listingBasePath,
+  listingDetailPath,
 } from "@/lib/listings/config";
-import { getGalleryImages, getListingBySlug, getListingSlugs } from "@/lib/listings/queries";
+import { getGalleryImages, getListingBySlug } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import type { ListingCategory } from "@/lib/types/listing";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 type PageProps = {
   params: Promise<{ service: string; slug: string }>;
 };
-
-export async function generateStaticParams() {
-  const categories: ListingCategory[] = [
-    "adoption",
-    "shelter",
-    "funeral",
-    "breeder",
-    "hospital",
-  ];
-  const params: { service: string; slug: string }[] = [];
-  for (const category of categories) {
-    const slugs = await getListingSlugs(category);
-    for (const slug of slugs) {
-      params.push({ service: category, slug });
-    }
-  }
-  return params;
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { service, slug } = await params;
@@ -45,8 +29,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const config = getListingConfig(service);
   return buildPageMetadata({
     title: `${listing.name} | ${listing.region_big} ${config.title}`,
-    description: listing.title_copy,
-    path: `${listingBasePath(service)}/${slug}`,
+    description: listing.title_copy || `${listing.name} ${config.title}`,
+    path: listingDetailPath(service, listing.slug),
     keywords: [listing.name, config.title, listing.region_big, listing.region_small],
   });
 }
@@ -154,7 +138,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
           </p>
         </section>
 
-        <AcademyOwnerPromoBanner academyName={listing.name} />
+        <AcademyOwnerPromoBanner
+          academyName={listing.name}
+          applyHref={`${basePath}/register`}
+        />
       </article>
     </main>
   );
