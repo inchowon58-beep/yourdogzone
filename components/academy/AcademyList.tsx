@@ -4,16 +4,26 @@ import type { Academy } from "@/lib/types/academy";
 import { getAcademyThumbnail } from "@/lib/academy/images";
 import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
 
-export function AcademyList({ academies }: { academies: Academy[] }) {
+export function AcademyList({
+  academies,
+  servicePath = "/services/academy",
+  listTitle = "전체 학원",
+  registerLabel = "학원 정보 등록하기",
+}: {
+  academies: Academy[];
+  servicePath?: string;
+  listTitle?: string;
+  registerLabel?: string;
+}) {
   if (academies.length === 0) {
     return (
       <div className="rounded-2xl bg-white p-12 text-center shadow-[var(--card-shadow)]">
-        <p className="text-muted">검색 조건에 맞는 학원이 없습니다.</p>
+        <p className="text-muted">검색 조건에 맞는 항목이 없습니다.</p>
         <Link
-          href="/services/academy/register"
+          href={`${servicePath}/register`}
           className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
         >
-          학원 정보 등록하기 →
+          {registerLabel} →
         </Link>
       </div>
     );
@@ -21,12 +31,12 @@ export function AcademyList({ academies }: { academies: Academy[] }) {
 
   return (
     <section>
-      <h2 className="mb-4 text-lg font-bold text-foreground">전체 학원</h2>
+      <h2 className="mb-4 text-lg font-bold text-foreground">{listTitle}</h2>
       <ul className="divide-y divide-gray-50 overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
         {academies.map((academy) => (
           <li key={academy.id}>
             <Link
-              href={`/services/academy/${academy.slug}`}
+              href={`${servicePath}/${academy.slug}`}
               className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-gray-50/80 sm:gap-4 sm:px-6 sm:py-5"
             >
               <AcademyThumbnail

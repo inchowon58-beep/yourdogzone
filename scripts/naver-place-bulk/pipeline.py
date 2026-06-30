@@ -22,6 +22,7 @@ class PipelineSettings:
     admin_secret: str = ""
     gemini_api_key: str = ""
     seo_title_suffix: str = ""
+    category: str = "academy"
     searches: list[dict] = field(default_factory=list)
     max_per_search: int = 3
     delay_seconds: float = 2.0
@@ -36,6 +37,7 @@ class PipelineSettings:
 
     def to_config_dict(self) -> dict:
         return {
+            "category": self.category,
             "searches": self.searches,
             "delay_seconds": self.delay_seconds,
             "refine_with_gemini": self.refine_with_gemini,
@@ -91,6 +93,7 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
         settings.refine_with_gemini = bool(data.get("refine_with_gemini", True))
         settings.use_chrome_profile = bool(data.get("use_chrome_profile", True))
         settings.seo_title_suffix = str(data.get("seo_title_suffix", "") or "")
+        settings.category = str(data.get("category", "academy") or "academy")
         if settings.searches:
             settings.max_per_search = int(settings.searches[0].get("max", 3))
 
@@ -111,10 +114,10 @@ def save_settings(settings: PipelineSettings, script_dir: Path | None = None) ->
     )
 
 
-def _fetch_registered_names(log: LogFn) -> set[str]:
+def _fetch_registered_names(category: str, log: LogFn) -> set[str]:
     from api_client import fetch_registered_names
 
-    return fetch_registered_names(log)
+    return fetch_registered_names(category, log)
 
 
 def crawl_places(
@@ -170,7 +173,7 @@ def register_places(
 
     targets = places
     if skip_existing:
-        existing = _fetch_registered_names(log)
+        existing = _fetch_registered_names(settings.category, log)
         targets = [p for p in places if p.name.strip() not in existing]
         skipped = len(places) - len(targets)
         if skipped:
@@ -188,10 +191,16 @@ def register_places(
         items,
         refine_gemini=settings.refine_with_gemini,
         seo_title_suffix=settings.seo_title_suffix.strip(),
+        category=settings.category,
         log=log,
     )
     log(f"\n등록 결과: 성공 {ok} | 실패 {fail}")
-    log(f"확인: {settings.api_url.rstrip('/')}/services/academy")
+    service_path = (
+        "/services/academy"
+        if settings.category == "academy"
+        else f"/services/{settings.category}"
+    )
+    log(f"확인: {settings.api_url.rstrip('/')}{service_path}")
     return ok, fail
 
 

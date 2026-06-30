@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { SERVICES } from "@/lib/constants/services";
 import { absoluteUrl } from "@/lib/site/config";
 import { getLandingPages } from "@/lib/seo/landing-pages";
+import { LISTING_CATEGORIES, listingBasePath } from "@/lib/listings/config";
+import { getListings } from "@/lib/listings/queries";
 import { getAcademies } from "@/lib/academy/queries";
 
 export const revalidate = 3600;
@@ -39,5 +41,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: academy.is_premium ? 0.85 : 0.75,
   }));
 
-  return [...STATIC_ROUTES, ...serviceRoutes, ...academyRoutes, ...landingRoutes];
+  const listingRoutes: MetadataRoute.Sitemap = [];
+  for (const category of LISTING_CATEGORIES) {
+    const listings = await getListings(category);
+    for (const item of listings) {
+      listingRoutes.push({
+        url: absoluteUrl(`${listingBasePath(category)}/${item.slug}`),
+        lastModified: item.updated_at ? new Date(item.updated_at) : undefined,
+        changeFrequency: "weekly" as const,
+        priority: item.is_premium ? 0.85 : 0.75,
+      });
+    }
+  }
+
+  return [...STATIC_ROUTES, ...serviceRoutes, ...academyRoutes, ...listingRoutes, ...landingRoutes];
 }

@@ -5,8 +5,15 @@ import {
   type BulkAcademyInput,
 } from "@/lib/academy/bulk-register";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
+import {
+  bulkRegisterListing,
+  bulkRegisterListings,
+  type BulkListingInput,
+} from "@/lib/listings/bulk-register";
+import { isListingCategory } from "@/lib/listings/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { absoluteUrl } from "@/lib/site/config";
+import type { ListingCategory } from "@/lib/types/listing";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -30,11 +37,29 @@ function normalizeItems(body: Record<string, unknown>): BulkAcademyInput[] {
   return [];
 }
 
+function normalizeListingItems(body: Record<string, unknown>): BulkListingInput[] {
+  if (Array.isArray(body.items)) {
+    return body.items as BulkListingInput[];
+  }
+  if (body.name && body.address) {
+    return [body as unknown as BulkListingInput];
+  }
+  return [];
+}
+
 export async function GET() {
   return NextResponse.json({
     endpoint: "/api/admin/bulk-register",
     auth: "x-admin-secret 또는 Authorization: Bearer {ACADEMY_ADMIN_SECRET}",
     storage: isSupabaseConfigured() ? "supabase" : "r2-json",
+    categories: {
+      academy: "애견미용학원 (기본, category 생략 시)",
+      adoption: "강아지분양",
+      shelter: "강아지보호소",
+      funeral: "강아지장례식장",
+      breeder: "브리더정보",
+      hospital: "동물병원",
+    },
     gemini_configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
     indexnow_configured: Boolean(process.env.INDEXNOW_KEY?.trim()),
     indexnow_key_location: process.env.INDEXNOW_KEY
@@ -77,6 +102,37 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
+    const categoryRaw =
+      typeof body.category === "string" ? body.category : "academy";
+
+    if (isListingCategory(categoryRaw)) {
+      const category = categoryRaw as ListingCategory;
+      const items = normalizeListingItems(body);
+
+      if (items.length === 0) {
+        return NextResponse.json(
+          { error: "items 배열 또는 단일 객체(name, address)가 필요합니다." },
+          { status: 400 }
+        );
+      }
+      if (items.length > MAX_BATCH_SIZE) {
+        return NextResponse.json(
+          { error: `한 번에 최대 ${MAX_BATCH_SIZE}건까지 등록할 수 있습니다.` },
+          { status: 400 }
+        );
+      }
+
+      if (items.length === 1) {
+        const result = await bulkRegisterListing(category, items[0]);
+        return NextResponse.json({ category, ...result }, { status: result.ok ? 200 : 422 });
+      }
+
+      const batch = await bulkRegisterListings(category, items);
+      return NextResponse.json({ category, ...batch }, {
+        status: batch.failed === batch.total ? 422 : 200,
+      });
+    }
+
     const items = normalizeItems(body);
 
     if (items.length === 0) {

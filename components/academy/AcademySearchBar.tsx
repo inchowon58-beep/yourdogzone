@@ -4,7 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Search } from "lucide-react";
 
-export function AcademySearchBar({ defaultQuery = "" }: { defaultQuery?: string }) {
+export function AcademySearchBar({
+  defaultQuery = "",
+  servicePath = "/services/academy",
+}: {
+  defaultQuery?: string;
+  servicePath?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(defaultQuery);
@@ -18,7 +24,7 @@ export function AcademySearchBar({ defaultQuery = "" }: { defaultQuery?: string 
     } else {
       params.delete("q");
     }
-    router.push(`/services/academy?${params.toString()}`);
+    router.push(`${servicePath}?${params.toString()}`);
   }
 
   return (

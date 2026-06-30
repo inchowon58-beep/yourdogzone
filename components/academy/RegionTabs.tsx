@@ -6,13 +6,17 @@ type RegionTabsProps = {
   query?: string;
 };
 
-export function RegionTabs({ activeRegion, query }: RegionTabsProps) {
+export function RegionTabs({
+  activeRegion,
+  query,
+  servicePath = "/services/academy",
+}: RegionTabsProps & { servicePath?: string }) {
   function buildHref(region: string) {
     const params = new URLSearchParams();
     if (region !== "전체") params.set("region", region);
     if (query) params.set("q", query);
     const qs = params.toString();
-    return `/services/academy${qs ? `?${qs}` : ""}`;
+    return `${servicePath}${qs ? `?${qs}` : ""}`;
   }
 
   return (

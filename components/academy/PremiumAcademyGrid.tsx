@@ -10,14 +10,24 @@ function galleryGridClass(count: number) {
   return "grid-cols-2 sm:grid-cols-3";
 }
 
-export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
+export function PremiumAcademyGrid({
+  academies,
+  servicePath = "/services/academy",
+  premiumTitle = "인증 추천 학원",
+  premiumBadge = "인증 추천 학원",
+}: {
+  academies: Academy[];
+  servicePath?: string;
+  premiumTitle?: string;
+  premiumBadge?: string;
+}) {
   if (academies.length === 0) return null;
 
   return (
     <section>
       <div className="mb-6 flex items-center gap-2">
         <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-        <h2 className="text-lg font-bold text-foreground">인증 추천 학원</h2>
+        <h2 className="text-lg font-bold text-foreground">{premiumTitle}</h2>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -27,12 +37,12 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
           return (
             <Link
               key={academy.id}
-              href={`/services/academy/${academy.slug}`}
+              href={`${servicePath}/${academy.slug}`}
               className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-4 shadow-[var(--card-shadow)] transition-all hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)] sm:p-6"
             >
               <span className="mb-4 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
                 <Star className="h-3 w-3 fill-white" />
-                인증 추천 학원
+                {premiumBadge}
               </span>
 
               {gallery.length > 0 && (

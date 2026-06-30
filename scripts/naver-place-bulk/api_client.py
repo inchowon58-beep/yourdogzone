@@ -61,20 +61,26 @@ def check_server_ready(log: LogFn = print) -> bool:
     return ok
 
 
-def fetch_registered_names(log: LogFn = print) -> set[str]:
+def fetch_registered_names(category: str = "academy", log: LogFn = print) -> set[str]:
     secret = _admin_secret()
     if not secret:
         return set()
+    if category == "academy":
+        admin_path = "/api/academy/admin"
+        list_key = "academies"
+    else:
+        admin_path = f"/api/listings/{category}/admin"
+        list_key = "listings"
     try:
         res = requests.get(
-            f"{_api_url()}/api/academy/admin",
+            f"{_api_url()}{admin_path}",
             headers={"x-admin-secret": secret},
             timeout=30,
         )
         if not res.ok:
             return set()
         data = res.json()
-        return {a.get("name", "").strip() for a in data.get("academies", []) if a.get("name")}
+        return {a.get("name", "").strip() for a in data.get(list_key, []) if a.get("name")}
     except requests.RequestException as e:
         log(f"⚠ 등록 목록 조회 실패: {e}")
         return set()
@@ -83,12 +89,14 @@ def fetch_registered_names(log: LogFn = print) -> set[str]:
 def register_batch(
     items: list[dict],
     *,
+    category: str = "academy",
     skip_image_mirror: bool = False,
 ) -> dict:
     res = requests.post(
         f"{_api_url()}/api/admin/bulk-register",
         headers=_headers(),
         json={
+            "category": category,
             "refine_with_gemini": False,
             "skip_image_mirror": skip_image_mirror,
             "items": items,
@@ -103,6 +111,7 @@ def register_all(
     items: list[dict],
     refine_gemini: bool = True,
     seo_title_suffix: str = "",
+    category: str = "academy",
     log: LogFn = print,
 ) -> tuple[int, int]:
     api = _api_url()
@@ -140,7 +149,7 @@ def register_all(
         batch_flags = local_gemini_flags[i : i + BATCH_SIZE]
         log(f"\n[등록 배치 {i // BATCH_SIZE + 1}] {len(batch)}건 전송…")
         try:
-            result = register_batch(batch, skip_image_mirror=skip_mirror)
+            result = register_batch(batch, category=category, skip_image_mirror=skip_mirror)
             rows = result.get("results", [result])
             for r, local_gemini in zip(rows, batch_flags):
                 if r.get("ok"):
