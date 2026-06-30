@@ -90,7 +90,7 @@ export async function prepareListingR2Insert(
     return {
       record: null,
       uploads: null,
-      error: "이미 등록된 slug입니다. 업체명이나 지역을 조금 바꿔 주세요.",
+      error: "이미 등록된 slug입니다. 잠시 후 다시 시도해 주세요.",
     };
   }
 

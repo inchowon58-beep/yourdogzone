@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const slug = generateAcademySlug(name, region_small, region_big);
+    const slug = generateAcademySlug();
 
     const logoImage =
       typeof logo_image === "string" && logo_image.startsWith("http")

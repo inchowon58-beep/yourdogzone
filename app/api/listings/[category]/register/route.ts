@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const slug = generateListingSlug(name, region_small, region_big);
+    const slug = generateListingSlug(category);
     const logoImage =
       typeof logo_image === "string" && logo_image.startsWith("http")
         ? logo_image

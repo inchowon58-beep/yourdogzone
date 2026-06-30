@@ -74,7 +74,7 @@ export function breedToFormData(breed: Breed): BreedFormData {
 }
 
 export function formDataToInsert(form: BreedFormData, slug?: string): BreedInsert {
-  const resolvedSlug = slug ?? generateBreedSlug(form.name_ko, form.name_en);
+  const resolvedSlug = slug ?? generateBreedSlug();
   return {
     slug: resolvedSlug,
     name_ko: form.name_ko.trim(),

@@ -127,7 +127,7 @@ export async function bulkRegisterAcademy(
   const uniqueImages = [...new Set(r2Images.filter((u) => u.startsWith("http")))];
   const { logo_image, academy_images } = splitAcademyImages(uniqueImages);
 
-  const slug = generateAcademySlug(name, region_small, region_big);
+  const slug = generateAcademySlug();
 
   const insertResult = await insertAcademy({
     slug,

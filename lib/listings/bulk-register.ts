@@ -99,7 +99,7 @@ export async function bulkRegisterListing(
     imageCount = mirrored.urls.length;
   }
 
-  const slug = generateListingSlug(name, region_small, region_big);
+  const slug = generateListingSlug(category);
 
   const insertResult = await insertListing({
     slug,

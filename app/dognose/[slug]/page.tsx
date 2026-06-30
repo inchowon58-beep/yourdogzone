@@ -8,6 +8,7 @@ import {
   breedDetailPath,
 } from "@/lib/breeds/config";
 import { getBreedBySlug } from "@/lib/breeds/queries";
+import { getBreedOgImages } from "@/lib/breeds/images";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: breed.summary,
     path: breedDetailPath(breed.slug),
     keywords: [breed.name_ko, breed.name_en, "견종소개", ...breed.tags],
+    images: getBreedOgImages(breed),
+    imageAlt: `${breed.name_ko} 견종 사진`,
   });
 }
 

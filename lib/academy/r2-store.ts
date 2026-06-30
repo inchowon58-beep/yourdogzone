@@ -84,7 +84,7 @@ export async function prepareAcademyR2Insert(
     return {
       record: null,
       uploads: null,
-      error: "이미 등록된 학원 slug입니다. 학원명이나 지역을 조금 바꿔 주세요.",
+      error: "이미 등록된 slug입니다. 잠시 후 다시 시도해 주세요.",
     };
   }
 

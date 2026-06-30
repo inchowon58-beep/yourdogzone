@@ -1,19 +1,8 @@
-export function generateBreedSlug(nameKo: string, nameEn?: string): string {
-  const fromEn = (nameEn || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+import { generateUniqueSlug } from "@/lib/slug/unique-id";
 
-  if (fromEn.length >= 2) return fromEn;
-
-  const fromKo = nameKo
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9가-힣-]/g, "")
-    .toLowerCase();
-
-  return fromKo || `breed-${Date.now().toString(36)}`;
+/** 견종 상세 URL slug — 영문 접두사 + 숫자 ID (한글명 미사용) */
+export function generateBreedSlug(): string {
+  return generateUniqueSlug("breed");
 }
 
 export function breedPageUrl(slug: string): string {

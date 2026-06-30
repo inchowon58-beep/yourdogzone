@@ -136,14 +136,8 @@ export function BreedForm({
               value={form.name_en}
               onChange={(e) => update("name_en", e.target.value)}
               placeholder="예: Maltipoo"
-              disabled={!!fixedSlug}
             />
           </Field>
-          {fixedSlug && (
-            <p className="text-xs text-muted">
-              수정 시 페이지 주소(slug)는 변경되지 않습니다.
-            </p>
-          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="종류">
               <select

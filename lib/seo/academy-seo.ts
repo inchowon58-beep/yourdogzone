@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { resolveOgImageUrls } from "@/lib/seo/og-image";
 
 export type AcademySeoContent = {
   title: string;
@@ -96,11 +97,12 @@ export function buildAcademyDetailMetadata(
       title: `${seo.title} | ${SITE_NAME}`,
       images: images.length
         ? images.map((url) => ({ url, alt: seo.ogImageAlt }))
-        : base.openGraph?.images,
+        : (base.openGraph?.images ?? resolveOgImageUrls().map((url) => ({ url, alt: seo.ogImageAlt }))),
     },
     twitter: {
       ...base.twitter,
       title: `${seo.title} | ${SITE_NAME}`,
+      images: images.length ? images : resolveOgImageUrls(),
     },
   };
 }
