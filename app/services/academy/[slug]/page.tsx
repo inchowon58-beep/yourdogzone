@@ -7,6 +7,7 @@ import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
+import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildAcademyBreadcrumbJsonLd,
@@ -173,6 +174,8 @@ export default async function AcademyDetailPage({ params }: PageProps) {
             전문으로 합니다. 유아독존에서 전국 애견미용학원 정보를 비교해 보세요.
           </p>
         </section>
+
+        <AcademyOwnerPromoBanner academyName={academy.name} />
       </article>
 
       {isPremium && <PremiumCtaBar academy={academy} />}
