@@ -40,7 +40,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
   const regular = all.filter((a) => !a.is_premium);
 
   return (
-    <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
+    <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
         data={[buildAcademyListJsonLd(all.length), buildAcademyListBreadcrumbJsonLd()]}
       />

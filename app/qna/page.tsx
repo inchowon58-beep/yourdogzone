@@ -33,7 +33,7 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function QnaPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="w-full min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
       <JsonLd data={buildFaqPageJsonLd(SAMPLE_QNA)} />
 
       <Link

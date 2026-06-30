@@ -13,7 +13,7 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function DognosePage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <Link
         href="/"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="flex-1 w-full min-w-0">
-      <section className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pt-16 md:pt-24">
+    <main className="flex w-full min-w-0 flex-1 flex-col items-center">
+      <section className="w-full min-w-0 max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pt-16 md:pt-24">
         <div className="mb-16 flex flex-col items-center text-center">
           <p className="mb-4 text-sm font-semibold tracking-wide text-primary">
             반려동물 통합 포털
