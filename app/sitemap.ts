@@ -5,6 +5,8 @@ import { getLandingPages } from "@/lib/seo/landing-pages";
 import { LISTING_CATEGORIES, listingBasePath } from "@/lib/listings/config";
 import { getListings } from "@/lib/listings/queries";
 import { getAcademies } from "@/lib/academy/queries";
+import { getBreeds } from "@/lib/breeds/queries";
+import { breedDetailPath } from "@/lib/breeds/config";
 
 export const revalidate = 3600;
 
@@ -54,5 +56,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  return [...STATIC_ROUTES, ...serviceRoutes, ...academyRoutes, ...listingRoutes, ...landingRoutes];
+  const breeds = await getBreeds();
+  const breedRoutes: MetadataRoute.Sitemap = breeds.map((breed) => ({
+    url: absoluteUrl(breedDetailPath(breed.slug)),
+    lastModified: breed.updated_at ? new Date(breed.updated_at) : undefined,
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
+  }));
+
+  return [
+    ...STATIC_ROUTES,
+    ...serviceRoutes,
+    ...academyRoutes,
+    ...listingRoutes,
+    ...breedRoutes,
+    ...landingRoutes,
+  ];
 }
