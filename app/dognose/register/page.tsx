@@ -26,8 +26,7 @@ export default function BreedRegisterPage() {
         <h1 className="text-2xl font-bold md:text-3xl">견종 정보 등록</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           텍스트 정보를 입력하면 견종 상세 페이지가 생성됩니다. 사진은 선택 사항이며
-          이후에도 추가할 수 있습니다. 동일한 견종명으로 다시 등록하면 기존 R2 데이터를
-          덮어씁니다.
+          관리 페이지에서도 추가·수정할 수 있습니다.
         </p>
       </div>
 

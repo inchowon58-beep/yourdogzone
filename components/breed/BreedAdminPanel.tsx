@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { BreedEditPanel } from "@/components/breed/BreedEditPanel";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
 
@@ -23,6 +24,7 @@ export function BreedAdminPanel() {
   const [inputSecret, setInputSecret] = useState("");
   const [breeds, setBreeds] = useState<BreedRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -83,6 +85,7 @@ export function BreedAdminPanel() {
     setBreeds([]);
     setSelected(new Set());
     setInputSecret("");
+    setEditingSlug(null);
   }
 
   function toggleSelect(slug: string) {
@@ -184,11 +187,31 @@ export function BreedAdminPanel() {
     );
   }
 
+  if (editingSlug) {
+    return (
+      <BreedEditPanel
+        slug={editingSlug}
+        adminSecret={secret}
+        onCancel={() => {
+          setEditingSlug(null);
+          void loadBreeds(secret);
+        }}
+        onSaved={() => void loadBreeds(secret)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">견종 관리</h1>
         <div className="flex gap-2">
+          <Link
+            href="/dognose/register"
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm hover:border-primary/30 hover:text-primary"
+          >
+            새 견종 등록
+          </Link>
           <button
             type="button"
             onClick={() => void loadBreeds(secret)}
@@ -209,12 +232,9 @@ export function BreedAdminPanel() {
       </div>
 
       <p className="mb-4 text-sm text-muted">
-        시드 데이터({breeds.filter((b) => b.source === "seed").length}종)는 코드에 포함되어
-        있으며, R2 등록분({r2Breeds.length}종)만 삭제할 수 있습니다. 사진·내용 수정은{" "}
-        <Link href="/dognose/register" className="text-primary underline">
-          등록 페이지
-        </Link>
-        에서 동일 slug로 다시 등록하면 덮어씁니다.
+        각 견종의 <strong className="font-medium text-foreground">수정</strong> 버튼으로
+        텍스트·사진을 편집할 수 있습니다. 시드 데이터도 수정 시 R2에 저장되어 반영됩니다.
+        R2 등록분({r2Breeds.length}종)만 삭제할 수 있습니다.
       </p>
 
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
@@ -248,11 +268,11 @@ export function BreedAdminPanel() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-100 bg-gray-50/80 text-xs text-muted">
             <tr>
-              <th className="px-4 py-3 w-10" />
+              <th className="w-10 px-4 py-3" />
               <th className="px-4 py-3">견종</th>
-              <th className="hidden px-4 py-3 sm:table-cell">종류</th>
+              <th className="hidden px-4 py-3 sm:table-cell">크기</th>
               <th className="hidden px-4 py-3 md:table-cell">출처</th>
-              <th className="px-4 py-3">링크</th>
+              <th className="px-4 py-3">관리</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -271,7 +291,7 @@ export function BreedAdminPanel() {
                   <div className="font-medium">{row.name_ko}</div>
                   <div className="text-xs text-muted">{row.name_en}</div>
                 </td>
-                <td className="hidden px-4 py-3 sm:table-cell text-muted">
+                <td className="hidden px-4 py-3 text-muted sm:table-cell">
                   {row.size_label}
                 </td>
                 <td className="hidden px-4 py-3 md:table-cell">
@@ -286,12 +306,22 @@ export function BreedAdminPanel() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <Link
-                    href={breedDetailPath(row.slug)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    보기
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingSlug(row.slug)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      수정
+                    </button>
+                    <Link
+                      href={breedDetailPath(row.slug)}
+                      className="text-xs text-muted hover:text-primary hover:underline"
+                    >
+                      보기
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
