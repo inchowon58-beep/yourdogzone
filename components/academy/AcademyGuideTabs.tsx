@@ -1,0 +1,210 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { ChevronRight, MapPin } from "lucide-react";
+import type { Academy } from "@/lib/types/academy";
+import {
+  ACADEMY_GUIDE_TABS,
+  type AcademyGuideTab,
+} from "@/lib/academy/guide-content";
+import {
+  buildGeoAcademyHeading,
+  resolveGeoLabel,
+} from "@/lib/academy/geo-label";
+import { getAcademyThumbnail } from "@/lib/academy/images";
+import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
+
+type AcademyGuideTabsProps = {
+  region: string;
+  query?: string;
+  academies: Academy[];
+};
+
+function GuidePanel({
+  tab,
+  geoLabel,
+  academies,
+}: {
+  tab: AcademyGuideTab;
+  geoLabel: string | null;
+  academies: Academy[];
+}) {
+  const regionalHeading = buildGeoAcademyHeading(geoLabel, tab.geoHint ?? "");
+  const preview = academies.slice(0, 5);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-foreground sm:text-xl">
+          {tab.headline}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{tab.intro}</p>
+      </div>
+
+      <div className="space-y-5">
+        {tab.sections.map((section) => (
+          <div
+            key={section.title}
+            className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 sm:p-5"
+          >
+            <h3 className="text-sm font-semibold text-foreground">
+              {section.title}
+            </h3>
+            <ul className="mt-3 space-y-2">
+              {section.items.map((item) => (
+                <li
+                  key={item}
+                  className="flex gap-2 text-sm leading-relaxed text-muted"
+                >
+                  <span
+                    className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary"
+                    aria-hidden
+                  />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 sm:p-5">
+        <h3 className="text-sm font-semibold text-foreground">
+          {regionalHeading}
+        </h3>
+        <p className="mt-1 text-xs text-muted">
+          {geoLabel
+            ? `${geoLabel} 지역 검색 결과를 바탕으로 학원을 비교해 보세요.`
+            : "지역 탭이나 검색창에 동네·시군구 이름을 입력하면 맞춤 리스트가 표시됩니다."}
+        </p>
+
+        {preview.length > 0 ? (
+          <ul className="mt-4 divide-y divide-indigo-100/80 rounded-lg bg-white/80">
+            {preview.map((academy) => (
+              <li key={academy.id}>
+                <Link
+                  href={`/services/academy/${academy.slug}`}
+                  className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-white sm:px-4"
+                >
+                  <AcademyThumbnail
+                    src={getAcademyThumbnail(academy)}
+                    alt={academy.name}
+                    className="h-11 w-11 shrink-0 rounded-lg"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {academy.name}
+                      {academy.is_premium && (
+                        <span className="ml-1.5 text-xs text-primary">
+                          인증
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {academy.region_big} {academy.region_small}
+                      </span>
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            해당 조건의 등록 학원이 아직 없습니다.{" "}
+            <Link href="/services/academy/register" className="text-primary hover:underline">
+              학원 등록
+            </Link>
+            을 요청하거나 다른 지역을 검색해 보세요.
+          </p>
+        )}
+
+        {academies.length > 5 && (
+          <a
+            href="#academy-list"
+            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
+            <ChevronRight className="h-4 w-4" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function AcademyGuideTabs({
+  region,
+  query,
+  academies,
+}: AcademyGuideTabsProps) {
+  const [activeId, setActiveId] = useState(ACADEMY_GUIDE_TABS[0].id);
+  const geoLabel = resolveGeoLabel(region, query);
+  const activeTab =
+    ACADEMY_GUIDE_TABS.find((t) => t.id === activeId) ?? ACADEMY_GUIDE_TABS[0];
+
+  return (
+    <section
+      className="mb-10 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[var(--card-shadow)]"
+      aria-label="애견미용학원 선택 가이드"
+    >
+      <div className="border-b border-gray-100 bg-gray-50/40 px-4 py-4 sm:px-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          학원 선택 가이드
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          수강료·국비·실습견·진로까지 — 일반인이 가장 많이 찾는 정보
+        </p>
+      </div>
+
+      <div
+        role="tablist"
+        aria-label="가이드 카테고리"
+        className="flex gap-1.5 overflow-x-auto border-b border-gray-100 px-3 py-3 scrollbar-hide sm:gap-2 sm:px-4"
+      >
+        {ACADEMY_GUIDE_TABS.map((tab) => {
+          const selected = tab.id === activeId;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`guide-tab-${tab.id}`}
+              aria-selected={selected}
+              aria-controls={`guide-panel-${tab.id}`}
+              onClick={() => setActiveId(tab.id)}
+              className={`shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all sm:px-4 sm:py-2.5 sm:text-sm ${
+                selected
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-gray-100/80 text-muted hover:bg-gray-100 hover:text-foreground"
+              }`}
+            >
+              <span className="mr-1" aria-hidden>
+                {tab.emoji}
+              </span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.shortLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`guide-panel-${activeTab.id}`}
+        aria-labelledby={`guide-tab-${activeTab.id}`}
+        className="p-4 sm:p-6"
+      >
+        <GuidePanel
+          tab={activeTab}
+          geoLabel={geoLabel}
+          academies={academies}
+        />
+      </div>
+    </section>
+  );
+}

@@ -6,6 +6,7 @@ import { getAcademies } from "@/lib/academy/queries";
 import { AcademySearchBar } from "@/components/academy/AcademySearchBar";
 import { RegionTabs } from "@/components/academy/RegionTabs";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
+import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -13,6 +14,8 @@ import {
   buildAcademyListJsonLd,
 } from "@/lib/seo/academy-jsonld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
+import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "전국 애견미용학원 정보 통합 검색",
@@ -26,6 +29,9 @@ export const metadata: Metadata = buildPageMetadata({
     "애견미용 자격증",
     "반려견 미용 교육",
     "지역별 애견미용학원",
+    "애견미용학원 수강료",
+    "애견미용 국비지원",
+    "애견미용 실습견",
   ],
 });
 
@@ -42,7 +48,11 @@ export default async function AcademyPage({ searchParams }: PageProps) {
   return (
     <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
-        data={[buildAcademyListJsonLd(all.length), buildAcademyListBreadcrumbJsonLd()]}
+        data={[
+          buildAcademyListJsonLd(all.length),
+          buildAcademyListBreadcrumbJsonLd(),
+          buildFaqPageJsonLd(buildAcademyGuideFaqItems()),
+        ]}
       />
 
       <Link
@@ -73,6 +83,8 @@ export default async function AcademyPage({ searchParams }: PageProps) {
         </div>
       </section>
 
+      <AcademyGuideTabs region={region} query={q} academies={all} />
+
       <section className="mb-8">
         <RegionTabs activeRegion={region} query={q} />
       </section>
@@ -83,7 +95,9 @@ export default async function AcademyPage({ searchParams }: PageProps) {
         </section>
       )}
 
-      <AcademyList academies={regular} />
+      <div id="academy-list">
+        <AcademyList academies={regular} />
+      </div>
 
       <div className="mt-12 text-center">
         <Link
