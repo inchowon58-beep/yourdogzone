@@ -45,7 +45,7 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
                       src={url}
                       alt={`${academy.name} 사진 ${i + 1}`}
                       showPlaceholder={false}
-                      className="aspect-[4/3] rounded-lg"
+                      className={`aspect-[4/3] rounded-lg${i >= 2 ? " hidden sm:block" : ""}`}
                     />
                   ))}
                 </div>
