@@ -10,6 +10,17 @@ from pathlib import Path
 from typing import Callable
 
 from api_client import register_all
+from master_registry import (
+    get_known_place_ids,
+    get_pending_items,
+    get_registered_place_keys,
+    item_to_place_payload,
+    mark_items_registered,
+    master_stats,
+    merge_items_into_master,
+    place_key,
+    sync_master_from_server,
+)
 from naver_crawler import NaverPlaceCrawler, PlaceData
 
 SCRIPT_DIR = Path(__file__).parent
@@ -166,6 +177,84 @@ def save_settings(settings: PipelineSettings, script_dir: Path | None = None) ->
     )
 
 
+def _log_master_stats(category: str, log: LogFn) -> None:
+    stats = master_stats(category)
+    if stats["total"] == 0:
+        return
+    log(
+        f"  마스터 목록: 총 {stats['total']}곳 | "
+        f"등록완료 {stats['registered']} | 미등록 {stats['pending']}"
+    )
+
+
+def _merge_places_to_master(
+    places: list[PlaceData],
+    category: str,
+    log: LogFn,
+    *,
+    source: str = "crawl",
+) -> tuple[int, int, int]:
+    payloads = [p.to_api_payload() for p in places]
+    added, dup, total = merge_items_into_master(category, payloads, source=source)
+    log(
+        f"\n마스터 병합 ({category_label(category)}): "
+        f"신규 {added} | 중복 {dup} | 마스터 총 {total}곳"
+    )
+    _log_master_stats(category, log)
+    return added, dup, total
+
+
+def _filter_for_register(
+    items: list[dict],
+    category: str,
+    site_index,
+    log: LogFn,
+) -> list[dict]:
+    registered_keys = get_registered_place_keys(category)
+    targets: list[dict] = []
+    skip_name = 0
+    skip_master = 0
+    skip_site_key = 0
+
+    for item in items:
+        name = str(item.get("name") or "").strip()
+        key = place_key(item)
+        if name and name in site_index.names:
+            skip_name += 1
+            continue
+        if key and key in site_index.place_keys:
+            skip_site_key += 1
+            continue
+        if key and key in registered_keys:
+            skip_master += 1
+            continue
+        targets.append(item)
+
+    if skip_name:
+        log(f"사이트 중복(업체명) {skip_name}곳 건너뜀")
+    if skip_site_key:
+        log(f"사이트 중복(place_id/주소) {skip_site_key}곳 건너뜀")
+    if skip_master:
+        log(f"이미 등록 완료 {skip_master}곳 건너뜀")
+    return targets
+
+
+def _sync_server_to_master(category: str, log: LogFn) -> None:
+    from api_client import fetch_registered_index
+
+    index = fetch_registered_index(category, log)
+    if not index.names:
+        return
+    marked = sync_master_from_server(
+        category,
+        names=index.names,
+        name_address_pairs=index.name_address_pairs,
+    )
+    if marked:
+        log(f"사이트와 마스터 동기화: {marked}곳 등록완료 처리")
+    _log_master_stats(category, log)
+
+
 def _fetch_registered_names(category: str, log: LogFn) -> set[str]:
     from api_client import fetch_registered_names
 
@@ -183,7 +272,9 @@ def crawl_places(
     log("=" * 48)
     log("네이버 지도 수집 시작")
     log("=" * 48)
+    _log_master_stats(settings.category, log)
 
+    known_ids = get_known_place_ids(settings.category)
     crawler = NaverPlaceCrawler(
         delay=settings.delay_seconds,
         use_profile=settings.use_chrome_profile,
@@ -194,6 +285,7 @@ def crawl_places(
         places = crawler.crawl_many(
             settings.searches,
             default_max=settings.max_per_search,
+            skip_place_ids=known_ids,
         )
     finally:
         crawler.close()
@@ -219,8 +311,8 @@ def save_places_json(
     return path
 
 
-def register_places(
-    places: list[PlaceData],
+def _register_item_dicts(
+    items: list[dict],
     settings: PipelineSettings,
     log: LogFn,
     *,
@@ -231,13 +323,14 @@ def register_places(
 
     settings.apply_env()
 
-    targets = places
+    _sync_server_to_master(settings.category, log)
+
+    targets = items
     if skip_existing:
-        existing = _fetch_registered_names(settings.category, log)
-        targets = [p for p in places if p.name.strip() not in existing]
-        skipped = len(places) - len(targets)
-        if skipped:
-            log(f"이미 등록된 {category_label(settings.category)} {skipped}곳 건너뜀")
+        from api_client import fetch_registered_index
+
+        site_index = fetch_registered_index(settings.category, log)
+        targets = _filter_for_register(items, settings.category, site_index, log)
 
     if not targets:
         log(f"등록할 새 {category_label(settings.category)} 항목이 없습니다.")
@@ -249,15 +342,20 @@ def register_places(
     )
     if settings.seo_title_suffix.strip():
         log(f"  타이틀 추가 문구: {settings.seo_title_suffix.strip()}")
-    items = [p.to_api_payload() for p in targets]
-    ok, fail = register_all(
-        items,
+
+    ok, fail, successes = register_all(
+        targets,
         refine_gemini=settings.refine_with_gemini,
         seo_title_suffix=settings.seo_title_suffix.strip(),
         category=settings.category,
         log=log,
     )
+    if successes:
+        marked = mark_items_registered(settings.category, successes)
+        log(f"마스터 등록 완료 표시: {marked}건")
+
     log(f"\n등록 결과: 성공 {ok} | 실패 {fail}")
+    _log_master_stats(settings.category, log)
     service_path = (
         "/services/academy"
         if settings.category == "academy"
@@ -265,6 +363,17 @@ def register_places(
     )
     log(f"확인: {settings.api_url.rstrip('/')}{service_path}")
     return ok, fail
+
+
+def register_places(
+    places: list[PlaceData],
+    settings: PipelineSettings,
+    log: LogFn,
+    *,
+    skip_existing: bool = True,
+) -> tuple[int, int]:
+    items = [p.to_api_payload() for p in places]
+    return _register_item_dicts(items, settings, log, skip_existing=skip_existing)
 
 
 def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tuple[int, int]:
@@ -275,20 +384,31 @@ def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tu
         items = data.get("items", [])
     else:
         items = data
-    places = [
-        PlaceData(
-            name=i["name"],
-            address=i["address"],
-            phone=i.get("phone") or "",
-            description=i.get("description") or "",
-            image_urls=i.get("image_urls") or [],
-            naver_place_url=i.get("naver_place_url") or "",
-        )
-        for i in items
-        if i.get("name") and i.get("address")
-    ]
-    log(f"JSON에서 {len(places)}건 로드: {path.name} ({category_label(category)})")
-    return register_places(places, replace(settings, category=category), log)
+
+    valid = [i for i in items if i.get("name") and i.get("address")]
+    log(f"JSON에서 {len(valid)}건 로드: {path.name} ({category_label(category)})")
+
+    added, dup, total = merge_items_into_master(
+        category, valid, source=path.name
+    )
+    log(f"마스터 병합: 신규 {added} | 중복 {dup} | 마스터 총 {total}곳")
+
+    return register_master_pending(replace(settings, category=category), log)
+
+
+def register_master_pending(
+    settings: PipelineSettings,
+    log: LogFn,
+) -> tuple[int, int]:
+    """마스터 JSON에서 미등록 항목만 사이트에 등록."""
+    pending = [item_to_place_payload(i) for i in get_pending_items(settings.category)]
+    log(
+        f"마스터 미등록 항목: {len(pending)}곳 ({category_label(settings.category)})"
+    )
+    if not pending:
+        log("등록할 미등록 항목이 없습니다.")
+        return 0, 0
+    return _register_item_dicts(pending, settings, log)
 
 
 def run_collect(
@@ -301,7 +421,9 @@ def run_collect(
     if not places:
         log(f"수집된 {category_label(settings.category)} 항목이 없습니다.")
         return None
-    return save_places_json(places, log, category=settings.category)
+    path = save_places_json(places, log, category=settings.category)
+    _merge_places_to_master(places, settings.category, log)
+    return path
 
 
 def run_collect_and_register(
@@ -309,15 +431,26 @@ def run_collect_and_register(
     log: LogFn,
     on_browser_ready: Callable[[str], None] | None = None,
 ) -> bool:
+    """수집 → 마스터 병합 → 중복 제거 후 미등록 신규만 사이트 등록."""
     settings.apply_env()
     places = crawl_places(settings, log, on_browser_ready=on_browser_ready)
-    if not places:
-        log(f"수집된 {category_label(settings.category)} 항목이 없습니다.")
-        return False
-    save_places_json(places, log, category=settings.category)
-    log(f"\n④ 수집 완료 ({len(places)}곳) → 사이트 등록 시작")
-    ok, fail = register_places(places, settings, log)
-    return fail == 0 and ok > 0
+
+    if places:
+        save_places_json(places, log, category=settings.category)
+        _merge_places_to_master(places, settings.category, log)
+        log(f"\n③ 이번 수집: {len(places)}곳 (마스터에 반영됨)")
+    else:
+        log(
+            f"\n③ 이번 수집 신규 없음 — "
+            f"이미 수집한 업체이거나 검색 결과가 없습니다."
+        )
+
+    log("\n④ 사이트 등록 (미등록 신규만, 중복 자동 제외)")
+    ok, fail = register_master_pending(settings, log)
+    if ok == 0 and fail == 0:
+        log("등록할 새 업체가 없습니다. (모두 이미 등록됨)")
+        return True
+    return fail == 0
 
 
 def list_crawled_files() -> list[Path]:

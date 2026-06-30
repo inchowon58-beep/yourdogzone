@@ -43,6 +43,7 @@ class PlaceData:
 
     def to_api_payload(self) -> dict[str, Any]:
         return {
+            "place_id": self.place_id or None,
             "name": self.name,
             "address": self.address,
             "phone": self.phone or None,
@@ -1432,9 +1433,19 @@ class NaverPlaceCrawler:
         self.log(f"  → {len(results)}곳 수집 완료")
         return results
 
-    def crawl_many(self, queries: list[dict[str, Any]], default_max: int = 5) -> list[PlaceData]:
+    def crawl_many(
+        self,
+        queries: list[dict[str, Any]],
+        default_max: int = 5,
+        *,
+        skip_place_ids: set[str] | None = None,
+    ) -> list[PlaceData]:
         all_places: list[PlaceData] = []
-        seen_ids: set[str] = set()
+        seen_ids: set[str] = set(skip_place_ids or ())
+        skipped_master = 0
+
+        if seen_ids:
+            self.log(f"  마스터에 이미 있는 place {len(seen_ids)}곳 — 수집 시 건너뜀")
 
         for q in queries:
             query = str(q.get("query", "")).strip()
@@ -1444,11 +1455,17 @@ class NaverPlaceCrawler:
 
             self.log(f"\n--- 검색: {query} (최대 {max_items}곳) ---")
             for place in self.crawl_query(query, max_items):
+                if not place.place_id:
+                    continue
                 if place.place_id in seen_ids:
+                    skipped_master += 1
+                    self.log(f"  ⊘ 마스터 중복 스킵: {place.name}")
                     continue
                 seen_ids.add(place.place_id)
                 all_places.append(place)
 
             self._sleep(3)
 
+        if skipped_master:
+            self.log(f"\n마스터 중복으로 스킵: {skipped_master}곳")
         return all_places

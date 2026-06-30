@@ -52,7 +52,7 @@ class AcademyRegisterApp(tk.Tk):
 
         header = tk.Label(
             self,
-            text="네이버 플레이스 → 수집 → 로컬 Gemini 변환 → 카테고리별 사이트 등록",
+            text="네이버 수집 → 중복 자동 제거 → Gemini → 신규만 등록",
             font=("Segoe UI", 11, "bold"),
             bg="#f5f5f7",
             fg="#333",
@@ -145,7 +145,7 @@ class AcademyRegisterApp(tk.Tk):
         self.search_text.grid(row=9, column=1, **pad)
         self.search_hint_label = tk.Label(
             frm,
-            text="",
+            text="예: 강아지분양|1000  /  인천강아지분양|500  (지역별 추가 검색 시 신규만 쌓임)",
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),
@@ -176,7 +176,7 @@ class AcademyRegisterApp(tk.Tk):
 
         tk.Label(
             tab_settings,
-            text="※ [수집 시작] → 네이버 로그인 페이지 → 로그인 → [확인 — 수집 시작] → 지도·자동 수집",
+            text="※ [수집 + 등록] 한 번이면 됩니다 — 검색어를 바꿔 여러 번 돌려도 중복은 자동 건너뜁니다.",
             bg="#fff",
             fg="#c62828",
             font=("Segoe UI", 9),
@@ -233,7 +233,7 @@ class AcademyRegisterApp(tk.Tk):
 
         self.btn_register = tk.Button(
             btn_frame,
-            text="▶  수집 + 등록",
+            text="▶  수집 + 등록 (추천)",
             font=("Segoe UI", 11, "bold"),
             bg="#2e7d32",
             fg="white",
@@ -285,7 +285,10 @@ class AcademyRegisterApp(tk.Tk):
         cfg = LISTING_CATEGORIES.get(cat, LISTING_CATEGORIES["academy"])
         hint = cfg["search_hint"]
         self.search_hint_label.config(
-            text=f"예: 부천 {hint}\n     인천 {hint}|5  (← |5 는 최대 5곳)"
+            text=(
+                f"예: {hint}|1000  /  인천{hint}|500  (지역별 추가 검색 OK, 중복 자동 제거)\n"
+                f"     부천 {hint}|5  (← |숫자 는 검색당 최대 건수)"
+            )
         )
 
     def _on_category_change(self, _event=None) -> None:
@@ -467,7 +470,7 @@ class AcademyRegisterApp(tk.Tk):
             )
             if path:
                 self.last_json = path
-                self._log(f"\n✓ 수집만 완료. 등록하려면 '수집+등록' 또는 'JSON만 등록'")
+                self._log(f"\n✓ 수집 완료. 마스터에 누적됨 (등록은 '수집 + 등록' 사용)")
 
         self._run_async(job)
 
@@ -481,9 +484,9 @@ class AcademyRegisterApp(tk.Tk):
                 on_browser_ready=self._wait_user_confirm,
             )
             if ok:
-                self._log(f"\n✓ 수집 및 등록 완료! ({category_label(settings.category)})")
+                self._log(f"\n✓ 수집 및 신규 등록 완료! ({category_label(settings.category)})")
             else:
-                self._log("\n⚠ 일부 실패 또는 등록할 항목 없음")
+                self._log("\n⚠ 등록 중 일부 실패 — 로그를 확인하세요")
 
         self._run_async(job)
 

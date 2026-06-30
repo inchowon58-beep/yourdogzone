@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from dataclasses import dataclass
 from typing import Callable
 
 import requests
@@ -11,12 +12,20 @@ from dotenv import load_dotenv
 
 from gemini_refine import apply_refine_to_item
 from image_uploader import prepare_register_payload
+from master_registry import place_key
 
 load_dotenv()
 
 BATCH_SIZE = 5
 DELAY_SEC = 2
 LogFn = Callable[[str], None]
+
+
+@dataclass
+class RegisteredSiteIndex:
+    names: set[str]
+    name_address_pairs: set[tuple[str, str]]
+    place_keys: set[str]
 
 
 def _api_url() -> str:
@@ -61,10 +70,15 @@ def check_server_ready(log: LogFn = print) -> bool:
     return ok
 
 
-def fetch_registered_names(category: str = "academy", log: LogFn = print) -> set[str]:
+def fetch_registered_index(
+    category: str = "academy",
+    log: LogFn = print,
+) -> RegisteredSiteIndex:
+    """사이트에 이미 등록된 업체 인덱스 (중복 등록 방지)."""
     secret = _admin_secret()
+    empty = RegisteredSiteIndex(names=set(), name_address_pairs=set(), place_keys=set())
     if not secret:
-        return set()
+        return empty
     if category == "academy":
         admin_path = "/api/academy/admin"
         list_key = "academies"
@@ -78,12 +92,35 @@ def fetch_registered_names(category: str = "academy", log: LogFn = print) -> set
             timeout=30,
         )
         if not res.ok:
-            return set()
+            return empty
         data = res.json()
-        return {a.get("name", "").strip() for a in data.get(list_key, []) if a.get("name")}
+        names: set[str] = set()
+        pairs: set[tuple[str, str]] = set()
+        keys: set[str] = set()
+        for row in data.get(list_key, []):
+            name = str(row.get("name") or "").strip()
+            address = str(row.get("address") or "").strip()
+            if name:
+                names.add(name)
+            if name and address:
+                pairs.add((name, address))
+            key = place_key(
+                {
+                    "name": name,
+                    "address": address,
+                    "naver_place_url": row.get("naver_place_url") or "",
+                }
+            )
+            if key:
+                keys.add(key)
+        return RegisteredSiteIndex(names=names, name_address_pairs=pairs, place_keys=keys)
     except requests.RequestException as e:
         log(f"⚠ 등록 목록 조회 실패: {e}")
-        return set()
+        return empty
+
+
+def fetch_registered_names(category: str = "academy", log: LogFn = print) -> set[str]:
+    return fetch_registered_index(category, log).names
 
 
 def register_batch(
@@ -152,7 +189,7 @@ def register_all(
     seo_title_suffix: str = "",
     category: str = "academy",
     log: LogFn = print,
-) -> tuple[int, int]:
+) -> tuple[int, int, list[tuple[dict, str]]]:
     api = _api_url()
     log("\n서버 상태 확인…")
     check_server_ready(log)
@@ -185,6 +222,7 @@ def register_all(
     succeeded = 0
     failed = 0
     pending_urls: list[str] = []
+    successes: list[tuple[dict, str]] = []
     flag_idx = 0
     for i in range(0, len(prepared), BATCH_SIZE):
         batch = prepared[i : i + BATCH_SIZE]
@@ -193,7 +231,8 @@ def register_all(
         try:
             result = register_batch(batch, category=category, skip_image_mirror=skip_mirror)
             rows = result.get("results", [result])
-            for r, local_gemini in zip(rows, batch_flags):
+            for j, (r, local_gemini) in enumerate(zip(rows, batch_flags)):
+                orig = items[i + j]
                 if r.get("ok"):
                     succeeded += 1
                     gemini_label = (
@@ -205,6 +244,7 @@ def register_all(
                     url = r.get("url") or ""
                     if url:
                         pending_urls.append(url)
+                        successes.append((orig, url))
                     log(f"  ✓ {r.get('name')} → {url} ({gemini_label}, 사진 {imgs}장)")
                     for err in r.get("imageErrors") or []:
                         log(f"    ⚠ 이미지: {str(err)[:160]}")
@@ -220,7 +260,7 @@ def register_all(
     if pending_urls:
         submit_indexnow_batch(pending_urls, log=log)
 
-    return succeeded, failed
+    return succeeded, failed, successes
 
 
 # CLI 호환

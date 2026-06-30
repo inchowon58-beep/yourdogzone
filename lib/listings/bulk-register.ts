@@ -1,6 +1,7 @@
 import { parseKoreanAddress } from "@/lib/academy/parse-address";
 import { getListingConfig } from "@/lib/listings/config";
 import { insertListing } from "@/lib/listings/queries";
+import { loadLatestListingList } from "@/lib/listings/r2-read";
 import { generateListingSlug, listingPageUrl } from "@/lib/listings/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
 import {
@@ -69,6 +70,19 @@ export async function bulkRegisterListing(
 
   if (!name || !address) {
     return { ok: false, name: name ?? "(이름 없음)", error: "name과 address는 필수입니다." };
+  }
+
+  const existingList = await loadLatestListingList(category);
+  const duplicate = existingList.find((row) => row.name.trim() === name);
+  if (duplicate) {
+    return {
+      ok: true,
+      name,
+      slug: duplicate.slug,
+      url: listingPageUrl(category, duplicate.slug),
+      imageCount: 0,
+      indexnow: { ok: false, status: 0, message: "중복 업체명 — 기존 페이지 유지" },
+    };
   }
 
   const { region_big, region_small } =

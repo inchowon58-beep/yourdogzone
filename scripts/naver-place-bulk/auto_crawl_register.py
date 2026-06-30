@@ -112,7 +112,7 @@ def main() -> int:
 
     print(f"\n등록 시작 ({len(new_places)}건, Gemini={'ON' if refine_gemini else 'OFF'})...")
     items = [p.to_api_payload() for p in new_places]
-    ok, fail = register_all(items, refine_gemini=refine_gemini)
+    ok, fail, _ = register_all(items, refine_gemini=refine_gemini)
 
     print(f"\n{'=' * 50}")
     print(f"완료: 수집 {len(places)} | 등록 성공 {ok} | 실패 {fail}")

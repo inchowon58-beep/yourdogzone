@@ -1,6 +1,7 @@
 import { refineAcademyCopyWithGemini } from "@/lib/ai/gemini";
 import { countAcademyImages, splitAcademyImages } from "@/lib/academy/images";
 import { insertAcademy } from "@/lib/academy/queries";
+import { loadLatestAcademyList } from "@/lib/academy/r2-store";
 import { parseKoreanAddress } from "@/lib/academy/parse-address";
 import { generateAcademySlug } from "@/lib/academy/slug";
 import { academyPageUrl, submitToIndexNow } from "@/lib/indexnow/submit";
@@ -59,6 +60,19 @@ export async function bulkRegisterAcademy(
 
   if (!name || !address) {
     return { ok: false, name: name ?? "(이름 없음)", error: "name과 address는 필수입니다." };
+  }
+
+  const existingList = await loadLatestAcademyList();
+  const duplicate = existingList.find((row) => row.name.trim() === name);
+  if (duplicate) {
+    return {
+      ok: true,
+      name,
+      slug: duplicate.slug,
+      url: academyPageUrl(duplicate.slug),
+      imageCount: 0,
+      indexnow: { ok: false, status: 0, message: "중복 업체명 — 기존 페이지 유지" },
+    };
   }
 
   const { region_big, region_small } =
