@@ -1,5 +1,8 @@
 import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
+import { buildAcademySeoContent } from "@/lib/seo/academy-seo";
+
+export { buildAcademyDetailKeywords } from "@/lib/seo/academy-seo";
 
 export function buildAcademyBreadcrumbJsonLd(academy: Academy) {
   const pageUrl = absoluteUrl(`/services/academy/${academy.slug}`);
@@ -36,13 +39,15 @@ export function buildAcademyLocalBusinessJsonLd(
 ) {
   const pageUrl = absoluteUrl(`/services/academy/${academy.slug}`);
   const areaName = `${academy.region_big} ${academy.region_small}`;
+  const seo = buildAcademySeoContent(academy);
 
   return {
     "@context": "https://schema.org",
     "@type": ["EducationalOrganization", "LocalBusiness"],
     "@id": pageUrl,
     name: academy.name,
-    description: academy.title_copy,
+    alternateName: `${academy.name} 애견미용학원`,
+    description: seo.description,
     url: pageUrl,
     image: images.length ? images : undefined,
     telephone: academy.phone ?? undefined,
@@ -134,17 +139,4 @@ export function buildAcademyListBreadcrumbJsonLd() {
       },
     ],
   };
-}
-
-export function buildAcademyDetailKeywords(academy: Academy): string[] {
-  return [
-    academy.name,
-    `${academy.region_small} 애견미용학원`,
-    `${academy.region_big} 애견미용학원`,
-    `${academy.region_small} 애견미용`,
-    "애견미용학원",
-    "반려견 미용 학원",
-    "애견미용 자격증",
-    academy.is_premium ? "인증 추천 학원" : "애견미용 교육",
-  ];
 }

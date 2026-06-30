@@ -7,6 +7,7 @@ import {
 } from "@/lib/site/config";
 import { getLandingPages } from "@/lib/seo/landing-pages";
 import { getAcademies } from "@/lib/academy/queries";
+import { buildAcademySeoContent } from "@/lib/seo/academy-seo";
 
 export const revalidate = 3600;
 
@@ -100,12 +101,15 @@ async function getRssItems(): Promise<RssItem[]> {
   }));
 
   const academies = await getAcademies();
-  const academyItems: RssItem[] = academies.map((academy) => ({
-    title: `${academy.name} | ${academy.region_small} 애견미용학원`,
-    link: absoluteUrl(`/services/academy/${academy.slug}`),
-    description: academy.title_copy,
-    pubDate: academy.updated_at ? new Date(academy.updated_at) : now,
-  }));
+  const academyItems: RssItem[] = academies.map((academy) => {
+    const seo = buildAcademySeoContent(academy);
+    return {
+      title: seo.title,
+      link: absoluteUrl(seo.path),
+      description: seo.description,
+      pubDate: academy.updated_at ? new Date(academy.updated_at) : now,
+    };
+  });
 
   return [...academyItems, ...landingItems, ...staticItems, ...serviceItems];
 }

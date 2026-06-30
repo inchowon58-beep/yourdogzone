@@ -4,15 +4,19 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
 import { getAcademyBySlug, getAcademySlugs } from "@/lib/academy/queries";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
+import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildAcademyBreadcrumbJsonLd,
-  buildAcademyDetailKeywords,
   buildAcademyLocalBusinessJsonLd,
 } from "@/lib/seo/academy-jsonld";
-import { buildPageMetadata } from "@/lib/seo/metadata";
+import {
+  buildAcademyDetailMetadata,
+  buildAcademySeoContent,
+  buildAcademyWebPageJsonLd,
+} from "@/lib/seo/academy-seo";
 
 export const revalidate = 3600;
 
@@ -30,18 +34,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const academy = await getAcademyBySlug(slug);
   if (!academy) return { title: "학원을 찾을 수 없습니다" };
 
-  const title = `${academy.name} | ${academy.region_small} ${academy.region_big} 애견미용학원`;
-  const description = `${academy.region_big} ${academy.region_small} ${academy.address} — ${academy.name}. ${academy.title_copy} 교육과정, 수강료, 연락처, 위치 정보.`;
   const images = getAcademyGalleryImages(academy, 3);
-
-  return buildPageMetadata({
-    title,
-    description,
-    path: `/services/academy/${academy.slug}`,
-    keywords: buildAcademyDetailKeywords(academy),
-    images,
-    type: "article",
-  });
+  return buildAcademyDetailMetadata(academy, images);
 }
 
 export default async function AcademyDetailPage({ params }: PageProps) {
@@ -50,8 +44,10 @@ export default async function AcademyDetailPage({ params }: PageProps) {
   if (!academy) notFound();
 
   const images = getAcademyGalleryImages(academy, 3);
+  const seo = buildAcademySeoContent(academy);
   const mapQuery = encodeURIComponent(academy.address);
   const isPremium = academy.is_premium;
+  const regionLabel = `${academy.region_big} ${academy.region_small}`;
 
   return (
     <main
@@ -60,6 +56,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
       <JsonLd
         data={[
           buildAcademyBreadcrumbJsonLd(academy),
+          buildAcademyWebPageJsonLd(academy, images),
           buildAcademyLocalBusinessJsonLd(academy, images),
         ]}
       />
@@ -74,7 +71,8 @@ export default async function AcademyDetailPage({ params }: PageProps) {
 
       <article itemScope itemType="https://schema.org/EducationalOrganization">
         <meta itemProp="name" content={academy.name} />
-        <meta itemProp="description" content={academy.title_copy} />
+        <meta itemProp="description" content={seo.description} />
+        <link itemProp="url" href={absoluteUrl(seo.path)} />
 
         <header
           className={`mb-8 ${isPremium ? "rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-white p-6" : ""}`}
@@ -85,8 +83,11 @@ export default async function AcademyDetailPage({ params }: PageProps) {
               인증 추천 학원
             </span>
           )}
+          <p className="mb-2 text-sm font-medium text-primary">
+            {regionLabel} 애견미용학원
+          </p>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-            {academy.name}
+            {seo.h1}
           </h1>
           <p className="mt-3 text-lg leading-relaxed text-muted">
             {academy.title_copy}
@@ -105,7 +106,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
         >
           <table className="w-full text-sm">
             <tbody>
-              <InfoRow label="지역" value={`${academy.region_big} ${academy.region_small}`} />
+              <InfoRow label="지역" value={regionLabel} />
               <InfoRow
                 label="주소"
                 value={academy.address}
@@ -127,37 +128,34 @@ export default async function AcademyDetailPage({ params }: PageProps) {
         </section>
 
         {academy.curriculum && (
-          <ContentSection title="교육 과정 상세 안내">
+          <ContentSection title={`${academy.name} 교육 과정`}>
             <p className="whitespace-pre-line leading-relaxed text-muted">
               {academy.curriculum}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              {academy.name}은(는) {academy.region_big} {academy.region_small} 지역에서
-              애견미용 자격증 취득, 취업, 창업을 목표로 하는 수강생들에게 체계적인
-              커리큘럼을 제공합니다. 실습 중심의 교육으로 현장에서 바로 활용 가능한
-              기술을 습득할 수 있습니다.
+              {academy.name}은(는) {regionLabel} 지역에서 애견미용 자격증 취득,
+              취업, 창업을 목표로 하는 수강생들에게 체계적인 커리큘럼을 제공합니다.
             </p>
           </ContentSection>
         )}
 
         {academy.tuition_info && (
-          <ContentSection title="수강료 및 국비지원 혜택">
+          <ContentSection title={`${academy.name} 수강료 안내`}>
             <p className="whitespace-pre-line leading-relaxed text-muted">
               {academy.tuition_info}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              국비지원(내일배움카드 등) 대상 여부는 학원에 직접 문의하시면 정확한
-              안내를 받으실 수 있습니다. 조기 등록 할인, 재수강 혜택 등 다양한 프로모션이
-              진행 중일 수 있습니다.
+              {academy.name} 수강료 및 국비지원(내일배움카드 등) 대상 여부는 학원에
+              직접 문의하시면 정확한 안내를 받으실 수 있습니다.
             </p>
           </ContentSection>
         )}
 
-        <ContentSection title="오시는 길">
+        <ContentSection title={`${academy.name} 오시는 길`}>
           <p className="mb-4 text-sm text-muted">{academy.address}</p>
           <div className="overflow-hidden rounded-xl bg-gray-100">
             <iframe
-              title={`${academy.name} 위치 — ${academy.region_big} ${academy.region_small}`}
+              title={`${academy.name} 위치 — ${regionLabel}`}
               src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
               className="h-72 w-full border-0"
               loading="lazy"
@@ -165,18 +163,16 @@ export default async function AcademyDetailPage({ params }: PageProps) {
             />
           </div>
           <p className="mt-4 text-sm leading-relaxed text-muted">
-            {academy.region_big} {academy.region_small}에 위치한 {academy.name}으로
-            방문 상담이 가능합니다. 대중교통 이용 시 네이버 지도 또는 카카오맵에서
-            &quot;{academy.name}&quot;을 검색해 최적의 경로를 확인하세요.
+            {regionLabel}에 위치한 {academy.name}으로 방문 상담이 가능합니다.
+            네이버 지도·카카오맵에서 &quot;{academy.name}&quot;을 검색해 보세요.
           </p>
         </ContentSection>
 
         <section className="mt-10 rounded-2xl bg-gray-50 p-6 text-sm leading-relaxed text-muted">
           <p>
             <strong className="text-foreground">{academy.name}</strong>은(는){" "}
-            {academy.region_big} {academy.region_small} 지역의 애견미용학원으로,
-            반려견 미용사 자격증 취득과 실무 교육을 전문으로 합니다. 유아독존에서
-            전국 애견미용학원 정보를 비교하고 상세 정보를 확인해 보세요.
+            {regionLabel} 애견미용학원으로, 반려견 미용사 자격증 취득과 실무 교육을
+            전문으로 합니다. 유아독존에서 전국 애견미용학원 정보를 비교해 보세요.
           </p>
         </section>
       </article>
