@@ -7,7 +7,7 @@ import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
 function galleryGridClass(count: number) {
   if (count <= 1) return "grid-cols-1";
   if (count === 2) return "grid-cols-2";
-  return "grid-cols-3";
+  return "grid-cols-2 sm:grid-cols-3";
 }
 
 export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
@@ -20,7 +20,7 @@ export function PremiumAcademyGrid({ academies }: { academies: Academy[] }) {
         <h2 className="text-lg font-bold text-foreground">인증 추천 학원</h2>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {academies.map((academy) => {
           const gallery = getAcademyGalleryImages(academy, 3);
 

@@ -16,7 +16,7 @@ export function SearchBar() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl">
+    <form onSubmit={handleSubmit} className="w-full min-w-0 max-w-2xl">
       <div className="group relative flex items-center">
         <Search className="absolute left-4 h-5 w-5 text-muted transition-colors group-focus-within:text-primary sm:left-5" />
         <input

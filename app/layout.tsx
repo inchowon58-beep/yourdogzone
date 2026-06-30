@@ -66,17 +66,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full overflow-x-hidden">
+    <html lang="ko" className="h-full w-full overflow-x-hidden">
       <head>
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="flex min-h-full flex-col overflow-x-hidden antialiased">
+      <body className="flex min-h-full w-full flex-col overflow-x-hidden antialiased">
         <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden">
+          {children}
+        </div>
         <Footer />
       </body>
     </html>

@@ -40,7 +40,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
   const regular = all.filter((a) => !a.is_premium);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
+    <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
         data={[buildAcademyListJsonLd(all.length), buildAcademyListBreadcrumbJsonLd()]}
       />
@@ -66,7 +66,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
           지역별 애견미용학원을 한눈에 비교하고, 인증 추천 학원의 상세 정보를
           확인하세요.
         </p>
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex w-full min-w-0 justify-center">
           <Suspense fallback={null}>
             <AcademySearchBar defaultQuery={q} />
           </Suspense>

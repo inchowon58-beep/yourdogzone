@@ -16,7 +16,8 @@ export function RegionTabs({ activeRegion, query }: RegionTabsProps) {
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="w-full min-w-0 overflow-hidden">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide sm:mx-0 sm:px-0">
       {REGION_BIG_OPTIONS.map((region) => {
         const isActive = activeRegion === region;
         return (
@@ -33,6 +34,7 @@ export function RegionTabs({ activeRegion, query }: RegionTabsProps) {
           </Link>
         );
       })}
+      </div>
     </div>
   );
 }

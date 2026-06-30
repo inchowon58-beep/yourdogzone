@@ -16,8 +16,8 @@ export function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100/80 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
+    <header className="sticky top-0 z-50 w-full min-w-0 border-b border-gray-100/80 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex h-14 w-full min-w-0 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80"

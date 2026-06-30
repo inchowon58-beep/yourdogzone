@@ -13,8 +13,8 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+    <footer className="mt-auto w-full min-w-0 border-t border-gray-100 bg-white">
+      <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <div>
             <p className="text-base font-bold text-foreground">유아독존</p>
