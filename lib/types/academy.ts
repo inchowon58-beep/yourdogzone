@@ -12,6 +12,7 @@ export type Academy = {
   curriculum: string | null;
   tuition_info: string | null;
   kakao_url: string | null;
+  seo_title_suffix?: string | null;
   is_premium: boolean;
   created_at: string;
   updated_at: string;

@@ -24,7 +24,9 @@ export function buildAcademySeoContent(academy: Academy): AcademySeoContent {
   const regionLabel = `${academy.region_small} ${academy.region_big}`;
   const path = `/services/academy/${academy.slug}`;
 
-  const title = `${academy.name} | ${regionLabel} 애견미용학원`;
+  const baseTitle = `${academy.name} | ${regionLabel} 애견미용학원`;
+  const suffix = academy.seo_title_suffix?.trim();
+  const title = suffix ? `${baseTitle} | ${suffix}` : baseTitle;
 
   const description = trimDescription(
     [
@@ -54,6 +56,10 @@ export function buildAcademySeoContent(academy: Academy): AcademySeoContent {
     academy.is_premium ? `${academy.name} 추천` : `${academy.name} 정보`,
     SITE_NAME,
   ];
+
+  if (suffix) {
+    keywords.push(suffix, `${academy.name} ${suffix}`);
+  }
 
   return {
     title,

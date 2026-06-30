@@ -6,5 +6,6 @@
   ],
   "delay_seconds": 3,
   "refine_with_gemini": true,
-  "use_chrome_profile": true
+  "use_chrome_profile": true,
+  "seo_title_suffix": "반려견 미용 추천"
 }

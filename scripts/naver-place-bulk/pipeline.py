@@ -21,6 +21,7 @@ class PipelineSettings:
     api_url: str = "https://www.yourdogzone.co.kr"
     admin_secret: str = ""
     gemini_api_key: str = ""
+    seo_title_suffix: str = ""
     searches: list[dict] = field(default_factory=list)
     max_per_search: int = 3
     delay_seconds: float = 2.0
@@ -39,6 +40,7 @@ class PipelineSettings:
             "delay_seconds": self.delay_seconds,
             "refine_with_gemini": self.refine_with_gemini,
             "use_chrome_profile": self.use_chrome_profile,
+            "seo_title_suffix": self.seo_title_suffix,
         }
 
 
@@ -88,6 +90,7 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
         settings.delay_seconds = float(data.get("delay_seconds", 2))
         settings.refine_with_gemini = bool(data.get("refine_with_gemini", True))
         settings.use_chrome_profile = bool(data.get("use_chrome_profile", True))
+        settings.seo_title_suffix = str(data.get("seo_title_suffix", "") or "")
         if settings.searches:
             settings.max_per_search = int(settings.searches[0].get("max", 3))
 
@@ -178,8 +181,15 @@ def register_places(
         return 0, 0
 
     log(f"\n등록 시작 ({len(targets)}건, Gemini 로컬={'ON' if settings.refine_with_gemini else 'OFF'})")
+    if settings.seo_title_suffix.strip():
+        log(f"  타이틀 추가 문구: {settings.seo_title_suffix.strip()}")
     items = [p.to_api_payload() for p in targets]
-    ok, fail = register_all(items, refine_gemini=settings.refine_with_gemini, log=log)
+    ok, fail = register_all(
+        items,
+        refine_gemini=settings.refine_with_gemini,
+        seo_title_suffix=settings.seo_title_suffix.strip(),
+        log=log,
+    )
     log(f"\n등록 결과: 성공 {ok} | 실패 {fail}")
     log(f"확인: {settings.api_url.rstrip('/')}/services/academy")
     return ok, fail

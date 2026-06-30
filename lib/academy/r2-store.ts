@@ -103,6 +103,7 @@ export async function prepareAcademyR2Insert(
     curriculum: payload.curriculum ?? null,
     tuition_info: payload.tuition_info ?? null,
     kakao_url: payload.kakao_url ?? null,
+    seo_title_suffix: payload.seo_title_suffix ?? null,
     is_premium: payload.is_premium ?? false,
     created_at: now,
     updated_at: now,

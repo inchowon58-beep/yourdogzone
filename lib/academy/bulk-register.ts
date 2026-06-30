@@ -26,6 +26,7 @@ export type BulkAcademyInput = {
   academy_images?: string[];
   is_premium?: boolean;
   naver_place_url?: string | null;
+  seo_title_suffix?: string | null;
 };
 
 export type BulkRegisterOptions = {
@@ -139,6 +140,7 @@ export async function bulkRegisterAcademy(
     curriculum,
     tuition_info,
     kakao_url: input.kakao_url?.trim() || null,
+    seo_title_suffix: input.seo_title_suffix?.trim() || null,
     logo_image,
     academy_images,
     is_premium: input.is_premium ?? false,
