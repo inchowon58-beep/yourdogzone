@@ -21,6 +21,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from master_registry import normalize_place_name
+
 SCRIPT_DIR = Path(__file__).parent
 NAVER_HOME = "https://www.naver.com"
 NAVER_LOGIN_URL = (
@@ -728,16 +730,35 @@ class NaverPlaceCrawler:
             pass
         return False
 
+    def _extract_row_name(self, row) -> str:
+        """목록 행에서 업체명만 추출 (span.YwYLL 우선)."""
+        try:
+            el = row.find_element(By.CSS_SELECTOR, "span.YwYLL")
+            name = (el.text or el.get_attribute("textContent") or "").strip()
+            if name:
+                return name
+        except Exception:
+            pass
+        try:
+            img = row.find_element(By.CSS_SELECTOR, "img.K0PDV, img[alt]")
+            alt = (img.get_attribute("alt") or "").strip()
+            if alt and alt not in ("광고",):
+                return alt
+        except Exception:
+            pass
+        return (row.text or "").split("\n")[0].strip()[:50]
+
     def _list_non_ad_rows(self) -> list:
         """검색 목록 행(li) — 광고 제외, 순서 유지."""
         row_selectors = (
             "#_pcmap_list_scroll_container > ul > li",
             "#_pcmap_list_scroll_container li",
+            "li.VLTHu",
             "li.UEzoS",
             "div.CHC5F",
         )
         rows: list = []
-        seen_titles: set[str] = set()
+        seen_keys: set[str] = set()
 
         for sel in row_selectors:
             try:
@@ -751,12 +772,13 @@ class NaverPlaceCrawler:
                         continue
                     if self._row_is_ad(row):
                         continue
-                    title = (row.text or "").split("\n")[0].strip()[:50]
+                    title = self._extract_row_name(row)
                     if not title or title == "광고":
                         continue
-                    if title in seen_titles:
+                    key = normalize_place_name(title)
+                    if not key or key in seen_keys:
                         continue
-                    seen_titles.add(title)
+                    seen_keys.add(key)
                     rows.append(row)
                 except Exception:
                     continue
@@ -773,8 +795,8 @@ class NaverPlaceCrawler:
         for row in self._list_non_ad_rows():
             try:
                 pid = self._extract_id_from_row(row)
-                title = (row.text or "").split("\n")[0].strip()[:40]
-                key = pid or title
+                title = self._extract_row_name(row)
+                key = pid or normalize_place_name(title)
                 if not key or key in seen:
                     continue
                 seen.add(key)
@@ -783,10 +805,35 @@ class NaverPlaceCrawler:
                 continue
         return snapshots
 
+    def _name_matches_known(self, norm: str, known_names: set[str]) -> bool:
+        """정규화된 업체명이 마스터 목록과 일치하는지 (부분 일치 포함)."""
+        if not norm:
+            return False
+        if norm in known_names:
+            return True
+        for known in known_names:
+            if len(known) >= 3 and (known in norm or norm in known):
+                return True
+        return False
+
+    def _is_known_place(
+        self,
+        *,
+        place_id: str,
+        title: str,
+        known_ids: set[str],
+        known_names: set[str],
+    ) -> bool:
+        pid = (place_id or "").strip()
+        if pid and pid in known_ids:
+            return True
+        norm = normalize_place_name(title)
+        return self._name_matches_known(norm, known_names)
+
     def _click_row_fresh(self, *, place_id: str = "", title: str = "") -> str:
         """목록을 다시 읽고 해당 행 클릭 → place_id."""
         target = (place_id or "").strip()
-        title_key = (title or "").strip()[:40]
+        title_key = normalize_place_name(title)
 
         for attempt in range(3):
             if not self._switch_frame("searchIframe"):
@@ -795,13 +842,16 @@ class NaverPlaceCrawler:
             for row in rows:
                 try:
                     pid = self._extract_id_from_row(row)
-                    row_title = (row.text or "").split("\n")[0].strip()[:40]
+                    row_title = self._extract_row_name(row)
+                    row_key = normalize_place_name(row_title)
                     matched = False
                     if target and pid == target:
                         matched = True
-                    elif title_key and row_title == title_key:
+                    elif title_key and row_key == title_key:
                         matched = True
-                    elif target and not pid and title_key and title_key in row_title:
+                    elif title_key and title_key in row_key:
+                        matched = True
+                    elif title_key and row_key in title_key:
                         matched = True
                     if not matched:
                         continue
@@ -810,7 +860,7 @@ class NaverPlaceCrawler:
                     try:
                         link = row.find_element(
                             By.CSS_SELECTOR,
-                            "a.place_bluelink, a.YwYLL, a[class*='place_bluelink'], a",
+                            "a.U70Fj, a.place_bluelink, a.YwYLL, a[class*='place_bluelink']",
                         )
                         self.log(f"    → 목록 클릭: {label}")
                         self._safe_click(link)
@@ -1485,11 +1535,14 @@ class NaverPlaceCrawler:
         max_items: int = 5,
         *,
         skip_place_ids: set[str] | None = None,
+        skip_names: set[str] | None = None,
     ) -> list[PlaceData]:
-        """검색 목록을 위→아래로 스크롤하며 신규만 수집 (이미 수집한 ID는 건너뜀)."""
+        """검색 목록을 위→아래로 스크롤하며 신규만 수집 (이미 수집한 업체는 클릭 없이 스킵)."""
         results: list[PlaceData] = []
         known_ids = set(skip_place_ids or ())
+        known_names = set(skip_names or ())
         processed_ids: set[str] = set(known_ids)
+        processed_names: set[str] = set(known_names)
         skipped_known = 0
 
         self.log(f"  ① 지도에서 검색: {query}")
@@ -1501,7 +1554,7 @@ class NaverPlaceCrawler:
 
         self.log(
             f"  ② 목록 순서대로 수집 (최대 {max_items}곳, "
-            f"이미 수집 {len(known_ids)}곳은 클릭 없이 건너뜀)"
+            f"이미 수집 {len(known_ids)}곳 — 업체명·ID로 클릭 없이 건너뜀)"
         )
 
         no_progress_rounds = 0
@@ -1531,42 +1584,57 @@ class NaverPlaceCrawler:
 
                     pid = snap.get("place_id") or ""
                     title = snap.get("title") or ""
+                    norm_title = normalize_place_name(title)
 
                     if pid and pid in processed_ids:
                         continue
+                    if norm_title and norm_title in processed_names:
+                        continue
 
-                    if pid and pid in known_ids:
-                        processed_ids.add(pid)
+                    if self._is_known_place(
+                        place_id=pid,
+                        title=title,
+                        known_ids=known_ids,
+                        known_names=known_names,
+                    ):
+                        if pid:
+                            processed_ids.add(pid)
+                        if norm_title:
+                            processed_names.add(norm_title)
                         skipped_known += 1
-                        if skipped_known == 1 or skipped_known % 25 == 0:
+                        if skipped_known <= 5 or skipped_known % 25 == 0:
                             self.log(
-                                f"    ⊘ 이미 수집된 업체 건너뜀 "
-                                f"({skipped_known}곳) — 목록 계속 진행"
+                                f"    ⊘ 이미 수집: {title or pid} "
+                                f"({skipped_known}곳, 클릭 없음)"
                             )
                         continue
 
                     try:
-                        if pid:
-                            processed_ids.add(pid)
-                            opened = self._click_row_fresh(place_id=pid, title=title)
-                            if not opened:
-                                self.log(f"    ⚠ 목록 클릭 실패 — 스킵: {title or pid}")
-                                continue
-                            pid = opened
-                        else:
-                            opened = self._click_row_fresh(title=title)
-                            if not opened:
-                                self.log(f"    ⚠ ID 없음 — 스킵: {title}")
-                                continue
-                            pid = opened
-                            if pid in processed_ids:
-                                self._return_to_search(search_url)
-                                continue
-                            processed_ids.add(pid)
-                            if pid in known_ids:
-                                skipped_known += 1
-                                self._return_to_search(search_url)
-                                continue
+                        opened = self._click_row_fresh(place_id=pid, title=title)
+                        if not opened:
+                            self.log(f"    ⚠ 목록 클릭 실패 — 스킵: {title or pid}")
+                            continue
+                        pid = opened
+
+                        if pid in processed_ids:
+                            self._return_to_search(search_url)
+                            continue
+                        processed_ids.add(pid)
+
+                        if self._is_known_place(
+                            place_id=pid,
+                            title=title,
+                            known_ids=known_ids,
+                            known_names=known_names,
+                        ):
+                            if norm_title:
+                                processed_names.add(norm_title)
+                            skipped_known += 1
+                            self._return_to_search(search_url)
+                            continue
+
+                        if norm_title:
+                            processed_names.add(norm_title)
 
                         self.log(
                             f"  → [{len(results) + 1}/{max_items}] "
@@ -1583,6 +1651,8 @@ class NaverPlaceCrawler:
                         if place:
                             results.append(place)
                             known_ids.add(pid)
+                            if place.name:
+                                known_names.add(normalize_place_name(place.name))
                             new_in_round += 1
                             self.log(
                                 f"    ✓ 수집 완료: {place.name} | "
@@ -1635,12 +1705,17 @@ class NaverPlaceCrawler:
         default_max: int = 5,
         *,
         skip_place_ids: set[str] | None = None,
+        skip_names: set[str] | None = None,
     ) -> list[PlaceData]:
         all_places: list[PlaceData] = []
         seen_ids: set[str] = set(skip_place_ids or ())
+        seen_names: set[str] = set(skip_names or ())
 
-        if seen_ids:
-            self.log(f"  마스터에 이미 있는 place {len(seen_ids)}곳 — 목록에서 자동 건너뜀")
+        if seen_ids or seen_names:
+            self.log(
+                f"  마스터에 이미 있는 업체 "
+                f"(ID {len(seen_ids)} / 이름 {len(seen_names)}) — 목록에서 클릭 없이 건너뜀"
+            )
 
         stopped = False
         for q in queries:
@@ -1659,6 +1734,7 @@ class NaverPlaceCrawler:
                     query,
                     max_items,
                     skip_place_ids=seen_ids,
+                    skip_names=seen_names,
                 )
             except Exception as e:
                 self.log(f"⚠ 검색 '{query}' 오류: {e}")
@@ -1669,6 +1745,8 @@ class NaverPlaceCrawler:
                 if place.place_id in seen_ids:
                     continue
                 seen_ids.add(place.place_id)
+                if place.name:
+                    seen_names.add(normalize_place_name(place.name))
                 all_places.append(place)
 
             if self.stop_requested():

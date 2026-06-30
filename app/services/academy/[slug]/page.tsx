@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
-import { getAcademyBySlug, getAcademySlugs } from "@/lib/academy/queries";
+import { getAcademyBySlug, getAcademySlugs, getAcademies } from "@/lib/academy/queries";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
+import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
 import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -44,6 +45,12 @@ export default async function AcademyDetailPage({ params }: PageProps) {
   const academy = await getAcademyBySlug(slug);
   if (!academy) notFound();
 
+  const regionalAcademies = await getAcademies({
+    region: academy.region_big,
+    query: academy.region_small,
+  });
+  const listHref = `/services/academy?region=${encodeURIComponent(academy.region_big)}`;
+
   const images = getAcademyGalleryImages(academy, 3);
   const seo = buildAcademySeoContent(academy);
   const mapQuery = encodeURIComponent(academy.address);
@@ -69,6 +76,13 @@ export default async function AcademyDetailPage({ params }: PageProps) {
         <ArrowLeft className="h-4 w-4" />
         학원 목록
       </Link>
+
+      <AcademyGuideTabs
+        region={academy.region_big}
+        query={academy.region_small}
+        academies={regionalAcademies}
+        listHref={listHref}
+      />
 
       <article itemScope itemType="https://schema.org/EducationalOrganization">
         <meta itemProp="name" content={academy.name} />

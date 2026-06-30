@@ -10,6 +10,7 @@ type IndexNowPayload = {
 const INDEXNOW_ENDPOINTS = [
   "https://api.indexnow.org/indexnow",
   "https://www.bing.com/indexnow",
+  "https://searchadvisor.naver.com/indexnow",
 ] as const;
 
 export function indexNowKeyFilePath(): string | null {

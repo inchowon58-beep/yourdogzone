@@ -19,16 +19,20 @@ type AcademyGuideTabsProps = {
   region: string;
   query?: string;
   academies: Academy[];
+  /** 목록 페이지 앵커 대신 사용할 링크 (상세 페이지용) */
+  listHref?: string;
 };
 
 function GuidePanel({
   tab,
   geoLabel,
   academies,
+  listHref,
 }: {
   tab: AcademyGuideTab;
   geoLabel: string | null;
   academies: Academy[];
+  listHref?: string;
 }) {
   const regionalHeading = buildGeoAcademyHeading(geoLabel, tab.geoHint ?? "");
   const preview = academies.slice(0, 5);
@@ -124,13 +128,23 @@ function GuidePanel({
         )}
 
         {academies.length > 5 && (
-          <a
-            href="#academy-list"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
-            <ChevronRight className="h-4 w-4" />
-          </a>
+          listHref ? (
+            <Link
+              href={listHref}
+              className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <a
+              href="#academy-list"
+              className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
+              <ChevronRight className="h-4 w-4" />
+            </a>
+          )
         )}
       </div>
     </div>
@@ -141,6 +155,7 @@ export function AcademyGuideTabs({
   region,
   query,
   academies,
+  listHref,
 }: AcademyGuideTabsProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const geoLabel = resolveGeoLabel(region, query);
@@ -205,6 +220,7 @@ export function AcademyGuideTabs({
             tab={activeTab}
             geoLabel={geoLabel}
             academies={academies}
+            listHref={listHref}
           />
         </div>
       )}

@@ -268,6 +268,21 @@ def get_known_place_ids(category: str) -> set[str]:
     return ids
 
 
+def normalize_place_name(name: str) -> str:
+    """업체명 비교용 — 공백 제거·소문자."""
+    return re.sub(r"\s+", "", str(name or "").strip().lower())
+
+
+def get_known_names(category: str) -> set[str]:
+    """마스터에 이미 있는 업체명 (수집 시 클릭 없이 스킵)."""
+    names: set[str] = set()
+    for item in load_master(category).get("items") or []:
+        name = str(item.get("name") or "").strip()
+        if name:
+            names.add(normalize_place_name(name))
+    return names
+
+
 def item_to_place_payload(item: dict[str, Any]) -> dict[str, Any]:
     """등록 API용 payload."""
     return {

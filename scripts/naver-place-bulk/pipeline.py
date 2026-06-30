@@ -12,6 +12,7 @@ from typing import Callable
 
 from api_client import register_all
 from master_registry import (
+    get_known_names,
     get_known_place_ids,
     get_pending_items,
     get_registered_place_keys,
@@ -19,6 +20,7 @@ from master_registry import (
     mark_items_registered,
     master_stats,
     merge_items_into_master,
+    normalize_place_name,
     place_key,
     sync_master_from_server,
 )
@@ -279,6 +281,7 @@ def crawl_places(
     _log_master_stats(settings.category, log)
 
     known_ids = get_known_place_ids(settings.category)
+    known_names = get_known_names(settings.category)
     crawler = NaverPlaceCrawler(
         delay=settings.delay_seconds,
         use_profile=settings.use_chrome_profile,
@@ -293,6 +296,7 @@ def crawl_places(
             settings.searches,
             default_max=settings.max_per_search,
             skip_place_ids=known_ids,
+            skip_names=known_names,
         )
         stopped = bool(stop_event and stop_event.is_set())
     except Exception as e:
