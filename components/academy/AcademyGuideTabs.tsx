@@ -142,29 +142,25 @@ export function AcademyGuideTabs({
   query,
   academies,
 }: AcademyGuideTabsProps) {
-  const [activeId, setActiveId] = useState(ACADEMY_GUIDE_TABS[0].id);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const geoLabel = resolveGeoLabel(region, query);
-  const activeTab =
-    ACADEMY_GUIDE_TABS.find((t) => t.id === activeId) ?? ACADEMY_GUIDE_TABS[0];
+  const activeTab = activeId
+    ? ACADEMY_GUIDE_TABS.find((t) => t.id === activeId)
+    : null;
+
+  function handleTabClick(tabId: string) {
+    setActiveId((prev) => (prev === tabId ? null : tabId));
+  }
 
   return (
     <section
       className="mb-10 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[var(--card-shadow)]"
       aria-label="애견미용학원 선택 가이드"
     >
-      <div className="border-b border-gray-100 bg-gray-50/40 px-4 py-4 sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-          학원 선택 가이드
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          수강료·국비·실습견·진로까지 — 일반인이 가장 많이 찾는 정보
-        </p>
-      </div>
-
       <div
         role="tablist"
         aria-label="가이드 카테고리"
-        className="flex gap-1.5 overflow-x-auto border-b border-gray-100 px-3 py-3 scrollbar-hide sm:gap-2 sm:px-4"
+        className="flex gap-1.5 overflow-x-auto px-3 py-3 scrollbar-hide sm:gap-2 sm:px-4"
       >
         {ACADEMY_GUIDE_TABS.map((tab) => {
           const selected = tab.id === activeId;
@@ -175,8 +171,9 @@ export function AcademyGuideTabs({
               role="tab"
               id={`guide-tab-${tab.id}`}
               aria-selected={selected}
+              aria-expanded={selected}
               aria-controls={`guide-panel-${tab.id}`}
-              onClick={() => setActiveId(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={`shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all sm:px-4 sm:py-2.5 sm:text-sm ${
                 selected
                   ? "bg-primary text-white shadow-sm"
@@ -193,18 +190,20 @@ export function AcademyGuideTabs({
         })}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`guide-panel-${activeTab.id}`}
-        aria-labelledby={`guide-tab-${activeTab.id}`}
-        className="p-4 sm:p-6"
-      >
-        <GuidePanel
-          tab={activeTab}
-          geoLabel={geoLabel}
-          academies={academies}
-        />
-      </div>
+      {activeTab && (
+        <div
+          role="tabpanel"
+          id={`guide-panel-${activeTab.id}`}
+          aria-labelledby={`guide-tab-${activeTab.id}`}
+          className="border-t border-gray-100 p-4 sm:p-6"
+        >
+          <GuidePanel
+            tab={activeTab}
+            geoLabel={geoLabel}
+            academies={academies}
+          />
+        </div>
+      )}
     </section>
   );
 }
