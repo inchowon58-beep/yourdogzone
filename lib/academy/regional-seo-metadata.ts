@@ -5,20 +5,52 @@ import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { buildRegionalLandingKeywords } from "@/lib/academy/regional-seo-content";
+import { resolveBoundMetaDescription } from "@/lib/academy/regional-seo-resolve";
+import type { RegionalSeoContext } from "@/lib/academy/regional-seo-vars";
 
 export function buildRegionalLandingMetadata(
-  page: RegionalLandingPage
+  page: RegionalLandingPage,
+  seoCtx: RegionalSeoContext
 ): Metadata {
-  const { label } = page;
+  const { region } = seoCtx;
   const path = regionalLandingPath(page);
 
+  const title = seoCtx.hasRecommendedAcademy
+    ? `${region} 애견미용학원 · ${seoCtx.recommendedAcademyName} 추천`
+    : seoCtx.hasNearbyRecommendedAcademy
+      ? `${region} 애견미용학원 · 인근 ${seoCtx.nearbyRecommendedAcademyName} 참고`
+      : `${region} 애견미용학원 추천 · ${region} 지역 미용학원 정보`;
+
+  const description = resolveBoundMetaDescription(page, seoCtx);
+
+  const keywords = [
+    ...buildRegionalLandingKeywords(region),
+    ...(seoCtx.hasRecommendedAcademy
+      ? [
+          `${region} ${seoCtx.recommendedAcademyName}`,
+          `${seoCtx.recommendedAcademyName} 애견미용학원`,
+        ]
+      : []),
+    ...(seoCtx.hasNearbyRecommendedAcademy
+      ? [
+          `${seoCtx.nearbyRecommendedRegion} ${seoCtx.nearbyRecommendedAcademyName}`,
+          `${seoCtx.nearbyRecommendedAcademyName} 애견미용학원`,
+        ]
+      : []),
+  ];
+
+  const imageAlt = seoCtx.hasRecommendedAcademy
+    ? `${seoCtx.recommendedAcademyName} ${region} 애견미용학원`
+    : seoCtx.hasNearbyRecommendedAcademy
+      ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 애견미용학원`
+      : `${region} 애견미용학원 정보`;
+
   return buildPageMetadata({
-    title: `${label} 애견미용학원 추천 · ${label} 지역 미용학원 정보`,
-    description:
-      page.metaDescription?.slice(0, 160) ??
-      page.regionInfo?.slice(0, 155) ??
-      `${label}에서 애견미용 자격증을 준비한다면? ${label} 지역 애견미용학원의 수강료·국비지원·실습 환경·인증 추천 학원을 한곳에서 비교하세요.`,
+    title,
+    description,
     path,
-    keywords: buildRegionalLandingKeywords(label),
+    keywords,
+    images: seoCtx.ogImageUrl ? [seoCtx.ogImageUrl] : undefined,
+    imageAlt,
   });
 }

@@ -1,25 +1,28 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, MapPin, Plus } from "lucide-react";
-import { getAcademies } from "@/lib/academy/queries";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
 import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
 import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
-import { fetchNearbyPremiumAcademies } from "@/lib/academy/nearby-premium-academies";
-import { JsonLd } from "@/components/seo/JsonLd";
+import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
 import {
-  buildRegionalGuideFaqItems,
-  buildRegionalSeoContent,
-} from "@/lib/academy/regional-seo-content";
+  resolveBoundNearbyIntro,
+  resolveBoundFaqItems,
+  resolveBoundRegionInfo,
+  resolveBoundSeoBlocks,
+} from "@/lib/academy/regional-seo-resolve";
+import { ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
   getPublishedRegionalSlugs,
   resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";
+import { sampleRandom } from "@/lib/utils/random-sample";
+import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalAcademyBreadcrumbJsonLd,
   buildRegionalAcademyListJsonLd,
@@ -28,7 +31,6 @@ import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
 export const revalidate = 3600;
 
-/** 구 한글 URL → 영문 슬러그 리다이렉트 */
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",
   "부천-애견미용학원": "bucheon-dog-grooming-academy",
@@ -49,9 +51,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  const page = await resolveRegionalLanding(slug);
+  let page = await resolveRegionalLanding(slug);
   if (!page) return {};
-  return buildRegionalLandingMetadata(page);
+
+  const { seoCtx } = await loadRegionalPageContext(page);
+  page = await ensureRegionalSeoContent(page, seoCtx);
+
+  return buildRegionalLandingMetadata(page, seoCtx);
 }
 
 export default async function RegionalAcademyLandingPage({ params }: PageProps) {
@@ -63,34 +69,35 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
     redirect(`/services/academy/region/${legacy}`);
   }
 
-  const page = await resolveRegionalLanding(decoded);
+  let page = await resolveRegionalLanding(decoded);
   if (!page) notFound();
 
   const { label, regionBig, query } = page;
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
 
-  const [all, nearby] = await Promise.all([
-    getAcademies({ region: regionFilter, query: searchQuery }),
-    resolveNearbyPages(page),
-  ]);
+  const pageCtx = await loadRegionalPageContext(page);
+  page = await ensureRegionalSeoContent(page, pageCtx.seoCtx);
 
-  const premium = all.filter((a) => a.is_premium);
-  const regular = all.filter((a) => !a.is_premium);
-  const nearbyPremium =
-    premium.length === 0
-      ? await fetchNearbyPremiumAcademies(nearby, 3)
-      : [];
-  const seoBlocks = buildRegionalSeoContent(page);
+  const { premium, regular, nearbyPremium, seoCtx } = pageCtx;
+
+  const nearby = await resolveNearbyPages(page);
+  const heroIntro = resolveBoundRegionInfo(page, seoCtx);
+  const seoBlocks = resolveBoundSeoBlocks(page, seoCtx);
+  const faqItems = resolveBoundFaqItems(page, seoCtx);
   const listAnchor = "#academy-list";
+
+  const guidePool = premium.length > 0 ? premium : nearbyPremium;
+  const guidePreview = sampleRandom(guidePool, 5);
+  const listSample = sampleRandom(regular, 5);
 
   return (
     <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
         data={[
-          buildRegionalAcademyListJsonLd(page, all.length),
+          buildRegionalAcademyListJsonLd(page, pageCtx.all.length),
           buildRegionalAcademyBreadcrumbJsonLd(page),
-          buildFaqPageJsonLd(buildRegionalGuideFaqItems(page)),
+          buildFaqPageJsonLd(faqItems),
         ]}
       />
 
@@ -110,10 +117,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
           {label} 애견미용학원
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base text-muted">
-          {page.regionInfo ??
-            `${label} 지역 애견미용학원을 한곳에서 비교하세요.`}
-        </p>
+        <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
       </section>
 
       {premium.length > 0 ? (
@@ -131,32 +135,53 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         />
       )}
 
-      <RegionalAcademySeoSection label={label} blocks={seoBlocks} />
+      <RegionalAcademySeoSection
+        label={label}
+        blocks={seoBlocks}
+        recommendedAcademyName={
+          seoCtx.hasRecommendedAcademy
+            ? seoCtx.recommendedAcademyName
+            : undefined
+        }
+        nearbyAcademyName={
+          !seoCtx.hasRecommendedAcademy && seoCtx.hasNearbyRecommendedAcademy
+            ? seoCtx.nearbyRecommendedAcademyName
+            : undefined
+        }
+        nearbyRegion={
+          !seoCtx.hasRecommendedAcademy && seoCtx.hasNearbyRecommendedAcademy
+            ? seoCtx.nearbyRecommendedRegion
+            : undefined
+        }
+      />
 
       <section className="mb-12">
         <AcademyGuideTabs
           region={regionFilter}
           query={searchQuery}
-          academies={all}
+          academies={pageCtx.all}
+          previewAcademies={guidePreview}
           listHref={listAnchor}
+          totalListCount={regular.length}
         />
       </section>
 
       <div id="academy-list">
         <AcademyList
-          academies={regular}
+          academies={listSample}
           listTitle={`${label} 애견미용학원 목록`}
           registerLabel={`${label} 학원 정보 등록하기`}
+          totalCount={regular.length}
         />
       </div>
 
       <NearbyRegionalLinks
         currentLabel={label}
-        intro={page.nearbyIntro}
+        intro={resolveBoundNearbyIntro(page, seoCtx) ?? page.nearbyIntro}
         nearby={nearby}
       />
 
-      {all.length === 0 && (
+      {pageCtx.all.length === 0 && (
         <p className="mt-6 text-center text-sm text-muted">
           아직 {label} 지역에 등록된 애견미용학원이 없습니다.
         </p>

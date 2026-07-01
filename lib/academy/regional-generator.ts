@@ -3,12 +3,18 @@ import "server-only";
 import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
 import { getAdjacentLabels } from "@/lib/constants/region-adjacency";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
+import { fetchNearbyPremiumAcademies } from "@/lib/academy/nearby-premium-academies";
+import { getAcademies } from "@/lib/academy/queries";
 import {
   buildRegionalSlug,
   parseLabelFromKeyword,
 } from "@/lib/academy/regional-slug";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
-import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
+import {
+  buildRegionalSeoContext,
+  pickRecommendedAcademy,
+} from "@/lib/academy/regional-seo-vars";
+import type { RegionalLandingInsert, RegionalLandingPage } from "@/lib/types/regional-landing";
 
 const REGION_BIG_SET = new Set<string>(REGION_BIG_OPTIONS);
 
@@ -24,21 +30,12 @@ function inferRegionBig(label: string): string | undefined {
   return metro[label];
 }
 
-function buildRegionInfo(label: string, regionBig?: string): string {
-  const region = regionBig ? `${regionBig} ` : "";
-  return `${label}은(는) ${region}권에서 반려견 가구가 많고 애견미용·자격증 교육 수요가 꾸준한 지역입니다. ${label} 지역 애견미용학원은 통학 거리, 실습견 환경, 국비지원 과정, 수강료를 기준으로 비교하는 것이 좋습니다.`;
-}
-
-function buildNearbyIntro(label: string): string {
-  return `${label}에서 애견미용학원을 알아보는 분들이 근방에서 함께 검색·방문하는 지역입니다.`;
-}
-
 export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiUsed?: boolean;
   geminiError?: string;
 };
 
-/** 키워드 한 줄로 지역 랜딩 페이지 초안 생성 (Gemini로 매번 다른 SEO 본문) */
+/** 키워드 한 줄로 지역 랜딩 페이지 생성 (인증추천학원 변수 반영 Gemini SEO) */
 export async function generateRegionalLandingFromKeyword(
   keyword: string
 ): Promise<RegionalGenerateResult> {
@@ -50,13 +47,31 @@ export async function generateRegionalLandingFromKeyword(
   const regionBig = inferRegionBig(label);
   const query = REGION_BIG_SET.has(label) ? label : label;
 
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
-  const byLabel = new Map(all.map((p) => [p.label, p]));
+  const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
+  const byLabel = new Map(allLandings.map((p) => [p.label, p]));
 
   const adjacent = getAdjacentLabels(label, 5);
   const nearbySlugs = adjacent
     .map((adj) => byLabel.get(adj)?.slug ?? buildRegionalSlug(adj))
     .slice(0, 5);
+
+  const academies = await getAcademies({
+    region: regionBig ?? "전체",
+    query,
+  });
+  const recommended = pickRecommendedAcademy(
+    academies.filter((a) => a.is_premium)
+  );
+
+  const adjacentPages = adjacent
+    .map((adj) => byLabel.get(adj))
+    .filter((p): p is RegionalLandingPage => Boolean(p));
+  const nearbyPremium =
+    recommended === null && adjacentPages.length > 0
+      ? await fetchNearbyPremiumAcademies(adjacentPages, 1)
+      : [];
+  const nearbyRecommended = nearbyPremium[0] ?? null;
+  const seoCtx = buildRegionalSeoContext(label, recommended, nearbyRecommended);
 
   const base: RegionalGenerateResult = {
     slug,
@@ -64,8 +79,6 @@ export async function generateRegionalLandingFromKeyword(
     keyword: trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
     regionBig,
     query,
-    regionInfo: buildRegionInfo(label, regionBig),
-    nearbyIntro: buildNearbyIntro(label),
     nearbySlugs,
     isPublished: true,
     geminiUsed: false,
@@ -76,6 +89,13 @@ export async function generateRegionalLandingFromKeyword(
     keyword: base.keyword,
     regionBig,
     nearbyLabels: adjacent,
+    recommendedAcademyName: seoCtx.recommendedAcademyName,
+    recommendedAcademyHighlight: seoCtx.recommendedAcademyHighlight,
+    hasRecommendedAcademy: seoCtx.hasRecommendedAcademy,
+    hasNearbyRecommendedAcademy: seoCtx.hasNearbyRecommendedAcademy,
+    nearbyRecommendedAcademyName: seoCtx.nearbyRecommendedAcademyName,
+    nearbyRecommendedRegion: seoCtx.nearbyRecommendedRegion,
+    academyImageUrl: seoCtx.ogImageUrl,
   });
 
   if (gemini.ok) {

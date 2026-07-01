@@ -8,6 +8,7 @@ import { RegionTabs } from "@/components/academy/RegionTabs";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
+import { ListPagination } from "@/components/ui/ListPagination";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildAcademyListBreadcrumbJsonLd,
@@ -16,6 +17,8 @@ import {
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
+import { sampleRandom } from "@/lib/utils/random-sample";
+import { paginate, parsePageParam } from "@/lib/utils/paginate";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "전국 애견미용학원 정보 통합 검색",
@@ -36,14 +39,17 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 type PageProps = {
-  searchParams: Promise<{ region?: string; q?: string }>;
+  searchParams: Promise<{ region?: string; q?: string; page?: string }>;
 };
 
 export default async function AcademyPage({ searchParams }: PageProps) {
-  const { region = "전체", q } = await searchParams;
+  const { region = "전체", q, page: pageParam } = await searchParams;
   const all = await getAcademies({ region, query: q });
   const premium = all.filter((a) => a.is_premium);
   const regular = all.filter((a) => !a.is_premium);
+  const guidePreview = sampleRandom(premium, 5);
+  const listPage = paginate(regular, parsePageParam(pageParam));
+  const listQuery = { region: region !== "전체" ? region : undefined, q };
 
   return (
     <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
@@ -83,7 +89,13 @@ export default async function AcademyPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <AcademyGuideTabs region={region} query={q} academies={all} />
+      <AcademyGuideTabs
+        region={region}
+        query={q}
+        academies={all}
+        previewAcademies={guidePreview}
+        totalListCount={regular.length}
+      />
 
       <section className="mb-8">
         <RegionTabs activeRegion={region} query={q} />
@@ -96,7 +108,16 @@ export default async function AcademyPage({ searchParams }: PageProps) {
       )}
 
       <div id="academy-list">
-        <AcademyList academies={regular} />
+        <AcademyList
+          academies={listPage.items}
+          totalCount={listPage.totalItems}
+        />
+        <ListPagination
+          currentPage={listPage.page}
+          totalPages={listPage.totalPages}
+          pathname="/services/academy"
+          query={listQuery}
+        />
       </div>
 
       <div className="mt-12 text-center">

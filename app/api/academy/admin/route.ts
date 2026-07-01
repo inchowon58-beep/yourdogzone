@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
 import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
+import { getAllRegionalLandings } from "@/lib/academy/regional-store";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+
+async function revalidateRegionalLandingPages() {
+  const pages = await getAllRegionalLandings({ includeUnpublished: true });
+  for (const page of pages) {
+    revalidatePath(`/services/academy/region/${page.slug}`);
+  }
+  revalidatePath("/services/academy/region/[slug]", "page");
+}
 
 export const runtime = "nodejs";
 
@@ -71,6 +80,14 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+
+    if (result.uploads?.length) {
+      await completeR2Uploads(result.uploads);
+    }
+
+    revalidatePath(`/services/academy/${result.data.slug}`);
+    revalidatePath("/services/academy");
+    await revalidateRegionalLandingPages();
 
     if (result.uploads?.length) {
       return NextResponse.json({

@@ -9,11 +9,14 @@ export function AcademyList({
   servicePath = "/services/academy",
   listTitle = "전체 학원",
   registerLabel = "학원 정보 등록하기",
+  totalCount,
 }: {
   academies: Academy[];
   servicePath?: string;
   listTitle?: string;
   registerLabel?: string;
+  /** 전체 건수 (일부만 노출할 때 안내) */
+  totalCount?: number;
 }) {
   if (academies.length === 0) {
     return (
@@ -31,7 +34,14 @@ export function AcademyList({
 
   return (
     <section>
-      <h2 className="mb-4 text-lg font-bold text-foreground">{listTitle}</h2>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+        <h2 className="text-lg font-bold text-foreground">{listTitle}</h2>
+        {totalCount !== undefined && totalCount > academies.length && (
+          <p className="text-xs text-muted">
+            전체 {totalCount}곳 중 {academies.length}곳 표시
+          </p>
+        )}
+      </div>
       <ul className="divide-y divide-gray-50 overflow-hidden rounded-2xl bg-white shadow-[var(--card-shadow)]">
         {academies.map((academy) => (
           <li key={academy.id}>

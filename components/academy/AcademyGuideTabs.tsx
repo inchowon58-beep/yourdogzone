@@ -19,23 +19,32 @@ type AcademyGuideTabsProps = {
   region: string;
   query?: string;
   academies: Academy[];
+  /** 가이드 하단 미리보기용 (서버에서 인증추천 랜덤 5개 등으로 전달) */
+  previewAcademies?: Academy[];
   /** 목록 페이지 앵커 대신 사용할 링크 (상세 페이지용) */
   listHref?: string;
+  /** 하단 전체 목록 건수 (미리보기 링크용) */
+  totalListCount?: number;
 };
 
 function GuidePanel({
   tab,
   geoLabel,
   academies,
+  previewAcademies,
   listHref,
+  totalListCount,
 }: {
   tab: AcademyGuideTab;
   geoLabel: string | null;
   academies: Academy[];
+  previewAcademies?: Academy[];
   listHref?: string;
+  totalListCount?: number;
 }) {
   const regionalHeading = buildGeoAcademyHeading(geoLabel, tab.geoHint ?? "");
-  const preview = academies.slice(0, 5);
+  const preview = previewAcademies ?? [];
+  const listTotal = totalListCount ?? academies.length;
 
   return (
     <div className="space-y-6">
@@ -127,13 +136,13 @@ function GuidePanel({
           </p>
         )}
 
-        {academies.length > 5 && (
+        {listTotal > preview.length && (
           listHref ? (
             <Link
               href={listHref}
               className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
-              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
+              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {listTotal}곳 보기
               <ChevronRight className="h-4 w-4" />
             </Link>
           ) : (
@@ -141,7 +150,7 @@ function GuidePanel({
               href="#academy-list"
               className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
-              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {academies.length}곳 보기
+              {geoLabel ? `${geoLabel} ` : ""}학원 전체 {listTotal}곳 보기
               <ChevronRight className="h-4 w-4" />
             </a>
           )
@@ -155,7 +164,9 @@ export function AcademyGuideTabs({
   region,
   query,
   academies,
+  previewAcademies,
   listHref,
+  totalListCount,
 }: AcademyGuideTabsProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const geoLabel = resolveGeoLabel(region, query);
@@ -220,7 +231,9 @@ export function AcademyGuideTabs({
             tab={activeTab}
             geoLabel={geoLabel}
             academies={academies}
+            previewAcademies={previewAcademies}
             listHref={listHref}
+            totalListCount={totalListCount}
           />
         </div>
       )}

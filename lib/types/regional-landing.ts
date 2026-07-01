@@ -33,6 +33,8 @@ export type RegionalLandingPage = {
   faqItems?: RegionalFaqItemStored[];
   /** Gemini 생성 메타 설명 */
   metaDescription?: string;
+  /** @deprecated 렌더 시 변수 치환으로 처리 — 더 이상 slug 변경 시 재생성하지 않음 */
+  seoBoundAcademySlug?: string;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;

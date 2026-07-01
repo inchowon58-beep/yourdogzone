@@ -7,6 +7,7 @@ import { AcademySearchBar } from "@/components/academy/AcademySearchBar";
 import { RegionTabs } from "@/components/academy/RegionTabs";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyList } from "@/components/academy/AcademyList";
+import { ListPagination } from "@/components/ui/ListPagination";
 import {
   getListingConfig,
   isListingCategory,
@@ -14,11 +15,12 @@ import {
 } from "@/lib/listings/config";
 import { getListings, listingAsAcademy } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { paginate, parsePageParam } from "@/lib/utils/paginate";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type PageProps = {
   params: Promise<{ service: string }>;
-  searchParams: Promise<{ region?: string; q?: string }>;
+  searchParams: Promise<{ region?: string; q?: string; page?: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -40,10 +42,12 @@ export default async function ListingServicePage({ params, searchParams }: PageP
   const category = service as ListingCategory;
   const config = getListingConfig(category);
   const basePath = listingBasePath(category);
-  const { region = "전체", q } = await searchParams;
+  const { region = "전체", q, page: pageParam } = await searchParams;
   const all = await getListings(category, { region, query: q });
   const premium = all.filter((item) => item.is_premium);
   const regular = all.filter((item) => !item.is_premium);
+  const listPage = paginate(regular, parsePageParam(pageParam));
+  const listQuery = { region: region !== "전체" ? region : undefined, q };
   const asAcademy = (items: typeof all) => items.map(listingAsAcademy);
 
   return (
@@ -85,10 +89,17 @@ export default async function ListingServicePage({ params, searchParams }: PageP
       )}
 
       <AcademyList
-        academies={asAcademy(regular)}
+        academies={asAcademy(listPage.items)}
         servicePath={basePath}
         listTitle={`전체 ${config.singular}`}
         registerLabel={`${config.singular} 정보 등록하기`}
+        totalCount={listPage.totalItems}
+      />
+      <ListPagination
+        currentPage={listPage.page}
+        totalPages={listPage.totalPages}
+        pathname={basePath}
+        query={listQuery}
       />
 
       <div className="mt-12 flex flex-wrap justify-center gap-4 text-center">

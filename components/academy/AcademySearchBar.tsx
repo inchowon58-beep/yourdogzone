@@ -24,6 +24,7 @@ export function AcademySearchBar({
     } else {
       params.delete("q");
     }
+    params.delete("page");
     router.push(`${servicePath}?${params.toString()}`);
   }
 
