@@ -39,19 +39,23 @@ export function OfficialAdvisoryBoardSection() {
             const Icon = item.icon;
             return (
               <li key={item.category}>
-                <article className="group flex h-full flex-col rounded-xl border border-slate-600/50 bg-[#1e293b] px-4 py-5 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 hover:shadow-[0_12px_32px_-8px_rgb(251_191_36/0.25)] sm:px-5 sm:py-6">
-                  <span
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-400 transition-colors duration-300 group-hover:border-amber-400/40 group-hover:bg-amber-400/15"
-                    aria-hidden
-                  >
-                    <Icon className="h-5 w-5 stroke-[1.75]" />
-                  </span>
-                  <p className="mt-4 text-[11px] font-medium tracking-wide text-slate-400">
-                    [{item.category}]
-                  </p>
-                  <h3 className="mt-2 text-sm font-bold leading-snug text-amber-400 sm:text-[0.95rem]">
-                    {item.title}
-                  </h3>
+                <article className="group flex h-full flex-row items-center gap-3 rounded-xl border border-slate-600/50 bg-[#1e293b] px-3 py-4 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 hover:shadow-[0_12px_32px_-8px_rgb(251_191_36/0.25)] sm:px-4 sm:py-5 md:flex-col md:items-stretch md:gap-0 md:px-5 md:py-6">
+                  <div className="flex w-1/2 shrink-0 items-center justify-center md:w-full md:justify-start">
+                    <span
+                      className="inline-flex h-14 w-14 items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-400 transition-colors duration-300 group-hover:border-amber-400/40 group-hover:bg-amber-400/15 md:h-11 md:w-11"
+                      aria-hidden
+                    >
+                      <Icon className="h-6 w-6 stroke-[1.75] md:h-5 md:w-5" />
+                    </span>
+                  </div>
+                  <div className="flex w-1/2 min-w-0 flex-col justify-center md:w-full">
+                    <p className="text-[10px] font-medium leading-tight tracking-wide text-slate-400 sm:text-[11px] md:mt-4">
+                      [{item.category}]
+                    </p>
+                    <h3 className="mt-1 text-xs font-bold leading-snug text-amber-400 sm:text-sm md:mt-2 md:text-[0.95rem]">
+                      {item.title}
+                    </h3>
+                  </div>
                 </article>
               </li>
             );
