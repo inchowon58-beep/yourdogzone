@@ -1,0 +1,229 @@
+{
+  "updatedAt": "2026-06-29T00:00:00.000Z",
+  "pages": [
+    {
+      "slug": "ansan-dog-grooming-academy",
+      "label": "안산",
+      "keyword": "안산 애견미용학원",
+      "regionBig": "경기",
+      "query": "안산",
+      "regionInfo": "안산시는 경기도 서부에 위치한 산업·주거 도시로, 반려견 가구가 많고 애견미용 수요가 꾸준한 지역입니다. 단원구·상록구 등 생활권별로 통학하기 좋은 애견미용학원을 비교해 보세요.",
+      "nearbyIntro": "안산에서 애견미용학원을 알아보는 분들이 근방에서 함께 검색하는 지역입니다.",
+      "nearbySlugs": [
+        "siheung-dog-grooming-academy",
+        "hwaseong-dog-grooming-academy",
+        "gwangmyeong-dog-grooming-academy",
+        "bucheon-dog-grooming-academy",
+        "suwon-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "bucheon-dog-grooming-academy",
+      "label": "부천",
+      "keyword": "부천 애견미용학원",
+      "regionBig": "경기",
+      "query": "부천",
+      "regionInfo": "부천시는 경기도 서부 핵심 도시로 서울·인천과 인접해 통근·통학이 편리합니다. 원미구·소사구·오정구 등에서 애견미용학원을 찾는 분들이 많습니다.",
+      "nearbyIntro": "부천 인근에서 애견미용학원을 함께 비교하는 지역입니다.",
+      "nearbySlugs": [
+        "incheon-dog-grooming-academy",
+        "gwangmyeong-dog-grooming-academy",
+        "ansan-dog-grooming-academy",
+        "gimpo-dog-grooming-academy",
+        "seoul-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "incheon-dog-grooming-academy",
+      "label": "인천",
+      "keyword": "인천 애견미용학원",
+      "regionBig": "인천",
+      "query": "인천",
+      "regionInfo": "인천광역시는 경기 서부·서해안 거점 도시로, 남동구·부평구·연수구 등 권역별 애견미용학원 수요가 큽니다.",
+      "nearbyIntro": "인천에서 학원을 찾을 때 근방 지역과 함께 살펴보는 경우가 많습니다.",
+      "nearbySlugs": [
+        "bucheon-dog-grooming-academy",
+        "gimpo-dog-grooming-academy",
+        "siheung-dog-grooming-academy",
+        "ansan-dog-grooming-academy",
+        "seoul-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "suwon-dog-grooming-academy",
+      "label": "수원",
+      "keyword": "수원 애견미용학원",
+      "regionBig": "경기",
+      "query": "수원",
+      "regionInfo": "수원시는 경기도 남부 중심 도시로, 영통·팔달·권선·장안 등 구별로 애견미용 교육 수요가 높습니다.",
+      "nearbyIntro": "수원 인근에서 많이 방문·검색하는 애견미용학원 지역입니다.",
+      "nearbySlugs": [
+        "yongin-dog-grooming-academy",
+        "hwaseong-dog-grooming-academy",
+        "ansan-dog-grooming-academy",
+        "seongnam-dog-grooming-academy",
+        "osan-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "seongnam-dog-grooming-academy",
+      "label": "성남",
+      "keyword": "성남 애견미용학원",
+      "regionBig": "경기",
+      "query": "성남",
+      "regionInfo": "성남시는 분당·수정·중원 등 권역이 넓고 반려견 인구가 많아 애견미용학원 선택지가 다양합니다.",
+      "nearbyIntro": "성남에서 학원을 알아볼 때 함께 찾아보는 근방 지역입니다.",
+      "nearbySlugs": [
+        "seoul-dog-grooming-academy",
+        "yongin-dog-grooming-academy",
+        "suwon-dog-grooming-academy",
+        "bundang-dog-grooming-academy",
+        "hanam-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "gangnam-dog-grooming-academy",
+      "label": "강남",
+      "keyword": "강남 애견미용학원",
+      "regionBig": "서울",
+      "query": "강남",
+      "regionInfo": "서울 강남권은 애견미용 산업·교육 수요가 높은 지역으로, 강남·서초 인근 통학이 가능한 학원을 비교할 수 있습니다.",
+      "nearbyIntro": "강남에서 애견미용학원을 검색할 때 함께 보는 인근 지역입니다.",
+      "nearbySlugs": [
+        "seoul-dog-grooming-academy",
+        "seongnam-dog-grooming-academy",
+        "bundang-dog-grooming-academy",
+        "songpa-dog-grooming-academy",
+        "yongin-dog-grooming-academy"
+      ],
+      "isPublished": true,
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "siheung-dog-grooming-academy",
+      "label": "시흥",
+      "keyword": "시흥 애견미용학원",
+      "regionBig": "경기",
+      "query": "시흥",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "hwaseong-dog-grooming-academy",
+      "label": "화성",
+      "keyword": "화성 애견미용학원",
+      "regionBig": "경기",
+      "query": "화성",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "gwangmyeong-dog-grooming-academy",
+      "label": "광명",
+      "keyword": "광명 애견미용학원",
+      "regionBig": "경기",
+      "query": "광명",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "seoul-dog-grooming-academy",
+      "label": "서울",
+      "keyword": "서울 애견미용학원",
+      "regionBig": "서울",
+      "query": "서울",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "yongin-dog-grooming-academy",
+      "label": "용인",
+      "keyword": "용인 애견미용학원",
+      "regionBig": "경기",
+      "query": "용인",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "gimpo-dog-grooming-academy",
+      "label": "김포",
+      "keyword": "김포 애견미용학원",
+      "regionBig": "경기",
+      "query": "김포",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "bundang-dog-grooming-academy",
+      "label": "분당",
+      "keyword": "분당 애견미용학원",
+      "regionBig": "경기",
+      "query": "분당",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "hanam-dog-grooming-academy",
+      "label": "하남",
+      "keyword": "하남 애견미용학원",
+      "regionBig": "경기",
+      "query": "하남",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "osan-dog-grooming-academy",
+      "label": "오산",
+      "keyword": "오산 애견미용학원",
+      "regionBig": "경기",
+      "query": "오산",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "slug": "songpa-dog-grooming-academy",
+      "label": "송파",
+      "keyword": "송파 애견미용학원",
+      "regionBig": "서울",
+      "query": "송파",
+      "isPublished": false,
+      "nearbySlugs": [],
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    }
+  ]
+}

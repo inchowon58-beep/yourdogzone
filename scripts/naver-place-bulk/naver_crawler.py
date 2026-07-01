@@ -302,6 +302,7 @@ class NaverPlaceCrawler:
         self.on_user_ready = on_user_ready
         self.stop_event = stop_event
         self._map_ready = False
+        self._list_page = 1
         self.driver = start_naver_browser(log)
         self.wait = WebDriverWait(self.driver, 25)
         self._prepare_naver_session()
@@ -682,6 +683,103 @@ class NaverPlaceCrawler:
             self._sleep(0.5)
         return False
 
+    def _is_external_ad_href(self, href: str) -> bool:
+        """플레이스 패널이 아닌 외부·광고 URL."""
+        h = (href or "").strip().lower()
+        if not h or h in ("#", "javascript:void(0)", "javascript:;"):
+            return False
+        if h.startswith("http"):
+            if "map.naver.com" in h and "/place/" in h:
+                return False
+            return True
+        ad_hints = (
+            "adcr",
+            "/ad/",
+            "powerlink",
+            "saedu",
+            "clickchoice",
+            "nid_ad",
+            "advert",
+            "sponsor",
+            "banner",
+        )
+        return any(x in h for x in ad_hints)
+
+    def _is_place_name_link(self, link) -> bool:
+        """플레이스 업체 이름 링크 (배너·외부 광고 링크 제외)."""
+        try:
+            if self._is_ad_link(link):
+                return False
+            href = (link.get_attribute("href") or "").strip()
+            if self._is_external_ad_href(href):
+                return False
+            classes = link.get_attribute("class") or ""
+            if "U70Fj" in classes:
+                try:
+                    link.find_element(By.CSS_SELECTOR, "span.YwYLL")
+                    return True
+                except Exception:
+                    pass
+            if "place_bluelink" in classes:
+                return True
+            if "/place/" in href:
+                return True
+            try:
+                link.find_element(By.CSS_SELECTOR, "span.YwYLL")
+                role = (link.get_attribute("role") or "").lower()
+                if role == "button" and href in ("", "#"):
+                    return True
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return False
+
+    def _get_place_row_link(self, row):
+        """목록 행에서 플레이스 업체 이름 링크만 반환."""
+        for sel in (
+            "a.U70Fj.k4f_J",
+            "a.U70Fj",
+            "a.place_bluelink",
+            "a[class*='place_bluelink']",
+        ):
+            try:
+                link = row.find_element(By.CSS_SELECTOR, sel)
+                if self._is_place_name_link(link):
+                    return link
+            except Exception:
+                continue
+        return None
+
+    def _is_place_list_row(self, row) -> bool:
+        """검색 목록의 실제 플레이스 업체 행인지."""
+        if self._row_is_ad(row):
+            return False
+        try:
+            tag = (row.tag_name or "").lower()
+            if tag not in ("li", "div"):
+                return False
+        except Exception:
+            return False
+        if self._get_place_row_link(row):
+            return True
+        try:
+            row.find_element(By.CSS_SELECTOR, "a.place_thumb")
+            row.find_element(By.CSS_SELECTOR, "span.YwYLL")
+            return True
+        except Exception:
+            pass
+        return False
+
+    def _verify_place_detail_opened(self) -> bool:
+        """클릭 후 플레이스 상세가 열렸는지."""
+        self._top_document()
+        if self._place_id_from_url(self.driver.current_url or ""):
+            return True
+        if self._switch_frame("entryIframe"):
+            return True
+        return False
+
     def _is_ad_link(self, link) -> bool:
         """광고 항목 제외."""
         try:
@@ -709,6 +807,12 @@ class NaverPlaceCrawler:
                 return True
         except Exception:
             pass
+        try:
+            href = (link.get_attribute("href") or "").strip()
+            if self._is_external_ad_href(href):
+                return True
+        except Exception:
+            pass
         title = (link.text or link.get_attribute("textContent") or "").strip()
         if title == "광고" or title.startswith("광고 "):
             return True
@@ -716,7 +820,7 @@ class NaverPlaceCrawler:
 
     def _row_is_ad(self, row) -> bool:
         try:
-            text = (row.text or "")[:120]
+            text = (row.text or "")[:200]
             html = (row.get_attribute("outerHTML") or "").lower()
             if text.startswith("광고") or text.strip() == "광고":
                 return True
@@ -725,6 +829,44 @@ class NaverPlaceCrawler:
             if "ad_badge" in html or "adbadge" in html or "place_ad" in html:
                 return True
             if re.search(r"class=\"[^\"]*\bad[_-]", html):
+                return True
+            ad_class_hints = (
+                "ad_area",
+                "ad_banner",
+                "banner_ad",
+                "place_banner",
+                "sponsored",
+                "powerlink",
+                "ad_item",
+                "adcard",
+            )
+            if any(h in html for h in ad_class_hints):
+                return True
+            try:
+                row.find_element(
+                    By.CSS_SELECTOR,
+                    "[class*='ad_badge'], [class*='place_ad'], em.ad, [class*='AdArea']",
+                )
+                return True
+            except Exception:
+                pass
+            # 플레이스 업체명(span.YwYLL) 없이 외부 링크만 있으면 배너 광고
+            has_place_name = "ywyll" in html
+            if not has_place_name:
+                try:
+                    row.find_element(By.CSS_SELECTOR, "span.YwYLL")
+                    has_place_name = True
+                except Exception:
+                    pass
+            if not has_place_name:
+                for a in row.find_elements(By.CSS_SELECTOR, "a[href]"):
+                    href = a.get_attribute("href") or ""
+                    if self._is_external_ad_href(href):
+                        return True
+                if "oncelazyload-placeholder" in html and "place_thumb" not in html:
+                    return True
+            # 출발/도착만 있는 행은 플레이스가 아님
+            if not has_place_name and ("출발" in text and "도착" in text):
                 return True
         except Exception:
             pass
@@ -749,13 +891,12 @@ class NaverPlaceCrawler:
         return (row.text or "").split("\n")[0].strip()[:50]
 
     def _list_non_ad_rows(self) -> list:
-        """검색 목록 행(li) — 광고 제외, 순서 유지."""
+        """검색 목록 행(li) — 플레이스 업체만, 광고·배너 제외."""
         row_selectors = (
             "#_pcmap_list_scroll_container > ul > li",
-            "#_pcmap_list_scroll_container li",
+            "#_pcmap_list_scroll_container li.VLTHu",
             "li.VLTHu",
             "li.UEzoS",
-            "div.CHC5F",
         )
         rows: list = []
         seen_keys: set[str] = set()
@@ -770,7 +911,7 @@ class NaverPlaceCrawler:
                 try:
                     if not row.is_displayed():
                         continue
-                    if self._row_is_ad(row):
+                    if not self._is_place_list_row(row):
                         continue
                     title = self._extract_row_name(row)
                     if not title or title == "광고":
@@ -830,55 +971,151 @@ class NaverPlaceCrawler:
         norm = normalize_place_name(title)
         return self._name_matches_known(norm, known_names)
 
+    def _row_matches_target(
+        self,
+        *,
+        pid: str,
+        row_title: str,
+        title_key: str,
+        target: str,
+    ) -> bool:
+        row_key = normalize_place_name(row_title)
+        if target and pid == target:
+            return True
+        if not title_key:
+            return False
+        if row_key == title_key:
+            return True
+        if title_key in row_key or row_key in title_key:
+            return True
+        return False
+
+    def _find_matching_list_row(
+        self,
+        *,
+        place_id: str = "",
+        title: str = "",
+    ):
+        target = (place_id or "").strip()
+        title_key = normalize_place_name(title)
+        if not target and not title_key:
+            return None
+        for row in self._list_non_ad_rows():
+            try:
+                pid = self._extract_id_from_row(row)
+                row_title = self._extract_row_name(row)
+                if self._row_matches_target(
+                    pid=pid,
+                    row_title=row_title,
+                    title_key=title_key,
+                    target=target,
+                ):
+                    return row
+            except Exception:
+                continue
+        return None
+
+    def _scroll_list_to_top(self) -> None:
+        if not self._switch_frame("searchIframe"):
+            return
+        for sel in ("#_pcmap_list_scroll_container", ".Ryr1F", "div[role='list']"):
+            try:
+                container = self.driver.find_element(By.CSS_SELECTOR, sel)
+                self.driver.execute_script("arguments[0].scrollTop = 0;", container)
+                self._sleep(0.5)
+                return
+            except Exception:
+                continue
+
+    def _ensure_row_visible(
+        self,
+        *,
+        place_id: str = "",
+        title: str = "",
+        max_scrolls: int = 50,
+    ) -> bool:
+        """가상 스크롤 목록에서 업체 행이 보일 때까지 스크롤."""
+        target = (place_id or "").strip()
+        title_key = normalize_place_name(title)
+        if not target and not title_key:
+            return False
+
+        self._top_document()
+        self._scroll_list_to_top()
+
+        for _ in range(max_scrolls):
+            if not self._switch_frame("searchIframe"):
+                return False
+            row = self._find_matching_list_row(place_id=target, title=title)
+            if row:
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].scrollIntoView({block:'center'});",
+                        row,
+                    )
+                    self._sleep(0.6)
+                except Exception:
+                    pass
+                return True
+            if not self._scroll_list_down():
+                break
+        return False
+
     def _click_row_fresh(self, *, place_id: str = "", title: str = "") -> str:
         """목록을 다시 읽고 해당 행 클릭 → place_id."""
         target = (place_id or "").strip()
         title_key = normalize_place_name(title)
 
+        if not self._ensure_row_visible(place_id=target, title=title):
+            return ""
+
         for attempt in range(3):
             if not self._switch_frame("searchIframe"):
                 return ""
-            rows = self._list_non_ad_rows()
-            for row in rows:
-                try:
-                    pid = self._extract_id_from_row(row)
-                    row_title = self._extract_row_name(row)
-                    row_key = normalize_place_name(row_title)
-                    matched = False
-                    if target and pid == target:
-                        matched = True
-                    elif title_key and row_key == title_key:
-                        matched = True
-                    elif title_key and title_key in row_key:
-                        matched = True
-                    elif title_key and row_key in title_key:
-                        matched = True
-                    if not matched:
-                        continue
-
-                    label = row_title or target or "(업체)"
-                    try:
-                        link = row.find_element(
-                            By.CSS_SELECTOR,
-                            "a.U70Fj, a.place_bluelink, a.YwYLL, a[class*='place_bluelink']",
-                        )
-                        self.log(f"    → 목록 클릭: {label}")
-                        self._safe_click(link)
-                    except Exception:
-                        self.log(f"    → 목록 클릭: {label}")
-                        self._safe_click(row)
-
-                    self._sleep(2.0)
-                    self._wait_captcha_if_needed()
-                    return (
-                        self._place_id_from_url(self.driver.current_url or "")
-                        or pid
-                        or target
-                    )
-                except Exception as exc:
-                    if self._is_dom_error(exc):
-                        break
+            row = self._find_matching_list_row(place_id=target, title=title)
+            if not row:
+                self._sleep(0.6)
+                continue
+            try:
+                pid = self._extract_id_from_row(row)
+                row_title = self._extract_row_name(row)
+                label = row_title or target or title or "(업체)"
+                link = self._get_place_row_link(row)
+                if not link:
+                    self._sleep(0.4)
                     continue
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].scrollIntoView({block:'center'});",
+                        row,
+                    )
+                    self._sleep(0.4)
+                except Exception:
+                    pass
+                self.log(f"    → 목록 클릭: {label}")
+                self._safe_click(link)
+
+                self._sleep(2.0)
+                self._wait_captcha_if_needed()
+                if not self._verify_place_detail_opened():
+                    self.log(f"    ⊘ 광고/배너 항목 — 스킵: {label}")
+                    self._top_document()
+                    try:
+                        self.driver.back()
+                        self._sleep(1.0)
+                    except Exception:
+                        pass
+                    self._switch_frame("searchIframe")
+                    continue
+                return (
+                    self._place_id_from_url(self.driver.current_url or "")
+                    or pid
+                    or target
+                )
+            except Exception as exc:
+                if self._is_dom_error(exc):
+                    break
+                continue
             self._sleep(0.6)
 
         return ""
@@ -913,22 +1150,21 @@ class NaverPlaceCrawler:
 
     def _click_row_get_id(self, row) -> str:
         """목록 행 1회 클릭 → URL에서 place ID (검색으로 돌아가지 않음)."""
-        title = ""
-        try:
-            link = row.find_element(
-                By.CSS_SELECTOR,
-                "a.place_bluelink, a.YwYLL, a[class*='place_bluelink'], a",
-            )
-            title = (link.text or row.text or "").split("\n")[0].strip()[:36]
-            self.log(f"    → 목록 클릭: {title}")
-            self._safe_click(link)
-        except Exception:
-            title = (row.text or "").split("\n")[0].strip()[:36]
-            self.log(f"    → 목록 클릭: {title or '(업체)'}")
-            self._safe_click(row)
+        link = self._get_place_row_link(row)
+        if not link:
+            return ""
+        title = self._extract_row_name(row) or (
+            (link.text or "").split("\n")[0].strip()[:36]
+        )
+        self.log(f"    → 목록 클릭: {title}")
+        self._safe_click(link)
 
         self._sleep(2.2)
         self._wait_captcha_if_needed()
+
+        if not self._verify_place_detail_opened():
+            self.log(f"    ⊘ 광고/배너 항목 — 스킵: {title}")
+            return ""
 
         pid = self._place_id_from_url(self.driver.current_url or "")
         if not pid:
@@ -960,34 +1196,27 @@ class NaverPlaceCrawler:
     def _open_row(self, row) -> tuple[str, bool]:
         """목록 행 클릭 → (place_id, 이미 상세 열림 여부)."""
         pid = self._extract_id_from_row(row)
-        if pid:
-            title = (row.text or "").split("\n")[0].strip()[:36]
-            try:
-                link = row.find_element(
-                    By.CSS_SELECTOR,
-                    "a.place_bluelink, a.YwYLL, a[class*='place_bluelink'], a",
-                )
-                title = (link.text or title).split("\n")[0].strip()[:36]
-                self.log(f"    → 목록 클릭: {title}")
-                self._safe_click(link)
-            except Exception:
-                self.log(f"    → 목록 클릭: {title or '(업체)'}")
-                self._safe_click(row)
-            self._sleep(2.0)
-            self._wait_captcha_if_needed()
-            opened = self._place_id_from_url(self.driver.current_url or "") or pid
-            return opened, True
-        return self._click_row_get_id(row), True
+        link = self._get_place_row_link(row)
+        if not link:
+            return "", False
+        title = self._extract_row_name(row) or (row.text or "").split("\n")[0].strip()[:36]
+        self.log(f"    → 목록 클릭: {title}")
+        self._safe_click(link)
+        self._sleep(2.0)
+        self._wait_captcha_if_needed()
+        if not self._verify_place_detail_opened():
+            self.log(f"    ⊘ 광고/배너 항목 — 스킵: {title}")
+            return "", False
+        opened = self._place_id_from_url(self.driver.current_url or "") or pid
+        return opened, True
 
     def _find_place_links_in_frame(self) -> list:
-        """검색 iframe 안의 업체 링크 (광고 제외)."""
+        """검색 iframe 안의 업체 링크 (광고·배너 제외)."""
         selectors = (
+            "a.U70Fj",
             "a.place_bluelink",
-            "a.YwYLL",
             "a[class*='place_bluelink']",
             "a[href*='/place/']",
-            "div.CHC5F a",
-            "#_pcmap_list_scroll_container a",
         )
         seen_keys: set[str] = set()
         found: list = []
@@ -1002,7 +1231,7 @@ class NaverPlaceCrawler:
                 try:
                     if not link.is_displayed():
                         continue
-                    if self._is_ad_link(link):
+                    if not self._is_place_name_link(link):
                         continue
                     title = (link.text or link.get_attribute("textContent") or "").strip()
                     href = link.get_attribute("href") or ""
@@ -1189,6 +1418,172 @@ class NaverPlaceCrawler:
                 continue
         return False
 
+    def _scroll_list_to_bottom(self) -> bool:
+        """목록 맨 아래(페이지 번호 영역)까지 스크롤."""
+        if not self._switch_frame("searchIframe"):
+            return False
+        for sel in ("#_pcmap_list_scroll_container", ".Ryr1F", "div[role='list']"):
+            try:
+                container = self.driver.find_element(By.CSS_SELECTOR, sel)
+                self.driver.execute_script(
+                    "arguments[0].scrollTop = arguments[0].scrollHeight;",
+                    container,
+                )
+                self._sleep(1.0)
+                return True
+            except Exception:
+                continue
+        return False
+
+    def _list_scroll_at_bottom(self) -> bool:
+        if not self._switch_frame("searchIframe"):
+            return False
+        try:
+            container = self.driver.find_element(
+                By.CSS_SELECTOR, "#_pcmap_list_scroll_container"
+            )
+            top, height, client = self.driver.execute_script(
+                "return [arguments[0].scrollTop, arguments[0].scrollHeight,"
+                " arguments[0].clientHeight];",
+                container,
+            )
+            return float(top) + float(client) >= float(height) - 24
+        except Exception:
+            return False
+
+    def _pagination_links(self) -> list:
+        if not self._switch_frame("searchIframe"):
+            return []
+        selectors = (
+            "div.zRM9F a",
+            "div.XUrfU div.zRM9F a",
+            ".cmm_page_wrap a",
+            "[class*='pagination'] a",
+        )
+        for sel in selectors:
+            try:
+                links = [
+                    a
+                    for a in self.driver.find_elements(By.CSS_SELECTOR, sel)
+                    if a.is_displayed()
+                ]
+                if links:
+                    return links
+            except Exception:
+                continue
+        return []
+
+    def _read_active_list_page(self) -> int:
+        try:
+            if not self._switch_frame("searchIframe"):
+                return self._list_page
+            for sel in (
+                "div.zRM9F a[aria-current='page']",
+                "div.zRM9F a.on",
+                "div.zRM9F a[aria-selected='true']",
+                "div.zRM9F strong",
+            ):
+                try:
+                    el = self.driver.find_element(By.CSS_SELECTOR, sel)
+                    text = (el.text or "").strip()
+                    if text.isdigit():
+                        return int(text)
+                except Exception:
+                    continue
+            for link in self._pagination_links():
+                cls = (link.get_attribute("class") or "").lower()
+                aria = (link.get_attribute("aria-current") or "").lower()
+                if "on" in cls or aria in ("page", "true"):
+                    text = (link.text or "").strip()
+                    if text.isdigit():
+                        return int(text)
+        except Exception:
+            pass
+        return self._list_page
+
+    def _click_list_page_number(self, page: int) -> bool:
+        if not self._switch_frame("searchIframe"):
+            return False
+        target = str(page)
+        for link in self._pagination_links():
+            if (link.text or "").strip() == target:
+                try:
+                    self._safe_click(link)
+                    return True
+                except Exception:
+                    return False
+        try:
+            el = self.driver.find_element(
+                By.XPATH,
+                f"//div[contains(@class,'zRM9F')]//a[normalize-space()='{target}']",
+            )
+            self._safe_click(el)
+            return True
+        except Exception:
+            return False
+
+    def _click_list_next_arrow(self) -> bool:
+        if not self._switch_frame("searchIframe"):
+            return False
+        for sel in ("a.cmm_pg_next", ".cmm_pg_next"):
+            try:
+                el = self.driver.find_element(By.CSS_SELECTOR, sel)
+                if not el.is_displayed():
+                    continue
+                if (el.get_attribute("aria-disabled") or "").lower() == "true":
+                    return False
+                self._safe_click(el)
+                return True
+            except Exception:
+                continue
+        try:
+            links = self._pagination_links()
+            if not links:
+                return False
+            last = links[-1]
+            text = (last.text or "").strip()
+            label = (last.get_attribute("aria-label") or "").lower()
+            if text.isdigit():
+                return False
+            if text in (">", "›", "»", "다음") or "다음" in label or "next" in label:
+                if (last.get_attribute("aria-disabled") or "").lower() == "true":
+                    return False
+                self._safe_click(last)
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _go_to_next_list_page(self, *, max_pages: int = 20) -> bool:
+        """목록 하단 페이지 번호(2, 3…) 또는 다음(>) 버튼으로 이동."""
+        if self._list_page >= max_pages:
+            return False
+        if not self._switch_frame("searchIframe"):
+            return False
+
+        self._scroll_list_to_bottom()
+        self._sleep(0.8)
+        before = self._read_active_list_page()
+        next_num = before + 1
+
+        clicked = False
+        if self._click_list_page_number(next_num):
+            clicked = True
+        elif self._click_list_next_arrow():
+            clicked = True
+
+        if not clicked:
+            return False
+
+        self._sleep(2.0)
+        self._wait_captcha_if_needed()
+        after = self._read_active_list_page()
+        if after <= before:
+            after = next_num
+        self._list_page = after
+        self._scroll_list_to_top()
+        return True
+
     def _list_search_rows(self) -> list:
         """검색 결과 — 업체 링크 목록 (행 또는 a 태그)."""
         links = self._find_place_links_in_frame()
@@ -1196,10 +1591,9 @@ class NaverPlaceCrawler:
             return links
 
         row_selectors = (
-            "#_pcmap_list_scroll_container li",
-            "div.CHC5F",
+            "#_pcmap_list_scroll_container li.VLTHu",
+            "li.VLTHu",
             "li.UEzoS",
-            "div[class*='item']",
         )
         rows: list = []
         seen_keys: set[str] = set()
@@ -1214,10 +1608,12 @@ class NaverPlaceCrawler:
                 try:
                     if not row.is_displayed():
                         continue
-                    link = row.find_element(
-                        By.CSS_SELECTOR, "a.place_bluelink, a[href*='/place/'], a.YwYLL"
-                    )
-                    title = (link.text or "").strip()
+                    if not self._is_place_list_row(row):
+                        continue
+                    link = self._get_place_row_link(row)
+                    if not link:
+                        continue
+                    title = (link.text or self._extract_row_name(row) or "").strip()
                     key = self._place_id_from_link(link) or title
                     if not key or key in seen_keys:
                         continue
@@ -1233,6 +1629,8 @@ class NaverPlaceCrawler:
 
     def _click_place_link(self, link) -> tuple[str, str, str]:
         """업체 링크 클릭 → 상세 패널 열기."""
+        if not self._is_place_name_link(link):
+            return "", "", ""
         title = (link.text or link.get_attribute("textContent") or "").strip()
         place_id = self._place_id_from_link(link)
         place_url = link.get_attribute("href") or ""
@@ -1261,9 +1659,9 @@ class NaverPlaceCrawler:
         tag = (row.tag_name or "").lower()
         if tag == "a":
             return self._click_place_link(row)
-        link = row.find_element(
-            By.CSS_SELECTOR, "a.place_bluelink, a[href*='/place/'], a.YwYLL"
-        )
+        link = self._get_place_row_link(row)
+        if not link:
+            return "", "", ""
         return self._click_place_link(link)
 
     def _wait_detail_panel(self) -> bool:
@@ -1537,13 +1935,14 @@ class NaverPlaceCrawler:
         skip_place_ids: set[str] | None = None,
         skip_names: set[str] | None = None,
     ) -> list[PlaceData]:
-        """검색 목록을 위→아래로 스크롤하며 신규만 수집 (이미 수집한 업체는 클릭 없이 스킵)."""
+        """검색 목록을 위→아래로 스크롤하며 신규만 수집 (페이지 번호 2·3… 자동 이동)."""
         results: list[PlaceData] = []
         known_ids = set(skip_place_ids or ())
         known_names = set(skip_names or ())
         processed_ids: set[str] = set(known_ids)
         processed_names: set[str] = set(known_names)
         skipped_known = 0
+        self._list_page = 1
 
         self.log(f"  ① 지도에서 검색: {query}")
         self._search_on_map(query)
@@ -1612,13 +2011,17 @@ class NaverPlaceCrawler:
                     try:
                         opened = self._click_row_fresh(place_id=pid, title=title)
                         if not opened:
-                            self.log(f"    ⚠ 목록 클릭 실패 — 스킵: {title or pid}")
-                            continue
+                            self.log(
+                                f"    ⚠ 목록 클릭 실패 — 다음 라운드에서 재시도: "
+                                f"{title or pid}"
+                            )
+                            break
+
                         pid = opened
 
                         if pid in processed_ids:
                             self._return_to_search(search_url)
-                            continue
+                            break
                         processed_ids.add(pid)
 
                         if self._is_known_place(
@@ -1631,7 +2034,7 @@ class NaverPlaceCrawler:
                                 processed_names.add(norm_title)
                             skipped_known += 1
                             self._return_to_search(search_url)
-                            continue
+                            break
 
                         if norm_title:
                             processed_names.add(norm_title)
@@ -1665,31 +2068,52 @@ class NaverPlaceCrawler:
                         raise
                     except Exception as e:
                         if self._is_dom_error(e):
-                            self.log(f"    ⚠ 목록 갱신됨 — 다음 업체로 ({title or pid})")
+                            self.log(f"    ⚠ 목록 갱신됨 — 다음 라운드에서 재시도 ({title or pid})")
                         else:
                             self.log(f"    ✗ 오류: {e}")
                         try:
                             self._return_to_search(search_url)
                         except Exception:
                             pass
+                        break
 
-                    self._sleep(0.5)
+                    # 상세 수집 후 목록 스크롤이 초기화되므로 1건 처리마다 재탐색
+                    break
 
                 if len(results) >= max_items:
                     break
 
                 if new_in_round == 0:
                     no_progress_rounds += 1
-                    if no_progress_rounds >= 10:
-                        self.log("  목록 끝 — 더 이상 신규 업체가 없습니다.")
-                        break
                 else:
                     no_progress_rounds = 0
 
+                if len(results) >= max_items:
+                    break
+
                 self.log("  ③ 목록 아래로 스크롤 — 다음 업체 탐색")
-                if not self._scroll_list_down():
-                    no_progress_rounds += 1
+                scrolled = self._scroll_list_down()
                 scroll_rounds += 1
+                at_bottom = self._list_scroll_at_bottom()
+
+                # 1페이지 스크롤 끝 → 하단 2, 3… 페이지 버튼으로 이동
+                if new_in_round == 0 and (at_bottom or not scrolled):
+                    if self._go_to_next_list_page():
+                        self.log(
+                            f"  ④ 검색 목록 {self._list_page}페이지 — 추가 업체 탐색"
+                        )
+                        no_progress_rounds = 0
+                        continue
+
+                if no_progress_rounds >= 8:
+                    if self._go_to_next_list_page():
+                        self.log(
+                            f"  ④ 검색 목록 {self._list_page}페이지 — 추가 업체 탐색"
+                        )
+                        no_progress_rounds = 0
+                        continue
+                    self.log("  목록 끝 — 더 이상 신규 업체가 없습니다.")
+                    break
 
         except CrawlStopped:
             self.log(f"  ⏹ 수집 중지 — 이 검색어에서 {len(results)}곳 확보")

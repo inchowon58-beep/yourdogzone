@@ -176,6 +176,40 @@ class AcademyRegisterApp(tk.Tk):
             side="left"
         )
 
+        naver_frm = tk.Frame(frm, bg="#fff")
+        naver_frm.grid(row=13, column=0, columnspan=2, sticky="w", padx=12, pady=(4, 0))
+
+        self.naver_submit_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            naver_frm,
+            text="등록 시 네이버 서치어드바이저 웹문서 수집 요청 (체크 시에만, 일일 50건)",
+            variable=self.naver_submit_var,
+            bg="#fff",
+            anchor="w",
+        ).pack(anchor="w")
+
+        naver_row = tk.Frame(naver_frm, bg="#fff")
+        naver_row.pack(anchor="w", pady=(4, 0))
+
+        tk.Label(naver_row, text="서치어드바이저 사이트", bg="#fff").pack(side="left")
+        self.naver_site_var = tk.StringVar()
+        tk.Entry(naver_row, textvariable=self.naver_site_var, width=40).pack(side="left", padx=6)
+        tk.Label(naver_row, text="일일 한도", bg="#fff").pack(side="left", padx=(8, 0))
+        self.naver_limit_var = tk.IntVar(value=50)
+        tk.Spinbox(
+            naver_row, from_=1, to=50, textvariable=self.naver_limit_var, width=4
+        ).pack(side="left", padx=4)
+
+        tk.Label(
+            naver_frm,
+            text="비우면 사이트 URL 사용. 서치어드바이저에 사이트 등록·소유확인이 되어 있어야 합니다.",
+            bg="#fff",
+            fg="#888",
+            font=("Segoe UI", 8),
+            wraplength=560,
+            justify="left",
+        ).pack(anchor="w", pady=(2, 0))
+
         tk.Label(
             tab_settings,
             text="※ [수집 + 등록] 한 번이면 됩니다 — 검색어를 바꿔 여러 번 돌려도 중복은 자동 건너뜁니다.",
@@ -333,6 +367,9 @@ class AcademyRegisterApp(tk.Tk):
         self.max_var.set(s.max_per_search)
         self.delay_var.set(s.delay_seconds)
         self.gemini_var.set(s.refine_with_gemini)
+        self.naver_submit_var.set(s.naver_submit_enabled)
+        self.naver_site_var.set(s.naver_site_url)
+        self.naver_limit_var.set(s.naver_daily_limit)
 
         if s.searches:
             lines = []
@@ -366,6 +403,9 @@ class AcademyRegisterApp(tk.Tk):
             delay_seconds=self.delay_var.get(),
             refine_with_gemini=self.gemini_var.get(),
             use_chrome_profile=True,
+            naver_submit_enabled=self.naver_submit_var.get(),
+            naver_site_url=self.naver_site_var.get().strip(),
+            naver_daily_limit=self.naver_limit_var.get(),
         )
 
     def _save_settings(self) -> None:
@@ -442,6 +482,38 @@ class AcademyRegisterApp(tk.Tk):
 
         self.after(0, show_dialog)
         done.wait()
+
+    def _make_naver_login_hooks(self) -> tuple:
+        login_event = threading.Event()
+
+        def on_ready() -> None:
+            self.after(0, lambda: self._prompt_naver_login(login_event))
+
+        def login_confirmed() -> bool:
+            if login_event.is_set():
+                login_event.clear()
+                return True
+            return False
+
+        return login_confirmed, on_ready
+
+    def _prompt_naver_login(self, login_event: threading.Event) -> None:
+        messagebox.showinfo(
+            "네이버 서치어드바이저 로그인",
+            "Chrome 창에서 네이버 로그인을 완료해 주세요.\n\n"
+            "1) 캡차·2단계 인증은 직접 처리\n"
+            "2) 로그인이 끝나면 이 창에서 [확인] 클릭\n"
+            "3) 이후 등록된 URL에 대해 수집 요청이 진행됩니다",
+        )
+        login_event.set()
+
+    def _naver_register_kwargs(self) -> dict:
+        login_confirmed, on_ready = self._make_naver_login_hooks()
+        return {
+            "naver_login_confirmed": login_confirmed,
+            "on_naver_login_ready": on_ready,
+            "stop_event": self.stop_event,
+        }
 
     def _poll_log(self) -> None:
         while True:
@@ -527,7 +599,7 @@ class AcademyRegisterApp(tk.Tk):
                 settings,
                 self._log,
                 on_browser_ready=self._wait_user_confirm,
-                stop_event=self.stop_event,
+                **self._naver_register_kwargs(),
             )
             if self.stop_event.is_set():
                 self._log(f"\n✓ 중지 후 등록 완료 ({category_label(settings.category)})")
@@ -542,7 +614,7 @@ class AcademyRegisterApp(tk.Tk):
         def job(settings: PipelineSettings):
             if not settings.admin_secret:
                 raise ValueError("관리자 비밀키를 입력하세요.")
-            ok, fail = run_register_pending(settings, self._log)
+            ok, fail = run_register_pending(settings, self._log, **self._naver_register_kwargs())
             if ok and not fail:
                 self._log("\n✓ 지금까지 수집분 등록 완료!")
             elif ok == 0 and fail == 0:
@@ -561,7 +633,9 @@ class AcademyRegisterApp(tk.Tk):
         def job(settings: PipelineSettings):
             if not settings.admin_secret:
                 raise ValueError("관리자 비밀키를 입력하세요.")
-            ok, fail = register_from_json(path, settings, self._log)
+            ok, fail = register_from_json(
+                path, settings, self._log, **self._naver_register_kwargs()
+            )
             if ok and not fail:
                 self._log("\n✓ JSON 등록 완료!")
 

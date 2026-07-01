@@ -94,6 +94,9 @@ class PipelineSettings:
     delay_seconds: float = 2.0
     refine_with_gemini: bool = True
     use_chrome_profile: bool = True
+    naver_submit_enabled: bool = False
+    naver_site_url: str = ""
+    naver_daily_limit: int = 50
 
     def apply_env(self) -> None:
         os.environ["YOURDOGZONE_API_URL"] = self.api_url.rstrip("/")
@@ -109,6 +112,9 @@ class PipelineSettings:
             "refine_with_gemini": self.refine_with_gemini,
             "use_chrome_profile": self.use_chrome_profile,
             "seo_title_suffix": self.seo_title_suffix,
+            "naver_submit_enabled": self.naver_submit_enabled,
+            "naver_site_url": self.naver_site_url,
+            "naver_daily_limit": self.naver_daily_limit,
         }
 
 
@@ -160,6 +166,9 @@ def load_settings_from_files(script_dir: Path | None = None) -> PipelineSettings
         settings.use_chrome_profile = bool(data.get("use_chrome_profile", True))
         settings.seo_title_suffix = str(data.get("seo_title_suffix", "") or "")
         settings.category = str(data.get("category", "academy") or "academy")
+        settings.naver_submit_enabled = bool(data.get("naver_submit_enabled", False))
+        settings.naver_site_url = str(data.get("naver_site_url", "") or "")
+        settings.naver_daily_limit = int(data.get("naver_daily_limit", 50) or 50)
         if settings.searches:
             settings.max_per_search = int(settings.searches[0].get("max", 3))
 
@@ -270,8 +279,9 @@ def crawl_places(
     on_browser_ready: Callable[[str], None] | None = None,
     *,
     stop_event: threading.Event | None = None,
-) -> tuple[list[PlaceData], bool]:
-    """반환: (수집 목록, 중지 여부)"""
+    keep_driver: bool = False,
+) -> tuple[list[PlaceData], bool, object | None]:
+    """반환: (수집 목록, 중지 여부, keep_driver 시 Chrome WebDriver)"""
     if not settings.searches:
         raise ValueError("검색어를 1개 이상 입력하세요.")
 
@@ -291,6 +301,7 @@ def crawl_places(
     )
     stopped = False
     places: list[PlaceData] = []
+    driver = None
     try:
         places = crawler.crawl_many(
             settings.searches,
@@ -303,10 +314,13 @@ def crawl_places(
         log(f"\n⚠ 수집 중 예기치 않은 오류: {e}")
         stopped = True
     finally:
-        crawler.close()
+        if keep_driver:
+            driver = crawler.driver
+        else:
+            crawler.close()
 
     log(f"\n수집 완료: {len(places)}곳" + (" (중지됨)" if stopped else ""))
-    return places, stopped
+    return places, stopped, driver
 
 
 def _save_collect_results(
@@ -344,6 +358,10 @@ def _register_item_dicts(
     log: LogFn,
     *,
     skip_existing: bool = True,
+    browser_driver=None,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
+    stop_event: threading.Event | None = None,
 ) -> tuple[int, int]:
     if not settings.admin_secret:
         raise ValueError("관리자 비밀키(ACADEMY_ADMIN_SECRET)를 입력하세요.")
@@ -369,6 +387,11 @@ def _register_item_dicts(
     )
     if settings.seo_title_suffix.strip():
         log(f"  타이틀 추가 문구: {settings.seo_title_suffix.strip()}")
+    if settings.naver_submit_enabled:
+        site = (settings.naver_site_url or settings.api_url).rstrip("/")
+        log(
+            f"  네이버 수집 요청: ON (일일 {settings.naver_daily_limit}건, 사이트 {site})"
+        )
 
     ok, fail, successes = register_all(
         targets,
@@ -383,6 +406,21 @@ def _register_item_dicts(
 
     log(f"\n등록 결과: 성공 {ok} | 실패 {fail}")
     _log_master_stats(settings.category, log)
+
+    if settings.naver_submit_enabled and successes:
+        from naver_submit import submit_urls_to_searchadvisor
+
+        urls = [url for _, url in successes]
+        submit_urls_to_searchadvisor(
+            urls,
+            settings,
+            log,
+            existing_driver=browser_driver,
+            login_confirmed=naver_login_confirmed,
+            on_ready_for_login=on_naver_login_ready,
+            stop_event=stop_event,
+        )
+
     service_path = (
         "/services/academy"
         if settings.category == "academy"
@@ -398,12 +436,33 @@ def register_places(
     log: LogFn,
     *,
     skip_existing: bool = True,
+    browser_driver=None,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
+    stop_event: threading.Event | None = None,
 ) -> tuple[int, int]:
     items = [p.to_api_payload() for p in places]
-    return _register_item_dicts(items, settings, log, skip_existing=skip_existing)
+    return _register_item_dicts(
+        items,
+        settings,
+        log,
+        skip_existing=skip_existing,
+        browser_driver=browser_driver,
+        naver_login_confirmed=naver_login_confirmed,
+        on_naver_login_ready=on_naver_login_ready,
+        stop_event=stop_event,
+    )
 
 
-def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tuple[int, int]:
+def register_from_json(
+    path: Path,
+    settings: PipelineSettings,
+    log: LogFn,
+    *,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
+    stop_event: threading.Event | None = None,
+) -> tuple[int, int]:
     data = json.loads(path.read_text(encoding="utf-8"))
     category = settings.category
     if isinstance(data, dict):
@@ -420,12 +479,23 @@ def register_from_json(path: Path, settings: PipelineSettings, log: LogFn) -> tu
     )
     log(f"마스터 병합: 신규 {added} | 중복 {dup} | 마스터 총 {total}곳")
 
-    return register_master_pending(replace(settings, category=category), log)
+    return register_master_pending(
+        replace(settings, category=category),
+        log,
+        naver_login_confirmed=naver_login_confirmed,
+        on_naver_login_ready=on_naver_login_ready,
+        stop_event=stop_event,
+    )
 
 
 def register_master_pending(
     settings: PipelineSettings,
     log: LogFn,
+    *,
+    browser_driver=None,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
+    stop_event: threading.Event | None = None,
 ) -> tuple[int, int]:
     """마스터 JSON에서 미등록 항목만 사이트에 등록."""
     pending = [item_to_place_payload(i) for i in get_pending_items(settings.category)]
@@ -435,7 +505,15 @@ def register_master_pending(
     if not pending:
         log("등록할 미등록 항목이 없습니다.")
         return 0, 0
-    return _register_item_dicts(pending, settings, log)
+    return _register_item_dicts(
+        pending,
+        settings,
+        log,
+        browser_driver=browser_driver,
+        naver_login_confirmed=naver_login_confirmed,
+        on_naver_login_ready=on_naver_login_ready,
+        stop_event=stop_event,
+    )
 
 
 def run_collect(
@@ -446,7 +524,7 @@ def run_collect(
     stop_event: threading.Event | None = None,
 ) -> Path | None:
     settings.apply_env()
-    places, stopped = crawl_places(
+    places, stopped, _ = crawl_places(
         settings, log, on_browser_ready=on_browser_ready, stop_event=stop_event
     )
     if not places and not stopped:
@@ -463,47 +541,78 @@ def run_collect_and_register(
     log: LogFn,
     on_browser_ready: Callable[[str], None] | None = None,
     *,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
     stop_event: threading.Event | None = None,
 ) -> bool:
     """수집 → 마스터 병합 → 중복 제거 후 미등록 신규만 사이트 등록."""
     settings.apply_env()
-    places, stopped = crawl_places(
-        settings, log, on_browser_ready=on_browser_ready, stop_event=stop_event
+    keep_driver = settings.naver_submit_enabled
+    places, stopped, driver = crawl_places(
+        settings,
+        log,
+        on_browser_ready=on_browser_ready,
+        stop_event=stop_event,
+        keep_driver=keep_driver,
     )
 
-    if places:
-        _save_collect_results(places, settings.category, log)
-        log(f"\n③ 이번 수집: {len(places)}곳 (마스터에 반영됨)")
-    elif stopped:
-        log("\n③ 수집 중지 — 이번 세션 신규 없음")
-    else:
-        log(
-            f"\n③ 이번 수집 신규 없음 — "
-            f"이미 수집한 업체이거나 검색 결과가 없습니다."
+    try:
+        if places:
+            _save_collect_results(places, settings.category, log)
+            log(f"\n③ 이번 수집: {len(places)}곳 (마스터에 반영됨)")
+        elif stopped:
+            log("\n③ 수집 중지 — 이번 세션 신규 없음")
+        else:
+            log(
+                f"\n③ 이번 수집 신규 없음 — "
+                f"이미 수집한 업체이거나 검색 결과가 없습니다."
+            )
+
+        if stopped:
+            log("\n④ 중지됨 — 지금까지 수집분 등록 진행")
+        else:
+            log("\n④ 사이트 등록 (미등록 신규만, 중복 자동 제외)")
+
+        ok, fail = register_master_pending(
+            settings,
+            log,
+            browser_driver=driver,
+            naver_login_confirmed=naver_login_confirmed,
+            on_naver_login_ready=on_naver_login_ready,
+            stop_event=stop_event,
         )
-
-    if stopped:
-        log("\n④ 중지됨 — 지금까지 수집분 등록 진행")
-    else:
-        log("\n④ 사이트 등록 (미등록 신규만, 중복 자동 제외)")
-
-    ok, fail = register_master_pending(settings, log)
-    if ok == 0 and fail == 0:
-        log("등록할 새 업체가 없습니다. (모두 이미 등록됨)")
-        return True
-    return fail == 0
+        if ok == 0 and fail == 0:
+            log("등록할 새 업체가 없습니다. (모두 이미 등록됨)")
+            return True
+        return fail == 0
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
 
 def run_register_pending(
     settings: PipelineSettings,
     log: LogFn,
+    *,
+    naver_login_confirmed: Callable[[], bool] | None = None,
+    on_naver_login_ready: Callable[[], None] | None = None,
+    stop_event: threading.Event | None = None,
 ) -> tuple[int, int]:
     """수집 없이 마스터 미등록 항목만 등록."""
     if not settings.admin_secret:
         raise ValueError("관리자 비밀키(ACADEMY_ADMIN_SECRET)를 입력하세요.")
     settings.apply_env()
     log("\n④ 마스터 미등록 항목 등록")
-    return register_master_pending(settings, log)
+    return register_master_pending(
+        settings,
+        log,
+        naver_login_confirmed=naver_login_confirmed,
+        on_naver_login_ready=on_naver_login_ready,
+        stop_event=stop_event,
+    )
 
 
 def list_crawled_files() -> list[Path]:

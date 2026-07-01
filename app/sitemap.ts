@@ -5,6 +5,7 @@ import { getLandingPages } from "@/lib/seo/landing-pages";
 import { LISTING_CATEGORIES, listingBasePath } from "@/lib/listings/config";
 import { getListings } from "@/lib/listings/queries";
 import { getAcademies } from "@/lib/academy/queries";
+import { getAllRegionalLandings, regionalLandingPath } from "@/lib/academy/regional-landing";
 import { getBreeds } from "@/lib/breeds/queries";
 import { breedDetailPath } from "@/lib/breeds/config";
 
@@ -43,6 +44,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: academy.is_premium ? 0.85 : 0.75,
   }));
 
+  const regionalPages = await getAllRegionalLandings();
+  const regionalAcademyRoutes: MetadataRoute.Sitemap = regionalPages.map(
+    (page) => ({
+      url: absoluteUrl(regionalLandingPath(page)),
+      lastModified: page.updatedAt ? new Date(page.updatedAt) : undefined,
+      changeFrequency: "weekly" as const,
+      priority: 0.88,
+    })
+  );
+
   const listingRoutes: MetadataRoute.Sitemap = [];
   for (const category of LISTING_CATEGORIES) {
     const listings = await getListings(category);
@@ -68,6 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...STATIC_ROUTES,
     ...serviceRoutes,
     ...academyRoutes,
+    ...regionalAcademyRoutes,
     ...listingRoutes,
     ...breedRoutes,
     ...landingRoutes,
