@@ -20,6 +20,7 @@ import {
   RECOMMENDED_HIGHLIGHT_VAR,
   REGION_VAR,
 } from "@/lib/academy/regional-seo-vars";
+import { formatStationName } from "@/lib/constants/region-nearby-stations";
 
 export type RegionalLandingGeminiContent = {
   regionInfo: string;
@@ -31,6 +32,8 @@ export type RegionalLandingGeminiContent = {
   seoBlocksNearby: RegionalSeoBlockStored[];
   faqItems: RegionalFaqItemStored[];
   faqItemsNearby: RegionalFaqItemStored[];
+  nearbyAreas: string[];
+  nearbyStations: string[];
 };
 
 export type RegionalGeminiResult =
@@ -95,6 +98,18 @@ function normalizeFaqItems(
   ];
 }
 
+function normalizeGeoList(
+  raw: unknown,
+  asStation: boolean
+): string[] {
+  if (!Array.isArray(raw)) return [];
+  const list = raw
+    .map((x) => String(x).trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  return asStation ? list.map(formatStationName) : list;
+}
+
 function parseRegionalContent(
   text: string,
   model: string
@@ -109,6 +124,8 @@ function parseRegionalContent(
     seoBlocksNearby?: RegionalSeoBlockStored[];
     faqItems?: RegionalFaqItemStored[];
     faqItemsNearby?: RegionalFaqItemStored[];
+    nearbyAreas?: unknown;
+    nearbyStations?: unknown;
   };
 
   try {
@@ -162,6 +179,8 @@ function parseRegionalContent(
         seoBlocksNearby,
         faqItems: normalizeFaqItems(parsed.faqItems),
         faqItemsNearby: normalizeFaqItems(parsed.faqItemsNearby),
+        nearbyAreas: normalizeGeoList(parsed.nearbyAreas, false),
+        nearbyStations: normalizeGeoList(parsed.nearbyStations, true),
       },
     };
   } catch (e) {
@@ -243,6 +262,7 @@ function buildRegionalGeminiPrompt(input: {
   keyword: string;
   regionBig?: string;
   nearbyLabels: string[];
+  nearbyStations: string[];
   recommendedAcademyName: string;
   recommendedAcademyHighlight: string;
   hasRecommendedAcademy: boolean;
@@ -256,6 +276,8 @@ function buildRegionalGeminiPrompt(input: {
     : input.label;
   const nearby =
     input.nearbyLabels.slice(0, 5).join(", ") || "인근 구·동";
+  const stations =
+    input.nearbyStations.slice(0, 5).join(", ") || "인근 지하철역";
 
   const imageRule = input.hasAcademyImage
     ? `- 첨부된 학원 대표 이미지(실습실·시설)를 참고해 A안 글에 분위기를 자연스럽게 반영할 것. 과장·허위 묘사 금지.`
@@ -268,6 +290,7 @@ function buildRegionalGeminiPrompt(input: {
 - 실제 지역 키워드: ${input.keyword}
 - 행정 구역: ${regionLine}
 - 인근 구·동: ${nearby}
+- 인근 지하철역: ${stations}
 - A안용 추천학원: ${RECOMMENDED_ACADEMY_VAR} / ${RECOMMENDED_HIGHLIGHT_VAR}
 - B안용 인근 학원: ${NEARBY_REGION_VAR} / ${NEARBY_ACADEMY_VAR} / ${NEARBY_HIGHLIGHT_VAR}
 
@@ -297,10 +320,13 @@ ${imageRule ? `\n4. 이미지 참고:\n${imageRule}` : ""}
   "seoBlocks": [ { "title": "...", "paragraphs": ["..."], "bullets": ["..."] } ],
   "seoBlocksNearby": [ { "title": "...", "paragraphs": ["..."], "bullets": ["..."] } ],
   "faqItems": [ { "question": "...", "answer": "..." } ],
-  "faqItemsNearby": [ { "question": "...", "answer": "..." } ]
+  "faqItemsNearby": [ { "question": "...", "answer": "..." } ],
+  "nearbyAreas": ["구·동1", "구·동2", "구·동3", "구·동4", "구·동5"],
+  "nearbyStations": ["...역", "...역", "...역", "...역", "...역"]
 }
 
-seoBlocks·seoBlocksNearby 각 2~3개, faqItems·faqItemsNearby 각 4개.`;
+seoBlocks·seoBlocksNearby 각 2~3개, faqItems·faqItemsNearby 각 4개.
+nearbyAreas는 광역(서울·경기 등) 제외 실제 구·동 5곳. nearbyStations는 통학 연관 역 5곳.`;
 }
 
 export async function generateRegionalLandingWithGemini(input: {
@@ -308,6 +334,7 @@ export async function generateRegionalLandingWithGemini(input: {
   keyword: string;
   regionBig?: string;
   nearbyLabels: string[];
+  nearbyStations?: string[];
   recommendedAcademyName: string;
   recommendedAcademyHighlight: string;
   hasRecommendedAcademy: boolean;
@@ -328,7 +355,11 @@ export async function generateRegionalLandingWithGemini(input: {
   ];
 
   const hasAcademyImage = Boolean(input.academyImageUrl?.startsWith("http"));
-  const prompt = buildRegionalGeminiPrompt({ ...input, hasAcademyImage });
+  const prompt = buildRegionalGeminiPrompt({
+    ...input,
+    nearbyStations: input.nearbyStations ?? [],
+    hasAcademyImage,
+  });
   const errors: string[] = [];
 
   for (const model of models) {

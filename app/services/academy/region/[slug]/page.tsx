@@ -20,8 +20,7 @@ import {
   resolveBoundSeoSectionIntro,
 } from "@/lib/academy/regional-seo-resolve";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
-import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
-import { ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
+import { ensureRegionalNearbyGeo, ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
   getPublishedRegionalSlugs,
@@ -31,7 +30,7 @@ import {
 import { NearbyStationSeoSection } from "@/components/academy/NearbyStationSeoSection";
 import { resolveNearbyAreas, resolveNearbyStations } from "@/lib/academy/resolve-nearby-areas";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";
-import { sampleRandom, sampleStableRandom } from "@/lib/utils/random-sample";
+import { sampleStableRandom } from "@/lib/utils/random-sample";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalAcademyBreadcrumbJsonLd,
@@ -40,8 +39,6 @@ import {
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
 export const dynamic = "force-dynamic";
-
-const TOP_PREMIUM_COUNT = 3;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",
@@ -70,6 +67,7 @@ export async function generateMetadata({ params }: PageProps) {
   const pageCtx = await loadRegionalPageContext(page);
   const seoCtx = pageCtx.seoCtx;
 
+  page = await ensureRegionalNearbyGeo(page);
   page = await ensureRegionalSeoContent(page, seoCtx);
 
   return buildRegionalLandingMetadata(page, seoCtx);
@@ -93,24 +91,38 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
 
-  const [pageCtx, allPremium, allRegionalLandings] = await Promise.all([
+  const [pageCtx, allRegionalLandings] = await Promise.all([
     loadRegionalPageContext(page),
-    getAllPremiumAcademies(),
     getAllRegionalLandings(),
   ]);
 
   const seoCtx = pageCtx.seoCtx;
 
+  page = await ensureRegionalNearbyGeo(page);
   page = await ensureRegionalSeoContent(page, seoCtx);
 
-  const { premium, regular, nearbyPremium, isNearbyFallback, nearbySourceLabel, recommended } =
-    pageCtx;
+  const {
+    premium,
+    regular,
+    nearbyPremium,
+    isNearbyFallback,
+    nearbySourceLabel,
+    recommended,
+    seoNearby,
+    isPoolPremiumFallback,
+  } = pageCtx;
 
-  const topPremium = sampleRandom(
-    allPremium,
-    Math.min(TOP_PREMIUM_COUNT, allPremium.length)
+  const topPremiumAcademies = recommended
+    ? [recommended]
+    : nearbyPremium.length > 0
+      ? nearbyPremium.slice(0, 1)
+      : [];
+
+  const guidePreview = sampleStableRandom(
+    recommended ? [recommended] : nearbyPremium.length > 0 ? nearbyPremium : premium,
+    5,
+    `${page.slug}-guide`
   );
-  const guidePreview = sampleRandom(allPremium, 5);
 
   const nearby = await resolveNearbyPages(page);
   const nearbyAreas = resolveNearbyAreas(page);
@@ -121,7 +133,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const listAnchor = "#academy-list";
   const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
 
-  const featuredSource = recommended ?? nearbyPremium[0] ?? null;
+  const featuredSource = recommended ?? seoNearby ?? null;
   const featuredAcademy = featuredSource
     ? {
         name: featuredSource.name,
@@ -161,28 +173,21 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
       </section>
 
-      {topPremium.length > 0 ? (
+      {recommended ? (
         <section className="mb-12">
           <PremiumAcademyGrid
-            academies={topPremium}
-            premiumTitle="인증 추천 학원"
-            premiumBadge="인증 추천"
-          />
-        </section>
-      ) : premium.length > 0 ? (
-        <section className="mb-12">
-          <PremiumAcademyGrid
-            academies={premium}
+            academies={[recommended]}
             premiumTitle={`${label} 인증 추천 학원`}
             premiumBadge="인증 추천"
           />
         </section>
-      ) : (
+      ) : topPremiumAcademies.length > 0 ? (
         <NearbyPremiumAcademyFallback
           label={label}
-          academies={nearbyPremium}
+          academies={topPremiumAcademies}
+          isPoolFallback={isPoolPremiumFallback}
         />
-      )}
+      ) : null}
 
       <RegionalAcademySeoSection
         label={label}
@@ -202,7 +207,9 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
           previewAcademies={guidePreview}
           listHref={listAnchor}
           totalListCount={regular.length}
-          premiumListCount={allPremium.length}
+          premiumListCount={
+            recommended ? 1 : nearbyPremium.length > 0 ? nearbyPremium.length : premium.length
+          }
         />
       </section>
 

@@ -4,7 +4,7 @@ import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
-import { fetchNearbyPremiumWithFallback } from "@/lib/academy/regional-academy-fallback";
+import { generateRegionalNearbyGeoWithGemini } from "@/lib/ai/regional-nearby-geo-gemini";
 import { inferRegionBig } from "@/lib/academy/region-metro";
 import { getAcademies } from "@/lib/academy/queries";
 import {
@@ -12,6 +12,7 @@ import {
   parseLabelFromKeyword,
 } from "@/lib/academy/regional-slug";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
+import { pickRegionalPremiumForSeo } from "@/lib/academy/regional-premium-pick";
 import {
   buildRegionalSeoContext,
   pickRecommendedAcademy,
@@ -24,6 +25,36 @@ export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiUsed?: boolean;
   geminiError?: string;
 };
+
+async function resolveNearbyGeoForDraft(
+  label: string,
+  keyword: string,
+  regionBig?: string
+): Promise<{
+  nearbyAreas: string[];
+  nearbyStations: string[];
+  nearbyIntro?: string;
+}> {
+  const staticAreas = getNearbyDistricts(label, 5);
+  const staticStations = getNearbyStations(label, 5);
+  if (staticAreas.length > 0 && staticStations.length > 0) {
+    return { nearbyAreas: staticAreas, nearbyStations: staticStations };
+  }
+
+  const gemini = await generateRegionalNearbyGeoWithGemini({
+    label,
+    keyword,
+    regionBig,
+  });
+  if (gemini.ok) {
+    return gemini.data;
+  }
+
+  return {
+    nearbyAreas: staticAreas,
+    nearbyStations: staticStations,
+  };
+}
 
 /** 키워드 한 줄로 지역 랜딩 페이지 생성 (인증추천학원 변수 반영 Gemini SEO) */
 export async function generateRegionalLandingFromKeyword(
@@ -40,8 +71,13 @@ export async function generateRegionalLandingFromKeyword(
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
   const byLabel = new Map(allLandings.map((p) => [p.label, p]));
 
-  const nearbyAreas = getNearbyDistricts(label, 5);
-  const nearbyStations = getNearbyStations(label, 5);
+  const geo = await resolveNearbyGeoForDraft(
+    label,
+    trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
+    regionBig
+  );
+  const { nearbyAreas, nearbyStations, nearbyIntro } = geo;
+
   const nearbySlugs = nearbyAreas
     .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
     .slice(0, 5);
@@ -63,16 +99,18 @@ export async function generateRegionalLandingFromKeyword(
     nearbySlugs,
     nearbyAreas,
     nearbyStations,
+    nearbyIntro,
     isPublished: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  const nearbyPremiumResult =
-    recommended === null
-      ? await fetchNearbyPremiumWithFallback(draftPage, 1)
-      : { academies: [], sourceLabel: undefined };
-  const nearbyRecommended = nearbyPremiumResult.academies[0] ?? null;
-  const seoCtx = buildRegionalSeoContext(label, recommended, nearbyRecommended);
+
+  const premiumPick = await pickRegionalPremiumForSeo(draftPage, recommended);
+  const seoCtx = buildRegionalSeoContext(
+    label,
+    recommended,
+    premiumPick.seoNearby
+  );
 
   const base: RegionalGenerateResult = {
     slug,
@@ -83,6 +121,7 @@ export async function generateRegionalLandingFromKeyword(
     nearbySlugs,
     nearbyAreas,
     nearbyStations,
+    nearbyIntro,
     isPublished: true,
     geminiUsed: false,
   };
@@ -92,6 +131,7 @@ export async function generateRegionalLandingFromKeyword(
     keyword: base.keyword,
     regionBig,
     nearbyLabels: nearbyAreas,
+    nearbyStations,
     recommendedAcademyName: seoCtx.recommendedAcademyName,
     recommendedAcademyHighlight: seoCtx.recommendedAcademyHighlight,
     hasRecommendedAcademy: seoCtx.hasRecommendedAcademy,
@@ -106,13 +146,21 @@ export async function generateRegionalLandingFromKeyword(
       ...base,
       regionInfo: gemini.data.regionInfo,
       regionInfoNearby: gemini.data.regionInfoNearby,
-      nearbyIntro: gemini.data.nearbyIntro,
+      nearbyIntro: gemini.data.nearbyIntro ?? nearbyIntro,
       metaDescription: gemini.data.metaDescription,
       metaDescriptionNearby: gemini.data.metaDescriptionNearby,
       seoBlocks: gemini.data.seoBlocks,
       seoBlocksNearby: gemini.data.seoBlocksNearby,
       faqItems: gemini.data.faqItems,
       faqItemsNearby: gemini.data.faqItemsNearby,
+      nearbyAreas:
+        gemini.data.nearbyAreas.length > 0
+          ? gemini.data.nearbyAreas
+          : nearbyAreas,
+      nearbyStations:
+        gemini.data.nearbyStations.length > 0
+          ? gemini.data.nearbyStations
+          : nearbyStations,
       geminiUsed: true,
     };
   }

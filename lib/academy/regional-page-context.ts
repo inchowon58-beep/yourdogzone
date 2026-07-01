@@ -1,11 +1,9 @@
 import "server-only";
 
 import { getAcademies } from "@/lib/academy/queries";
-import {
-  fetchNearbyPremiumWithFallback,
-  fetchRegionalAcademiesWithFallback,
-} from "@/lib/academy/regional-academy-fallback";
+import { fetchRegionalAcademiesWithFallback } from "@/lib/academy/regional-academy-fallback";
 import { inferRegionBig } from "@/lib/academy/region-metro";
+import { pickRegionalPremiumForSeo } from "@/lib/academy/regional-premium-pick";
 import type { Academy } from "@/lib/types/academy";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import {
@@ -18,9 +16,12 @@ export type RegionalPageContext = {
   all: Academy[];
   premium: Academy[];
   regular: Academy[];
-  /** 해당 지역(키워드) 내 인증추천 — 인근 폴백 목록과 분리 */
+  /** 해당 지역(키워드) 내 인증추천 */
   recommended: Academy | null;
+  /** SEO·상단용 인근(또는 풀) 인증추천 1곳 */
+  seoNearby: Academy | null;
   nearbyPremium: Academy[];
+  isPoolPremiumFallback: boolean;
   seoCtx: RegionalSeoContext;
   isNearbyFallback: boolean;
   nearbySourceLabel?: string;
@@ -32,6 +33,8 @@ export async function loadRegionalPageContext(
 ): Promise<RegionalPageContext> {
   const regionBig = page.regionBig ?? inferRegionBig(page.label);
   const searchQuery = page.query ?? page.label;
+  const pageWithMetro =
+    !page.regionBig && regionBig ? { ...page, regionBig } : page;
 
   const local = await getAcademies({
     region: regionBig ?? "전체",
@@ -50,20 +53,20 @@ export async function loadRegionalPageContext(
           isNearbyFallback: false,
           sourceLabel: undefined as string | undefined,
         }
-      : await fetchRegionalAcademiesWithFallback(page);
+      : await fetchRegionalAcademiesWithFallback(pageWithMetro);
 
   const all = listFallback.academies;
 
-  const nearbyPremiumResult =
-    localRecommended === null
-      ? await fetchNearbyPremiumWithFallback(page, 3)
-      : { academies: [], sourceLabel: undefined };
+  const premiumPick = await pickRegionalPremiumForSeo(
+    pageWithMetro,
+    localRecommended
+  );
 
-  const nearbyRecommended = nearbyPremiumResult.academies[0] ?? null;
+  const seoNearby = premiumPick.seoNearby;
   const seoCtx = buildRegionalSeoContext(
     page.label,
     localRecommended,
-    nearbyRecommended
+    seoNearby
   );
 
   return {
@@ -71,7 +74,9 @@ export async function loadRegionalPageContext(
     premium: localPremium,
     regular: all.filter((a) => !a.is_premium),
     recommended: localRecommended,
-    nearbyPremium: nearbyPremiumResult.academies,
+    seoNearby,
+    nearbyPremium: premiumPick.nearbyList,
+    isPoolPremiumFallback: premiumPick.isPoolFallback,
     seoCtx,
     isNearbyFallback: listFallback.isNearbyFallback,
     nearbySourceLabel: listFallback.sourceLabel,

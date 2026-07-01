@@ -1,3 +1,12 @@
+import { inferRegionBig } from "@/lib/academy/region-metro";
+
+function normalizeAdjacencyKey(label: string): string {
+  return label
+    .trim()
+    .replace(/(역|동|구|시|군|읍|면)$/u, "")
+    .trim();
+}
+
 /** 지역별 근방 지역 (최대 5곳, 라벨 기준) */
 export const REGION_ADJACENCY: Record<string, string[]> = {
   부평: ["인천", "부천", "김포", "서울", "시흥"],
@@ -18,6 +27,9 @@ export const REGION_ADJACENCY: Record<string, string[]> = {
   의정부: ["양주", "구리", "서울", "남양주", "고양"],
   파주: ["고양", "김포", "양주", "의정부", "연천"],
   서울: ["경기", "인천", "성남", "고양", "부천"],
+  관악: ["서울", "부천", "경기", "인천", "성남"],
+  은평: ["서울", "고양", "종로", "마포", "서대문"],
+  광진: ["서울", "성남", "송파", "강남", "경기"],
   분당: ["성남", "용인", "서울", "수원", "광주시"],
   일산: ["고양", "파주", "서울", "김포", "의정부"],
   천안: ["아산", "평택", "공주", "서산", "당진"],
@@ -25,6 +37,19 @@ export const REGION_ADJACENCY: Record<string, string[]> = {
 };
 
 export function getAdjacentLabels(label: string, limit = 5): string[] {
-  const list = REGION_ADJACENCY[label.trim()] ?? [];
-  return list.slice(0, limit);
+  const trimmed = label.trim();
+  const key = normalizeAdjacencyKey(trimmed);
+  const list =
+    REGION_ADJACENCY[trimmed] ??
+    REGION_ADJACENCY[key] ??
+    [];
+
+  if (list.length > 0) return list.slice(0, limit);
+
+  const metro = inferRegionBig(trimmed);
+  if (metro && metro !== trimmed && metro !== key) {
+    return (REGION_ADJACENCY[metro] ?? []).slice(0, limit);
+  }
+
+  return [];
 }
