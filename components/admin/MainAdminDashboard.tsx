@@ -6,6 +6,7 @@ import { ExternalLink, LogOut } from "lucide-react";
 import type { AdminOverviewStats } from "@/lib/admin/service-links";
 import { SERVICE_ADMIN_LINKS } from "@/lib/admin/service-links";
 import { RegionalLandingAdminPanel } from "@/components/admin/RegionalLandingAdminPanel";
+import { AdvisoryMembersAdminPanel } from "@/components/admin/AdvisoryMembersAdminPanel";
 
 type Props = {
   stats: AdminOverviewStats;
@@ -102,6 +103,8 @@ export function MainAdminDashboard({ stats, username }: Props) {
       </section>
 
       <RegionalLandingAdminPanel />
+
+      <AdvisoryMembersAdminPanel />
     </div>
   );
 }

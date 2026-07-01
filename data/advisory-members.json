@@ -1,0 +1,62 @@
+{
+  "updatedAt": "2026-06-29T00:00:00.000Z",
+  "members": [
+    {
+      "id": "chairman-culture",
+      "sortOrder": 0,
+      "isPublished": true,
+      "name": "조춘원",
+      "category": "반려문화증진 부문",
+      "title": "한국애견연맹 반려문화증진위원회 위원장",
+      "description": "전국 애견미용학원 매칭 1:1 자문을 담당합니다.",
+      "profilePhotoUrl": "/images/chairman-profile.png",
+      "kakaoUrl": "https://open.kakao.com/o/skSnn1Bi",
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "id": "chairman-training",
+      "sortOrder": 1,
+      "isPublished": true,
+      "name": "",
+      "category": "훈련/행정 부문",
+      "title": "한국애견연맹 훈련사 위원장",
+      "description": "훈련·행정 기준 공식 검증",
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "id": "chairman-inspection",
+      "sortOrder": 2,
+      "isPublished": true,
+      "name": "",
+      "category": "안심/윤리 부문",
+      "title": "한국애견연맹 감찰 위원장",
+      "description": "시설 위생·윤리 운영 감시",
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "id": "chairman-rescue",
+      "sortOrder": 3,
+      "isPublished": true,
+      "name": "",
+      "category": "안전/구조 부문",
+      "title": "한국애견연맹 인명구조견 위원장",
+      "description": "안전·구조 인프라 자문",
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    },
+    {
+      "id": "chairman-judge",
+      "sortOrder": 4,
+      "isPublished": true,
+      "name": "",
+      "category": "교육/심사 부문",
+      "title": "한국애견연맹 심사 위원장",
+      "description": "교육 커리큘럼·심사 평가",
+      "createdAt": "2026-06-29T00:00:00.000Z",
+      "updatedAt": "2026-06-29T00:00:00.000Z"
+    }
+  ]
+}

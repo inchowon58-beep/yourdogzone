@@ -6,8 +6,7 @@ import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
-import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
-import { OfficialAdvisoryBoardSection } from "@/components/academy/OfficialAdvisoryBoardSection";
+import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
 import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
 import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
 import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
@@ -190,8 +189,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         featuredAcademy={featuredAcademy}
       />
 
-      <ChairmanConsultBanner regionLabel={label} />
-      <OfficialAdvisoryBoardSection />
+      <OfficialAdvisoryBanner />
 
       <section className="mb-12">
         <AcademyGuideTabs
