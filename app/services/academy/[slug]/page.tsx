@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
 import { getAcademyBySlug, getAcademySlugs, getAcademies } from "@/lib/academy/queries";
+import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
+import { sampleRandom } from "@/lib/utils/random-sample";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { absoluteUrl } from "@/lib/site/config";
 import { ImageSlider } from "@/components/academy/ImageSlider";
@@ -49,6 +51,9 @@ export default async function AcademyDetailPage({ params }: PageProps) {
     region: academy.region_big,
     query: academy.region_small,
   });
+  const allPremium = await getAllPremiumAcademies();
+  const guidePreview = sampleRandom(allPremium, 5);
+  const regularRegional = regionalAcademies.filter((a) => !a.is_premium);
   const listHref = `/services/academy?region=${encodeURIComponent(academy.region_big)}`;
 
   const images = getAcademyGalleryImages(academy, 3);
@@ -81,7 +86,10 @@ export default async function AcademyDetailPage({ params }: PageProps) {
         region={academy.region_big}
         query={academy.region_small}
         academies={regionalAcademies}
+        previewAcademies={guidePreview}
         listHref={listHref}
+        totalListCount={regularRegional.length}
+        premiumListCount={allPremium.length}
       />
 
       <article itemScope itemType="https://schema.org/EducationalOrganization">
