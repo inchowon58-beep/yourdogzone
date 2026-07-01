@@ -21,15 +21,26 @@ function staticNearbyStations(label: string): string[] {
   return getNearbyStations(label, 5);
 }
 
-/** 근방 구·동·역이 없으면 Gemini로 1회 생성해 R2에 저장 (이후 재사용) */
-export async function ensureRegionalNearbyGeo(
-  page: RegionalLandingPage
-): Promise<RegionalLandingPage> {
+export function needsRegionalNearbyGeo(page: RegionalLandingPage): boolean {
   const areas = resolveNearbyAreas(page);
   const stations = resolveNearbyStations(page);
-  if (areas.length > 0 && stations.length > 0) return page;
+  return areas.length === 0 || stations.length === 0;
+}
 
+export function needsRegionalSeoContent(page: RegionalLandingPage): boolean {
+  return !page.seoBlocks?.length;
+}
+
+/** Gemini + R2 저장 (관리자 생성·백그라운드 백필 전용 — 페이지 렌더에서 호출하지 않음) */
+export async function fillRegionalNearbyGeo(
+  page: RegionalLandingPage
+): Promise<RegionalLandingPage> {
+  if (!needsRegionalNearbyGeo(page)) return page;
+
+  const areas = resolveNearbyAreas(page);
+  const stations = resolveNearbyStations(page);
   const regionBig = page.regionBig ?? inferRegionBig(page.label);
+
   const gemini = await generateRegionalNearbyGeoWithGemini({
     label: page.label,
     keyword: page.keyword,
@@ -45,10 +56,10 @@ export async function ensureRegionalNearbyGeo(
     const patched = {
       ...page,
       regionBig: page.regionBig ?? regionBig,
-      nearbyAreas:
-        page.nearbyAreas?.length ? page.nearbyAreas : fallbackAreas,
-      nearbyStations:
-        page.nearbyStations?.length ? page.nearbyStations : fallbackStations,
+      nearbyAreas: page.nearbyAreas?.length ? page.nearbyAreas : fallbackAreas,
+      nearbyStations: page.nearbyStations?.length
+        ? page.nearbyStations
+        : fallbackStations,
     };
     const saved = await upsertRegionalLanding(patched);
     return "error" in saved ? page : saved.page;
@@ -57,10 +68,8 @@ export async function ensureRegionalNearbyGeo(
   const patched = {
     ...page,
     regionBig: page.regionBig ?? regionBig,
-    nearbyAreas:
-      areas.length > 0 ? areas : gemini.data.nearbyAreas,
-    nearbyStations:
-      stations.length > 0 ? stations : gemini.data.nearbyStations,
+    nearbyAreas: areas.length > 0 ? areas : gemini.data.nearbyAreas,
+    nearbyStations: stations.length > 0 ? stations : gemini.data.nearbyStations,
     nearbyIntro: page.nearbyIntro ?? gemini.data.nearbyIntro,
   };
 
@@ -68,14 +77,13 @@ export async function ensureRegionalNearbyGeo(
   return "error" in saved ? page : saved.page;
 }
 
-/** 저장된 SEO 본문이 없을 때만 Gemini로 1회 생성 */
-export async function ensureRegionalSeoContent(
+/** SEO 본문 Gemini + R2 저장 (관리자·백필 전용) */
+export async function fillRegionalSeoContent(
   page: RegionalLandingPage,
   ctx: RegionalSeoContext
 ): Promise<RegionalLandingPage> {
-  page = await ensureRegionalNearbyGeo(page);
-
-  if (page.seoBlocks?.length) return page;
+  page = await fillRegionalNearbyGeo(page);
+  if (!needsRegionalSeoContent(page)) return page;
 
   const nearbyLabels = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
@@ -108,18 +116,16 @@ export async function ensureRegionalSeoContent(
     seoBlocksNearby: gemini.data.seoBlocksNearby,
     faqItems: gemini.data.faqItems,
     faqItemsNearby: gemini.data.faqItemsNearby,
-    nearbyAreas:
-      page.nearbyAreas?.length
-        ? page.nearbyAreas
-        : gemini.data.nearbyAreas.length > 0
-          ? gemini.data.nearbyAreas
-          : nearbyLabels,
-    nearbyStations:
-      page.nearbyStations?.length
-        ? page.nearbyStations
-        : gemini.data.nearbyStations.length > 0
-          ? gemini.data.nearbyStations
-          : nearbyStations,
+    nearbyAreas: page.nearbyAreas?.length
+      ? page.nearbyAreas
+      : gemini.data.nearbyAreas.length > 0
+        ? gemini.data.nearbyAreas
+        : nearbyLabels,
+    nearbyStations: page.nearbyStations?.length
+      ? page.nearbyStations
+      : gemini.data.nearbyStations.length > 0
+        ? gemini.data.nearbyStations
+        : nearbyStations,
   };
 
   const saved = await upsertRegionalLanding(updated);

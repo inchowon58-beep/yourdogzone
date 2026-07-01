@@ -11,7 +11,7 @@ import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBan
 import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
 import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
 import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
-import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
+import { loadRegionalPageBundle } from "@/lib/academy/regional-page-loader";
 import {
   resolveBoundNearbyIntro,
   resolveBoundFaqItems,
@@ -20,12 +20,15 @@ import {
   resolveBoundSeoSectionIntro,
 } from "@/lib/academy/regional-seo-resolve";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
-import { ensureRegionalNearbyGeo, ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
+import { scheduleRegionalPageBackfill } from "@/lib/academy/regional-backfill";
+import {
+  needsRegionalNearbyGeo,
+  needsRegionalSeoContent,
+} from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
   getPublishedRegionalSlugs,
   getAllRegionalLandings,
-  resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
 import { NearbyStationSeoSection } from "@/components/academy/NearbyStationSeoSection";
 import { resolveNearbyAreas, resolveNearbyStations } from "@/lib/academy/resolve-nearby-areas";
@@ -61,16 +64,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps) {
   unstable_noStore();
   const { slug } = await params;
-  let page = await resolveRegionalLanding(slug);
-  if (!page) return {};
+  const bundle = await loadRegionalPageBundle(slug);
+  if (!bundle) return {};
 
-  const pageCtx = await loadRegionalPageContext(page);
-  const seoCtx = pageCtx.seoCtx;
-
-  page = await ensureRegionalNearbyGeo(page);
-  page = await ensureRegionalSeoContent(page, seoCtx);
-
-  return buildRegionalLandingMetadata(page, seoCtx);
+  return buildRegionalLandingMetadata(bundle.page, bundle.pageCtx.seoCtx);
 }
 
 export default async function RegionalAcademyLandingPage({ params }: PageProps) {
@@ -84,22 +81,20 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
     redirect(`/services/academy/region/${legacy}`);
   }
 
-  let page = await resolveRegionalLanding(decoded);
-  if (!page) notFound();
+  const bundle = await loadRegionalPageBundle(decoded);
+  if (!bundle) notFound();
 
+  const { page, pageCtx } = bundle;
   const { label, regionBig, query } = page;
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
-
-  const [pageCtx, allRegionalLandings] = await Promise.all([
-    loadRegionalPageContext(page),
-    getAllRegionalLandings(),
-  ]);
-
   const seoCtx = pageCtx.seoCtx;
 
-  page = await ensureRegionalNearbyGeo(page);
-  page = await ensureRegionalSeoContent(page, seoCtx);
+  if (needsRegionalNearbyGeo(page) || needsRegionalSeoContent(page)) {
+    scheduleRegionalPageBackfill(page.slug);
+  }
+
+  const [allRegionalLandings] = await Promise.all([getAllRegionalLandings()]);
 
   const {
     premium,
