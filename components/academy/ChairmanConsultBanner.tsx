@@ -1,18 +1,51 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, MessageCircle, Quote } from "lucide-react";
+import { buildChairmanQuote } from "@/lib/site/chairman-consult";
 import {
-  buildChairmanQuote,
-  getChairmanConsultConfig,
-} from "@/lib/site/chairman-consult";
+  isRemoteProfileImage,
+  resolveChairmanConsultConfig,
+} from "@/lib/site/chairman-consult-resolve";
 
 type Props = {
   /** 지역명 (선택) — 맥락 문구에 사용 */
   regionLabel?: string;
 };
 
-export function ChairmanConsultBanner({ regionLabel }: Props) {
-  const config = getChairmanConsultConfig();
+function ChairmanProfilePhoto({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  if (isRemoteProfileImage(src)) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        unoptimized
+        className="object-cover object-[center_15%]"
+        sizes="(max-width: 768px) 45vw, 160px"
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="h-full w-full object-cover object-[center_15%]"
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
+export async function ChairmanConsultBanner({ regionLabel }: Props) {
+  const config = await resolveChairmanConsultConfig();
   const quote = buildChairmanQuote(regionLabel);
 
   return (
@@ -22,14 +55,10 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
     >
       <div className="grid grid-cols-2 items-start gap-x-3 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)] md:gap-x-8">
         <div className="col-start-1 row-start-1 min-w-0 justify-self-start">
-          <div className="relative aspect-square w-full max-w-[9.5rem] overflow-hidden rounded-2xl border-2 border-white bg-white shadow-md md:h-40 md:w-40 md:max-w-none">
-            <Image
+          <div className="relative aspect-square w-full max-w-[9.5rem] overflow-hidden rounded-2xl border-2 border-white bg-slate-100 shadow-md md:h-40 md:w-40 md:max-w-none">
+            <ChairmanProfilePhoto
               src={config.profileImage}
               alt={config.profileAlt}
-              fill
-              className="object-cover object-[center_15%]"
-              sizes="(max-width: 768px) 45vw, 160px"
-              priority={false}
             />
           </div>
           <p className="mt-2 hidden items-center gap-1.5 rounded-full bg-indigo-600/10 px-3 py-1 text-xs font-semibold text-indigo-700 md:inline-flex">
