@@ -27,12 +27,24 @@ export type RegionalLandingPage = {
   nearbyIntro?: string;
   /** 근방 지역 슬러그 (최대 5, 영문 slug) */
   nearbySlugs: string[];
-  /** Gemini 생성 SEO 본문 (생성마다 다름) */
+  /** 근방 구·동 5곳 (SEO 노출용, 광역 단위 아님) */
+  nearbyAreas?: string[];
+  /** 인근 지하철역 5곳 (SEO 노출용) */
+  nearbyStations?: string[];
+  /** Gemini 생성 SEO 본문 (A안 — 지역 내 인증추천 있을 때) */
   seoBlocks?: RegionalSeoBlockStored[];
-  /** Gemini 생성 FAQ */
+  /** B안 — 해당 지역 인증추천 없음·인근 학원 안내 */
+  seoBlocksNearby?: RegionalSeoBlockStored[];
+  /** Gemini 생성 FAQ (A안) */
   faqItems?: RegionalFaqItemStored[];
-  /** Gemini 생성 메타 설명 */
+  /** B안 FAQ */
+  faqItemsNearby?: RegionalFaqItemStored[];
+  /** Gemini 생성 메타 설명 (A안) */
   metaDescription?: string;
+  /** B안 메타 설명 */
+  metaDescriptionNearby?: string;
+  /** B안 히어로 소개 */
+  regionInfoNearby?: string;
   /** @deprecated 렌더 시 변수 치환으로 처리 — 더 이상 slug 변경 시 재생성하지 않음 */
   seoBoundAcademySlug?: string;
   isPublished: boolean;

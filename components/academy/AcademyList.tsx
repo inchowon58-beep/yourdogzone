@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, MapPin } from "lucide-react";
+import { ChevronRight, Info, MapPin } from "lucide-react";
 import type { Academy } from "@/lib/types/academy";
 import { getAcademyThumbnail } from "@/lib/academy/images";
 import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
@@ -10,6 +10,9 @@ export function AcademyList({
   listTitle = "전체 학원",
   registerLabel = "학원 정보 등록하기",
   totalCount,
+  isNearbyFallback = false,
+  nearbySourceLabel,
+  regionLabel,
 }: {
   academies: Academy[];
   servicePath?: string;
@@ -17,6 +20,10 @@ export function AcademyList({
   registerLabel?: string;
   /** 전체 건수 (일부만 노출할 때 안내) */
   totalCount?: number;
+  /** 인근 지역 학원 폴백 노출 여부 */
+  isNearbyFallback?: boolean;
+  nearbySourceLabel?: string;
+  regionLabel?: string;
 }) {
   if (academies.length === 0) {
     return (
@@ -34,6 +41,18 @@ export function AcademyList({
 
   return (
     <section>
+      {isNearbyFallback ? (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3.5 sm:px-5">
+          <p className="flex items-start gap-2 text-sm leading-relaxed text-amber-950">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <span>
+              <strong>{regionLabel ?? "해당 지역"}</strong>에 등록된 학원이 없어{" "}
+              <strong>{nearbySourceLabel ?? "인근 지역"}</strong> 학원 정보를
+              보여 드립니다. 통학·상담이 가능한 곳을 함께 비교해 보세요.
+            </span>
+          </p>
+        </div>
+      ) : null}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <h2 className="text-lg font-bold text-foreground">{listTitle}</h2>
         {totalCount !== undefined && totalCount > academies.length && (

@@ -10,6 +10,8 @@ import {
   upsertRegionalLanding,
 } from "@/lib/academy/regional-store";
 import { generateRegionalLandingFromKeyword } from "@/lib/academy/regional-generator";
+import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
+import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
 import { revalidatePath } from "next/cache";
 
@@ -104,6 +106,8 @@ export async function POST(request: Request) {
   const result = await upsertRegionalLanding({
     ...page,
     nearbySlugs: (page.nearbySlugs ?? []).slice(0, 5),
+    nearbyAreas: (page.nearbyAreas ?? getNearbyDistricts(page.label, 5)).slice(0, 5),
+    nearbyStations: (page.nearbyStations ?? getNearbyStations(page.label, 5)).slice(0, 5),
     keyword: page.keyword || `${page.label} 애견미용학원`,
     isPublished: page.isPublished ?? true,
   });

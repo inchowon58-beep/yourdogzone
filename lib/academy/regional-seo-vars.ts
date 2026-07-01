@@ -12,6 +12,7 @@ export const RECOMMENDED_ACADEMY_VAR = "{recommendedAcademyName}";
 export const RECOMMENDED_HIGHLIGHT_VAR = "{recommendedAcademyHighlight}";
 export const NEARBY_REGION_VAR = "{nearbyRecommendedRegion}";
 export const NEARBY_ACADEMY_VAR = "{nearbyRecommendedAcademyName}";
+export const NEARBY_HIGHLIGHT_VAR = "{nearbyRecommendedAcademyHighlight}";
 
 export type RegionalSeoContext = {
   region: string;
@@ -52,27 +53,30 @@ function academyHighlight(academy: Academy | null): string {
   );
 }
 
-/** 본문 변수 치환용 학원명 (지역 추천 없으면 인근 추천학원명 사용) */
+const DEFAULT_LOCAL_RECOMMENDED_LABEL = "해당 지역 인증 추천 애견미용학원";
+
+/** 본문 변수 치환 — 지역 추천 없을 때 인근 학원명을 recommended 슬롯에 넣지 않음 */
 export function resolveBindableAcademyNames(ctx: RegionalSeoContext): {
   recommended: string;
   nearby: string;
   highlight: string;
+  nearbyHighlight: string;
 } {
   const recommended = ctx.hasRecommendedAcademy
     ? ctx.recommendedAcademyName
-    : ctx.hasNearbyRecommendedAcademy
-      ? ctx.nearbyRecommendedAcademyName
-      : DEFAULT_ACADEMY_NAME;
+    : DEFAULT_LOCAL_RECOMMENDED_LABEL;
 
   const nearby = ctx.nearbyRecommendedAcademyName || DEFAULT_NEARBY_NAME;
 
   const highlight = ctx.hasRecommendedAcademy
     ? ctx.recommendedAcademyHighlight
-    : ctx.hasNearbyRecommendedAcademy
-      ? ctx.nearbyRecommendedAcademyHighlight
-      : DEFAULT_HIGHLIGHT;
+    : DEFAULT_HIGHLIGHT;
 
-  return { recommended, nearby, highlight };
+  const nearbyHighlight = ctx.hasNearbyRecommendedAcademy
+    ? ctx.nearbyRecommendedAcademyHighlight
+    : DEFAULT_HIGHLIGHT;
+
+  return { recommended, nearby, highlight, nearbyHighlight };
 }
 
 export function pickRegionalSeoImageAcademy(
@@ -109,7 +113,8 @@ export function bindRegionalSeoText(
   text: string,
   ctx: RegionalSeoContext
 ): string {
-  const { recommended, nearby, highlight } = resolveBindableAcademyNames(ctx);
+  const { recommended, nearby, highlight, nearbyHighlight } =
+    resolveBindableAcademyNames(ctx);
 
   let bound = text
     .replaceAll(REGION_VAR, ctx.region)
@@ -117,12 +122,28 @@ export function bindRegionalSeoText(
     .replaceAll(RECOMMENDED_HIGHLIGHT_VAR, highlight)
     .replaceAll(NEARBY_REGION_VAR, ctx.nearbyRecommendedRegion || "인근 지역")
     .replaceAll(NEARBY_ACADEMY_VAR, nearby)
+    .replaceAll(NEARBY_HIGHLIGHT_VAR, nearbyHighlight)
     .replaceAll(`[${RECOMMENDED_ACADEMY_VAR}]`, recommended)
     .replaceAll(`[${NEARBY_ACADEMY_VAR}]`, nearby)
     .replaceAll(`[${DEFAULT_ACADEMY_NAME}]`, recommended)
     .replace(/\[\{recommendedAcademyName\}\]/g, recommended)
     .replace(/\[\{nearbyRecommendedAcademyName\}\]/g, nearby)
     .replace(/\[\{nearbyAcademyName\}\]/g, nearby);
+
+  if (!ctx.hasRecommendedAcademy) {
+    bound = bound
+      .replace(
+        new RegExp(
+          `${ctx.region.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*지역에서\\s*특별히\\s*인증\\s*추천하는[^.]*\\.?`,
+          "g"
+        ),
+        ""
+      )
+      .replace(
+        /수많은\s*학원\s*중에서도\s*\{region\}[^.]*\[.*?\][^.]*\.?/g,
+        ""
+      );
+  }
 
   if (!ctx.hasNearbyRecommendedAcademy) {
     bound = bound
@@ -185,6 +206,39 @@ export function buildPlaceholderSeoBlocks(): RegionalSeoBlockStored[] {
         `인증 추천 학원은 상단에서 상세 정보 확인`,
         `인근 지역 인증 추천 학원도 함께 비교`,
         `{region} 애견미용학원 키워드 맞춤 정보 제공`,
+      ],
+    },
+  ];
+}
+
+/** B안: 해당 지역 인증추천 없음 · 인근 학원 안내 (Gemini 미생성 시 폴백) */
+export function buildPlaceholderSeoBlocksNearby(): RegionalSeoBlockStored[] {
+  return [
+    {
+      title: `{region} 애견미용학원, 지역 내·인근 어디를 볼까요?`,
+      paragraphs: [
+        `{region}에서 애견미용 자격증·취업을 준비한다면 통학 거리와 실습 환경을 기준으로 학원을 비교하는 것이 좋습니다.`,
+        `{region}에는 아직 유아독존 인증 추천 학원이 등록되어 있지 않습니다. 아래는 통학·상담 관점에서 참고할 수 있는 인근 지역 정보입니다.`,
+      ],
+      bullets: [
+        `{region} 지역 일반 등록 학원 목록 확인`,
+        `인근 {nearbyRecommendedRegion} 지역 통학 가능 여부`,
+        `국비지원·실습견 환경 상담 시 직접 확인`,
+        `인증 추천 학원과 일반 등록 학원 비교`,
+      ],
+    },
+    {
+      title: `{region}에는 없지만, 가까운 {nearbyRecommendedRegion} 인증 추천 학원`,
+      paragraphs: [
+        `{region} 지역에는 현재 인증 추천으로 등록된 애견미용학원이 없습니다.`,
+        `다만 인근 {nearbyRecommendedRegion}에 위치한 [{nearbyRecommendedAcademyName}]은 {nearbyRecommendedAcademyHighlight} 측면에서 통학·상담이 가능한 대안으로 참고할 만합니다.`,
+        `학원은 {region}에 있지 않으므로 방문 전 위치·통학 시간을 꼭 확인하세요.`,
+      ],
+      bullets: [
+        `{region} → {nearbyRecommendedRegion} 통학·교통편 비교`,
+        `[{nearbyRecommendedAcademyName}] 상세 페이지에서 수강료·과정 확인`,
+        `지역 내 일반 등록 학원과 함께 비교`,
+        `방문 상담 시 실습 환경 직접 확인`,
       ],
     },
   ];

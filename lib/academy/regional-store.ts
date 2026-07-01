@@ -131,6 +131,8 @@ export async function upsertRegionalLanding(
   const page: RegionalLandingPage = {
     ...input,
     nearbySlugs: (input.nearbySlugs ?? []).slice(0, 5),
+    nearbyAreas: (input.nearbyAreas ?? []).slice(0, 5),
+    nearbyStations: (input.nearbyStations ?? []).slice(0, 5),
     createdAt: idx >= 0 ? all[idx].createdAt : input.createdAt ?? now,
     updatedAt: now,
   };

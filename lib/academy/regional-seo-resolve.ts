@@ -6,23 +6,21 @@ import {
   bindRegionalSeoBlocks,
   bindRegionalSeoText,
   buildPlaceholderSeoBlocks,
-  resolveBindableAcademyNames,
   type RegionalSeoContext,
 } from "@/lib/academy/regional-seo-vars";
 import type { RegionalSeoBlock } from "@/lib/academy/regional-seo-content";
+import { pickRegionalSeoContent } from "@/lib/academy/regional-seo-pick";
 
 export function resolveBoundSeoSectionIntro(
   label: string,
   ctx: RegionalSeoContext
 ): string {
-  const { recommended, nearby } = resolveBindableAcademyNames(ctx);
-
   if (ctx.hasRecommendedAcademy) {
-    return `${label} 애견미용학원 안내와 함께, 인증 추천 학원 ${recommended} 정보를 참고해 보세요.`;
+    return `${label} 애견미용학원 안내와 함께, 인증 추천 학원 ${ctx.recommendedAcademyName} 정보를 참고해 보세요.`;
   }
 
   if (ctx.hasNearbyRecommendedAcademy) {
-    return `${label}에는 아직 인증 추천 학원이 없습니다. 인근 ${ctx.nearbyRecommendedRegion} ${nearby}도 참고하면 좋을 것 같습니다.`;
+    return `${label}에는 아직 인증 추천 학원이 없습니다. 가까운 ${ctx.nearbyRecommendedRegion} 지역에 위치한 ${ctx.nearbyRecommendedAcademyName}을(를) 통학·상담 관점에서 참고해 보세요.`;
   }
 
   return `${label}에서 애견미용학원을 찾고 계신가요? 수강료·자격증·실습 환경 비교 가이드입니다.`;
@@ -40,8 +38,9 @@ export function resolveBoundRegionInfo(
   page: RegionalLandingPage,
   ctx: RegionalSeoContext
 ): string {
+  const pick = pickRegionalSeoContent(page, ctx);
   const raw =
-    page.regionInfo ??
+    pick.regionInfo ??
     `{region} 지역 애견미용학원 정보를 한곳에서 비교하세요.`;
   return bindRegionalSeoText(raw, ctx);
 }
@@ -50,9 +49,14 @@ export function resolveBoundMetaDescription(
   page: RegionalLandingPage,
   ctx: RegionalSeoContext
 ): string {
+  const pick = pickRegionalSeoContent(page, ctx);
   const raw =
-    page.metaDescription ??
-    `{region} 애견미용학원 수강료·국비지원·실습 환경. 인증 추천 [{recommendedAcademyName}] 정보 포함.`;
+    pick.metaDescription ??
+    (ctx.hasRecommendedAcademy
+      ? `{region} 애견미용학원 수강료·국비지원·실습 환경. 인증 추천 [{recommendedAcademyName}] 정보 포함.`
+      : ctx.hasNearbyRecommendedAcademy
+        ? `{region} 애견미용학원. 지역 내 인증 추천은 없으나 인근 {nearbyRecommendedRegion} [{nearbyRecommendedAcademyName}] 참고.`
+        : `{region} 애견미용학원 수강료·국비지원·실습 환경 안내.`);
   return bindRegionalSeoText(raw, ctx).slice(0, 160);
 }
 
@@ -60,8 +64,11 @@ export function resolveBoundSeoBlocks(
   page: RegionalLandingPage,
   ctx: RegionalSeoContext
 ): RegionalSeoBlock[] {
+  const pick = pickRegionalSeoContent(page, ctx);
   const source =
-    page.seoBlocks?.length ? page.seoBlocks : buildPlaceholderSeoBlocks();
+    pick.seoBlocks?.length
+      ? pick.seoBlocks
+      : buildPlaceholderSeoBlocks();
   return bindRegionalSeoBlocks(source, ctx);
 }
 
@@ -69,8 +76,10 @@ export function resolveBoundFaqItems(
   page: RegionalLandingPage,
   ctx: RegionalSeoContext
 ): Array<{ question: string; answer: string }> {
-  if (page.faqItems?.length) {
-    return bindRegionalFaqItems(page.faqItems, ctx);
+  const pick = pickRegionalSeoContent(page, ctx);
+
+  if (pick.faqItems?.length) {
+    return bindRegionalFaqItems(pick.faqItems, ctx);
   }
 
   return [
@@ -97,7 +106,7 @@ export function resolveBoundFaqItems(
         ctx.hasRecommendedAcademy
           ? `{region}에서 인증 추천된 [{recommendedAcademyName}]은 {recommendedAcademyHighlight} 측면에서 참고할 만합니다.`
           : ctx.hasNearbyRecommendedAcademy
-            ? `인근 {nearbyRecommendedRegion} 지역 [{nearbyRecommendedAcademyName}]의 경우도 통학·상담 관점에서 참고하면 좋을 것 같습니다.`
+            ? `{region}에는 인증 추천 학원이 없습니다. 인근 {nearbyRecommendedRegion}에 위치한 [{nearbyRecommendedAcademyName}]은 {nearbyRecommendedAcademyHighlight} 측면에서 통학·상담 관점에서 참고할 만합니다.`
             : `{region} 지역 학원을 수강료·실습 환경·국비지원 여부로 비교해 보세요.`,
         ctx
       ),

@@ -1,9 +1,11 @@
 import "server-only";
 
 import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
-import { getAdjacentLabels } from "@/lib/constants/region-adjacency";
+import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
+import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
-import { fetchNearbyPremiumAcademies } from "@/lib/academy/nearby-premium-academies";
+import { fetchNearbyPremiumWithFallback } from "@/lib/academy/regional-academy-fallback";
+import { inferRegionBig } from "@/lib/academy/region-metro";
 import { getAcademies } from "@/lib/academy/queries";
 import {
   buildRegionalSlug,
@@ -17,18 +19,6 @@ import {
 import type { RegionalLandingInsert, RegionalLandingPage } from "@/lib/types/regional-landing";
 
 const REGION_BIG_SET = new Set<string>(REGION_BIG_OPTIONS);
-
-function inferRegionBig(label: string): string | undefined {
-  if (REGION_BIG_SET.has(label)) return label;
-  const metro: Record<string, string> = {
-    강남: "서울",
-    강북: "서울",
-    송파: "서울",
-    분당: "경기",
-    일산: "경기",
-  };
-  return metro[label];
-}
 
 export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiUsed?: boolean;
@@ -50,9 +40,10 @@ export async function generateRegionalLandingFromKeyword(
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
   const byLabel = new Map(allLandings.map((p) => [p.label, p]));
 
-  const adjacent = getAdjacentLabels(label, 5);
-  const nearbySlugs = adjacent
-    .map((adj) => byLabel.get(adj)?.slug ?? buildRegionalSlug(adj))
+  const nearbyAreas = getNearbyDistricts(label, 5);
+  const nearbyStations = getNearbyStations(label, 5);
+  const nearbySlugs = nearbyAreas
+    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
     .slice(0, 5);
 
   const academies = await getAcademies({
@@ -63,14 +54,24 @@ export async function generateRegionalLandingFromKeyword(
     academies.filter((a) => a.is_premium)
   );
 
-  const adjacentPages = adjacent
-    .map((adj) => byLabel.get(adj))
-    .filter((p): p is RegionalLandingPage => Boolean(p));
-  const nearbyPremium =
-    recommended === null && adjacentPages.length > 0
-      ? await fetchNearbyPremiumAcademies(adjacentPages, 1)
-      : [];
-  const nearbyRecommended = nearbyPremium[0] ?? null;
+  const draftPage: RegionalLandingPage = {
+    slug,
+    label,
+    keyword: trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
+    regionBig,
+    query,
+    nearbySlugs,
+    nearbyAreas,
+    nearbyStations,
+    isPublished: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const nearbyPremiumResult =
+    recommended === null
+      ? await fetchNearbyPremiumWithFallback(draftPage, 1)
+      : { academies: [], sourceLabel: undefined };
+  const nearbyRecommended = nearbyPremiumResult.academies[0] ?? null;
   const seoCtx = buildRegionalSeoContext(label, recommended, nearbyRecommended);
 
   const base: RegionalGenerateResult = {
@@ -80,6 +81,8 @@ export async function generateRegionalLandingFromKeyword(
     regionBig,
     query,
     nearbySlugs,
+    nearbyAreas,
+    nearbyStations,
     isPublished: true,
     geminiUsed: false,
   };
@@ -88,7 +91,7 @@ export async function generateRegionalLandingFromKeyword(
     label,
     keyword: base.keyword,
     regionBig,
-    nearbyLabels: adjacent,
+    nearbyLabels: nearbyAreas,
     recommendedAcademyName: seoCtx.recommendedAcademyName,
     recommendedAcademyHighlight: seoCtx.recommendedAcademyHighlight,
     hasRecommendedAcademy: seoCtx.hasRecommendedAcademy,
@@ -102,10 +105,14 @@ export async function generateRegionalLandingFromKeyword(
     return {
       ...base,
       regionInfo: gemini.data.regionInfo,
+      regionInfoNearby: gemini.data.regionInfoNearby,
       nearbyIntro: gemini.data.nearbyIntro,
       metaDescription: gemini.data.metaDescription,
+      metaDescriptionNearby: gemini.data.metaDescriptionNearby,
       seoBlocks: gemini.data.seoBlocks,
+      seoBlocksNearby: gemini.data.seoBlocksNearby,
       faqItems: gemini.data.faqItems,
+      faqItemsNearby: gemini.data.faqItemsNearby,
       geminiUsed: true,
     };
   }

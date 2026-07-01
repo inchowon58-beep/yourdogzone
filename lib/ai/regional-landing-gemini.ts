@@ -14,6 +14,7 @@ import {
 } from "@/lib/ai/parse-gemini-json";
 import {
   NEARBY_ACADEMY_VAR,
+  NEARBY_HIGHLIGHT_VAR,
   NEARBY_REGION_VAR,
   RECOMMENDED_ACADEMY_VAR,
   RECOMMENDED_HIGHLIGHT_VAR,
@@ -22,10 +23,14 @@ import {
 
 export type RegionalLandingGeminiContent = {
   regionInfo: string;
+  regionInfoNearby: string;
   nearbyIntro: string;
   metaDescription: string;
+  metaDescriptionNearby: string;
   seoBlocks: RegionalSeoBlockStored[];
+  seoBlocksNearby: RegionalSeoBlockStored[];
   faqItems: RegionalFaqItemStored[];
+  faqItemsNearby: RegionalFaqItemStored[];
 };
 
 export type RegionalGeminiResult =
@@ -42,16 +47,68 @@ type GeminiPart =
   | { text: string }
   | { inline_data: { mime_type: string; data: string } };
 
+function normalizeSeoBlocks(
+  blocks: RegionalSeoBlockStored[] | undefined,
+  model: string,
+  label: string
+): RegionalSeoBlockStored[] | { error: string } {
+  if (!Array.isArray(blocks)) {
+    return { error: `Gemini ${model}: ${label} seoBlocks 부족` };
+  }
+  const normalized = blocks
+    .filter((b) => b?.title && Array.isArray(b.paragraphs))
+    .slice(0, 3)
+    .map((b) => ({
+      title: String(b.title).slice(0, 120),
+      paragraphs: b.paragraphs
+        .map((p) => String(p).slice(0, 800))
+        .filter(Boolean)
+        .slice(0, 4),
+      bullets: (b.bullets ?? [])
+        .map((x) => String(x).slice(0, 200))
+        .filter(Boolean)
+        .slice(0, 6),
+    }));
+  if (normalized.length < 2) {
+    return { error: `Gemini ${model}: ${label} seoBlocks 부족` };
+  }
+  return normalized;
+}
+
+function normalizeFaqItems(
+  items: RegionalFaqItemStored[] | undefined
+): RegionalFaqItemStored[] {
+  const faqItems = (items ?? [])
+    .filter((f) => f?.question && f?.answer)
+    .slice(0, 5)
+    .map((f) => ({
+      question: String(f.question).slice(0, 120),
+      answer: String(f.answer).slice(0, 500),
+    }));
+  if (faqItems.length >= 3) return faqItems;
+  return [
+    {
+      question: `{region} 애견미용학원 수강료는?`,
+      answer:
+        "과정·등급에 따라 150만~1,200만 원대이며 국비지원 여부를 상담 시 확인하세요.",
+    },
+  ];
+}
+
 function parseRegionalContent(
   text: string,
   model: string
 ): RegionalGeminiResult {
   let parsed: {
     regionInfo?: string;
+    regionInfoNearby?: string;
     nearbyIntro?: string;
     metaDescription?: string;
+    metaDescriptionNearby?: string;
     seoBlocks?: RegionalSeoBlockStored[];
+    seoBlocksNearby?: RegionalSeoBlockStored[];
     faqItems?: RegionalFaqItemStored[];
+    faqItemsNearby?: RegionalFaqItemStored[];
   };
 
   try {
@@ -70,37 +127,27 @@ function parseRegionalContent(
       return { ok: false, error: `Gemini ${model}: 필수 필드 누락` };
     }
 
-    const seoBlocks = parsed.seoBlocks
-      .filter((b) => b?.title && Array.isArray(b.paragraphs))
-      .slice(0, 3)
-      .map((b) => ({
-        title: String(b.title).slice(0, 120),
-        paragraphs: b.paragraphs
-          .map((p) => String(p).slice(0, 800))
-          .filter(Boolean)
-          .slice(0, 4),
-        bullets: (b.bullets ?? [])
-          .map((x) => String(x).slice(0, 200))
-          .filter(Boolean)
-          .slice(0, 6),
-      }));
+    if (!parsed.regionInfo?.trim() || !parsed.regionInfoNearby?.trim()) {
+      return { ok: false, error: `Gemini ${model}: 필수 필드 누락` };
+    }
 
-    const faqItems = (parsed.faqItems ?? [])
-      .filter((f) => f?.question && f?.answer)
-      .slice(0, 5)
-      .map((f) => ({
-        question: String(f.question).slice(0, 120),
-        answer: String(f.answer).slice(0, 500),
-      }));
+    const seoBlocks = normalizeSeoBlocks(parsed.seoBlocks, model, "A안");
+    if ("error" in seoBlocks) return { ok: false, error: seoBlocks.error };
 
-    if (seoBlocks.length < 2) {
-      return { ok: false, error: `Gemini ${model}: seoBlocks 부족` };
+    const seoBlocksNearby = normalizeSeoBlocks(
+      parsed.seoBlocksNearby,
+      model,
+      "B안"
+    );
+    if ("error" in seoBlocksNearby) {
+      return { ok: false, error: seoBlocksNearby.error };
     }
 
     return {
       ok: true,
       data: {
         regionInfo: String(parsed.regionInfo).slice(0, 500),
+        regionInfoNearby: String(parsed.regionInfoNearby).slice(0, 500),
         nearbyIntro: String(
           parsed.nearbyIntro ??
             "근방 지역에서 함께 검색하는 애견미용학원 정보입니다."
@@ -108,17 +155,13 @@ function parseRegionalContent(
         metaDescription: String(
           parsed.metaDescription ?? parsed.regionInfo
         ).slice(0, 160),
+        metaDescriptionNearby: String(
+          parsed.metaDescriptionNearby ?? parsed.regionInfoNearby
+        ).slice(0, 160),
         seoBlocks,
-        faqItems:
-          faqItems.length >= 3
-            ? faqItems
-            : [
-                {
-                  question: `{region} 애견미용학원 수강료는?`,
-                  answer:
-                    "과정·등급에 따라 150만~1,200만 원대이며 국비지원 여부를 상담 시 확인하세요.",
-                },
-              ],
+        seoBlocksNearby,
+        faqItems: normalizeFaqItems(parsed.faqItems),
+        faqItemsNearby: normalizeFaqItems(parsed.faqItemsNearby),
       },
     };
   } catch (e) {
@@ -212,71 +255,52 @@ function buildRegionalGeminiPrompt(input: {
     ? `${input.regionBig} ${input.label}`
     : input.label;
   const nearby =
-    input.nearbyLabels.slice(0, 5).join(", ") || "인근 광역 도시";
-
-  const nearbyRule = input.hasNearbyRecommendedAcademy
-    ? `- 해당 지역 인증추천학원이 없을 때: 본문에 '인근 ${NEARBY_REGION_VAR} 지역 [${NEARBY_ACADEMY_VAR}]의 경우도 통학·상담 관점에서 참고하면 좋을 것 같다'는 톤으로 자연스럽게 언급할 것.`
-    : `- 해당 지역·인근 모두 인증추천학원이 없으면 ${NEARBY_ACADEMY_VAR}·${NEARBY_REGION_VAR} 플레이스홀더 문장은 생략할 것.`;
+    input.nearbyLabels.slice(0, 5).join(", ") || "인근 구·동";
 
   const imageRule = input.hasAcademyImage
-    ? `- 첨부된 학원 대표 이미지(실습실·시설)를 참고해 글에 분위기를 자연스럽게 반영할 것. 과장·허위 묘사 금지.`
+    ? `- 첨부된 학원 대표 이미지(실습실·시설)를 참고해 A안 글에 분위기를 자연스럽게 반영할 것. 과장·허위 묘사 금지.`
     : "";
 
   return `너는 전국의 우수한 애견미용학원을 발굴하고 소개하는 전문 큐레이터야.
-[지역: ${REGION_VAR}]와 [인증추천학원명: ${RECOMMENDED_ACADEMY_VAR}] 변수를 활용해서, 네이버 웹사이트 상위 노출(DIA+ 알고리즘)과 유저 전환을 모두 만족하는 독창적인 정보성 글을 생성해줘.
+아래 플레이스홀더만 사용해 A안(지역 내 인증추천 있을 때)·B안(해당 지역에는 없고 인근 학원 안내) 두 벌의 SEO 글을 동시에 작성해줘.
 
-참고 컨텍스트 (치환하지 말고 아래 플레이스홀더만 본문에 사용):
+참고 컨텍스트 (치환하지 말고 플레이스홀더만 본문에 사용):
 - 실제 지역 키워드: ${input.keyword}
 - 행정 구역: ${regionLine}
-- 인근: ${nearby}
-- 현재 인증추천학원 존재 여부: ${input.hasRecommendedAcademy ? "있음" : "없음(플레이스홀더는 그대로 유지)"}
-- 인근 인증추천학원 존재 여부: ${input.hasNearbyRecommendedAcademy ? "있음" : "없음"}
-- 추천학원 참고명(치환 금지, ${RECOMMENDED_ACADEMY_VAR} 사용): ${input.recommendedAcademyName}
-- 강점 참고(치환 금지, ${RECOMMENDED_HIGHLIGHT_VAR} 사용): ${input.recommendedAcademyHighlight}
-- 인근 추천학원 참고명(치환 금지, ${NEARBY_ACADEMY_VAR} 사용): ${input.nearbyRecommendedAcademyName || "(없음)"}
-- 인근 추천 지역(치환 금지, ${NEARBY_REGION_VAR} 사용): ${input.nearbyRecommendedRegion || "(없음)"}
+- 인근 구·동: ${nearby}
+- A안용 추천학원: ${RECOMMENDED_ACADEMY_VAR} / ${RECOMMENDED_HIGHLIGHT_VAR}
+- B안용 인근 학원: ${NEARBY_REGION_VAR} / ${NEARBY_ACADEMY_VAR} / ${NEARBY_HIGHLIGHT_VAR}
 
 [작성 규칙]
-1. 타깃별 만족 포인트 반영:
-   - 예비 수강생(B2C): 수강료, 국비지원 여부, 자격증 합격률, 실제 실습 환경(no-cage 등)을 고르는 기준을 제시할 것.
-   - 학원 원장님(B2B): 이 플랫폼이 지역 내 우수 학원을 얼마나 공정하고 돋보이게 큐레이션하고 있는지 신뢰감을 줄 것.
-   - 네이버 로봇(SEO): '${input.label} 애견미용학원' 키워드 의미를 소제목·본문에 자연스럽게 3회 이상 반영할 것. 단, 본문에는 반드시 ${REGION_VAR} 플레이스홀더 문자열을 사용하고 실제 지역명을 직접 쓰지 말 것.
+1. A안 (seoBlocks, regionInfo, faqItems):
+   - '${REGION_VAR} 지역에서 특별히 인증 추천하는 [${RECOMMENDED_ACADEMY_VAR}]' 톤으로 작성.
+   - ${REGION_VAR}에 학원이 있는 것처럼 자연스럽게 홍보.
 
-2. 인증추천학원 자연스러운 스토리텔링 홍보 (핵심):
-   - 본문 중간에 '${REGION_VAR} 지역에서 특별히 인증 추천하는 [${RECOMMENDED_ACADEMY_VAR}]'을 자연스럽게 언급할 것.
-   - 예시 톤: '수많은 학원 중에서도 ${REGION_VAR}의 [${RECOMMENDED_ACADEMY_VAR}]의 경우, 수강생들이 가장 중요하게 생각하는 [${RECOMMENDED_HIGHLIGHT_VAR}] 등의 기준을 높은 수준으로 충족하고 있어 신뢰할 만합니다.'
-   - 강요하지 않고 공신력 있게 작성.
+2. B안 (seoBlocksNearby, regionInfoNearby, faqItemsNearby) — 매우 중요:
+   - 반드시 "${REGION_VAR}에는 (아직) 인증 추천 학원이 없다" 또는 "등록되어 있지 않다"는 점을 명확히 밝힐 것.
+   - 대신 "인근 ${NEARBY_REGION_VAR}에 위치한 [${NEARBY_ACADEMY_VAR}]"을 통학·상담 관점에서 소개할 것.
+   - ${NEARBY_ACADEMY_VAR}가 ${REGION_VAR}에 있는 것처럼 쓰면 안 됨. "가까운 곳", "인근", "통학 가능" 표현 사용.
+   - B안에는 ${RECOMMENDED_ACADEMY_VAR}를 해당 지역 학원처럼 쓰지 말 것.
 
-3. 인근 지역 추천학원 안내:
-${nearbyRule}
+3. SEO: '${input.label} 애견미용학원' 키워드를 A·B 모두에 자연스럽게 3회 이상. 지역명은 ${REGION_VAR} 플레이스홀더만 사용.
+${imageRule ? `\n4. 이미지 참고:\n${imageRule}` : ""}
 
-4. 가독성:
-   - seoBlocks의 title은 h2/h3에 해당하는 소제목 문구로 작성.
-   - bullets는 핵심 요약(• 스타일 문장).
-${imageRule ? `\n5. 이미지 참고:\n${imageRule}` : ""}
-
-6. 변수 규칙 (매우 중요):
-   - 모든 문장에서 지역은 ${REGION_VAR}, 학원명은 ${RECOMMENDED_ACADEMY_VAR}, 강점은 ${RECOMMENDED_HIGHLIGHT_VAR}, 인근 지역은 ${NEARBY_REGION_VAR}, 인근 학원명은 ${NEARBY_ACADEMY_VAR} 문자열을 그대로 포함.
-   - 실제 지역명·학원명으로 치환하지 말 것. 나중에 시스템이 동적으로 바인딩함.
+5. 변수 규칙: 실제 지역명·학원명으로 치환하지 말 것.
 
 반드시 아래 JSON만 출력:
 {
-  "regionInfo": "히어로 소개 (2~3문장, ${REGION_VAR} 포함)",
-  "nearbyIntro": "근방 안내 (80~120자)",
-  "metaDescription": "검색 설명 140자 내외, ${REGION_VAR}·${RECOMMENDED_ACADEMY_VAR} 포함",
-  "seoBlocks": [
-    {
-      "title": "h2급 소제목 (${REGION_VAR} 애견미용학원 키워드 포함)",
-      "paragraphs": ["문단1", "문단2"],
-      "bullets": ["체크1", "체크2", "체크3", "체크4"]
-    }
-  ],
-  "faqItems": [
-    { "question": "질문", "answer": "답변" }
-  ]
+  "regionInfo": "A안 히어로 (2~3문장)",
+  "regionInfoNearby": "B안 히어로 — {region}에는 없지만 인근 {nearbyRecommendedRegion} [{nearbyRecommendedAcademyName}] 안내",
+  "nearbyIntro": "근방 구·동 안내 (80~120자)",
+  "metaDescription": "A안 검색 설명 140자 내외",
+  "metaDescriptionNearby": "B안 검색 설명 140자 내외",
+  "seoBlocks": [ { "title": "...", "paragraphs": ["..."], "bullets": ["..."] } ],
+  "seoBlocksNearby": [ { "title": "...", "paragraphs": ["..."], "bullets": ["..."] } ],
+  "faqItems": [ { "question": "...", "answer": "..." } ],
+  "faqItemsNearby": [ { "question": "...", "answer": "..." } ]
 }
 
-seoBlocks 2~3개, faqItems 4개. 매번 다른 관점·문체로 작성.`;
+seoBlocks·seoBlocksNearby 각 2~3개, faqItems·faqItemsNearby 각 4개.`;
 }
 
 export async function generateRegionalLandingWithGemini(input: {

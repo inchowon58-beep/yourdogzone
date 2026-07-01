@@ -8,6 +8,7 @@ import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
 import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
+import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
 import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
 import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
 import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
@@ -20,13 +21,15 @@ import {
 } from "@/lib/academy/regional-seo-resolve";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
-import { buildRegionalSeoContext } from "@/lib/academy/regional-seo-vars";
 import { ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
   getPublishedRegionalSlugs,
+  getAllRegionalLandings,
   resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
+import { NearbyStationSeoSection } from "@/components/academy/NearbyStationSeoSection";
+import { resolveNearbyAreas, resolveNearbyStations } from "@/lib/academy/resolve-nearby-areas";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";
 import { sampleRandom, sampleStableRandom } from "@/lib/utils/random-sample";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -64,12 +67,8 @@ export async function generateMetadata({ params }: PageProps) {
   let page = await resolveRegionalLanding(slug);
   if (!page) return {};
 
-  const allPremium = await getAllPremiumAcademies();
-  const seoAcademy = sampleRandom(allPremium, 1)[0] ?? null;
   const pageCtx = await loadRegionalPageContext(page);
-  const seoCtx = seoAcademy
-    ? buildRegionalSeoContext(page.label, seoAcademy, null)
-    : pageCtx.seoCtx;
+  const seoCtx = pageCtx.seoCtx;
 
   page = await ensureRegionalSeoContent(page, seoCtx);
 
@@ -94,19 +93,18 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
 
-  const [pageCtx, allPremium] = await Promise.all([
+  const [pageCtx, allPremium, allRegionalLandings] = await Promise.all([
     loadRegionalPageContext(page),
     getAllPremiumAcademies(),
+    getAllRegionalLandings(),
   ]);
 
-  const seoAcademy = sampleRandom(allPremium, 1)[0] ?? null;
-  const seoCtx = seoAcademy
-    ? buildRegionalSeoContext(label, seoAcademy, null)
-    : pageCtx.seoCtx;
+  const seoCtx = pageCtx.seoCtx;
 
   page = await ensureRegionalSeoContent(page, seoCtx);
 
-  const { premium, regular, nearbyPremium } = pageCtx;
+  const { premium, regular, nearbyPremium, isNearbyFallback, nearbySourceLabel, recommended } =
+    pageCtx;
 
   const topPremium = sampleRandom(
     allPremium,
@@ -115,19 +113,22 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const guidePreview = sampleRandom(allPremium, 5);
 
   const nearby = await resolveNearbyPages(page);
+  const nearbyAreas = resolveNearbyAreas(page);
+  const nearbyStations = resolveNearbyStations(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
   const seoBlocks = resolveBoundSeoBlocks(page, seoCtx);
   const faqItems = resolveBoundFaqItems(page, seoCtx);
   const listAnchor = "#academy-list";
   const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
 
-  const featuredAcademy = seoAcademy
+  const featuredSource = recommended ?? nearbyPremium[0] ?? null;
+  const featuredAcademy = featuredSource
     ? {
-        name: seoAcademy.name,
-        slug: seoAcademy.slug,
-        images: getAcademyGalleryImages(seoAcademy, 3),
-        regionLabel: seoAcademy.region_small,
-        isNearby: !premium.some((a) => a.slug === seoAcademy.slug),
+        name: featuredSource.name,
+        slug: featuredSource.slug,
+        images: getAcademyGalleryImages(featuredSource, 3),
+        regionLabel: featuredSource.region_small,
+        isNearby: !recommended,
       }
     : null;
 
@@ -208,11 +209,30 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
       <div id="academy-list">
         <AcademyList
           academies={listSample}
-          listTitle={`${label} 애견미용학원 목록`}
+          listTitle={
+            isNearbyFallback
+              ? `${nearbySourceLabel ?? "인근"} 애견미용학원 (${label} 인근)`
+              : `${label} 애견미용학원 목록`
+          }
           registerLabel={`${label} 학원 정보 등록하기`}
           totalCount={regular.length}
+          isNearbyFallback={isNearbyFallback}
+          nearbySourceLabel={nearbySourceLabel}
+          regionLabel={label}
         />
       </div>
+
+      <NearbyDistrictSeoSection
+        currentLabel={label}
+        areas={nearbyAreas}
+        publishedLandings={allRegionalLandings}
+      />
+
+      <NearbyStationSeoSection
+        currentLabel={label}
+        stations={nearbyStations}
+        publishedLandings={allRegionalLandings}
+      />
 
       <NearbyRegionalLinks
         currentLabel={label}
