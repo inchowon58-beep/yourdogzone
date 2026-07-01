@@ -5,6 +5,7 @@ import Link from "next/link";
 import { KeyRound, RefreshCw, Star, Trash2 } from "lucide-react";
 import { getListingConfig, listingBasePath } from "@/lib/listings/config";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
+import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type ListingRow = {
@@ -20,7 +21,13 @@ function storageKey(category: ListingCategory) {
   return `listing-admin-secret-${category}`;
 }
 
-export function ListingAdminPanel({ category }: { category: ListingCategory }) {
+export function ListingAdminPanel({
+  category,
+  embedded = false,
+}: {
+  category: ListingCategory;
+  embedded?: boolean;
+}) {
   const config = getListingConfig(category);
   const basePath = listingBasePath(category);
   const apiBase = `/api/listings/${category}/admin`;
@@ -41,12 +48,12 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
   );
 
   const loadListings = useCallback(
-    async (adminSecret: string) => {
+    async () => {
       setLoading(true);
       setError("");
       try {
         const res = await fetch(apiBase, {
-          headers: { "x-admin-secret": adminSecret },
+          headers: adminPanelHeaders(secret, embedded),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -65,16 +72,20 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
         setLoading(false);
       }
     },
-    [apiBase, category]
+    [apiBase, category, embedded, secret]
   );
 
   useEffect(() => {
+    if (embedded) {
+      void loadListings();
+      return;
+    }
     const saved = sessionStorage.getItem(storageKey(category));
     if (saved) {
       setSecret(saved);
-      void loadListings(saved);
+      void loadListings();
     }
-  }, [category, loadListings]);
+  }, [category, embedded, loadListings]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -82,7 +93,7 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
     if (!trimmed) return;
     sessionStorage.setItem(storageKey(category), trimmed);
     setSecret(trimmed);
-    void loadListings(trimmed);
+    void loadListings();
   }
 
   function handleLogout() {
@@ -115,10 +126,7 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
     try {
       const res = await fetch(apiBase, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": secret,
-        },
+        headers: adminPanelJsonHeaders(secret, embedded),
         body: JSON.stringify({ slug: row.slug, is_premium: next }),
       });
       const data = await res.json();
@@ -165,10 +173,7 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
     try {
       const res = await fetch(apiBase, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": secret,
-        },
+        headers: adminPanelJsonHeaders(secret, embedded),
         body: JSON.stringify({ slugs: [...selected] }),
       });
       const data = await res.json();
@@ -177,7 +182,7 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
         return;
       }
       setMessage(`${data.count}건 삭제했습니다.`);
-      await loadListings(secret);
+      await loadListings();
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -185,7 +190,7 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
     }
   }
 
-  if (!secret) {
+  if (!embedded && !secret) {
     return (
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
         <div className="mb-6 flex items-center gap-2 text-primary">
@@ -235,20 +240,22 @@ export function ListingAdminPanel({ category }: { category: ListingCategory }) {
           )}
           <button
             type="button"
-            onClick={() => void loadListings(secret)}
+            onClick={() => void loadListings()}
             disabled={loading}
             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             새로고침
           </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-muted"
-          >
-            로그아웃
-          </button>
+          {!embedded ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-muted"
+            >
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </div>
 

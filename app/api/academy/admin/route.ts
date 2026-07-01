@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
+import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
@@ -15,21 +15,9 @@ async function revalidateRegionalLandingPages() {
 
 export const runtime = "nodejs";
 
-function unauthorized() {
-  return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
-}
-
 export async function GET(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-
-  if (!verifyAdminSecret(request)) {
-    return unauthorized();
-  }
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   const academies = await getAcademies();
   return NextResponse.json({
@@ -45,16 +33,8 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-
-  if (!verifyAdminSecret(request)) {
-    return unauthorized();
-  }
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   try {
     const body = await request.json();
@@ -111,16 +91,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-
-  if (!verifyAdminSecret(request)) {
-    return unauthorized();
-  }
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   try {
     const body = await request.json();

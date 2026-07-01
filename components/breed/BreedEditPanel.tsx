@@ -6,15 +6,23 @@ import { Check, Loader2 } from "lucide-react";
 import { BreedForm } from "@/components/breed/BreedForm";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { breedToFormData, formDataToInsert } from "@/lib/breeds/form-utils";
+import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
 
 type Props = {
   slug: string;
   adminSecret: string;
+  embedded?: boolean;
   onCancel: () => void;
   onSaved: () => void;
 };
 
-export function BreedEditPanel({ slug, adminSecret, onCancel, onSaved }: Props) {
+export function BreedEditPanel({
+  slug,
+  adminSecret,
+  embedded = false,
+  onCancel,
+  onSaved,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +35,7 @@ export function BreedEditPanel({ slug, adminSecret, onCancel, onSaved }: Props) 
     setError("");
     try {
       const res = await fetch(`/api/breeds/admin/${encodeURIComponent(slug)}`, {
-        headers: { "x-admin-secret": adminSecret },
+        headers: adminPanelHeaders(adminSecret, embedded),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -41,7 +49,7 @@ export function BreedEditPanel({ slug, adminSecret, onCancel, onSaved }: Props) 
     } finally {
       setLoading(false);
     }
-  }, [slug, adminSecret]);
+  }, [slug, adminSecret, embedded]);
 
   useEffect(() => {
     void loadBreed();
@@ -54,10 +62,7 @@ export function BreedEditPanel({ slug, adminSecret, onCancel, onSaved }: Props) 
       const payload = formDataToInsert(form, slug);
       const res = await fetch(`/api/breeds/admin/${encodeURIComponent(slug)}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": adminSecret,
-        },
+        headers: adminPanelJsonHeaders(adminSecret, embedded),
         body: JSON.stringify(payload),
       });
       const data = await res.json();

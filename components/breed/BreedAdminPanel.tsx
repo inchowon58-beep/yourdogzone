@@ -6,6 +6,7 @@ import { KeyRound, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { BreedEditPanel } from "@/components/breed/BreedEditPanel";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
+import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
 
 type BreedRow = {
   slug: string;
@@ -19,7 +20,7 @@ type BreedRow = {
 
 const STORAGE_KEY = "breed-admin-secret";
 
-export function BreedAdminPanel() {
+export function BreedAdminPanel({ embedded = false }: { embedded?: boolean }) {
   const [secret, setSecret] = useState("");
   const [inputSecret, setInputSecret] = useState("");
   const [breeds, setBreeds] = useState<BreedRow[]>([]);
@@ -37,12 +38,12 @@ export function BreedAdminPanel() {
     [r2Breeds, selected]
   );
 
-  const loadBreeds = useCallback(async (adminSecret: string) => {
+  const loadBreeds = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/breeds/admin", {
-        headers: { "x-admin-secret": adminSecret },
+        headers: adminPanelHeaders(secret, embedded),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -60,15 +61,19 @@ export function BreedAdminPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [embedded, secret]);
 
   useEffect(() => {
+    if (embedded) {
+      void loadBreeds();
+      return;
+    }
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
       setSecret(saved);
-      void loadBreeds(saved);
+      void loadBreeds();
     }
-  }, [loadBreeds]);
+  }, [embedded, loadBreeds]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +81,7 @@ export function BreedAdminPanel() {
     if (!trimmed) return;
     sessionStorage.setItem(STORAGE_KEY, trimmed);
     setSecret(trimmed);
-    void loadBreeds(trimmed);
+    void loadBreeds();
   }
 
   function handleLogout() {
@@ -129,10 +134,7 @@ export function BreedAdminPanel() {
     try {
       const res = await fetch("/api/breeds/admin", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": secret,
-        },
+        headers: adminPanelJsonHeaders(secret, embedded),
         body: JSON.stringify({ slugs }),
       });
       const data = await res.json();
@@ -154,7 +156,7 @@ export function BreedAdminPanel() {
         }
       }
       setMessage(`${data.count ?? slugs.length}개 삭제 완료`);
-      await loadBreeds(secret);
+      await loadBreeds();
     } catch {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
@@ -162,7 +164,7 @@ export function BreedAdminPanel() {
     }
   }
 
-  if (!secret) {
+  if (!embedded && !secret) {
     return (
       <form onSubmit={handleLogin} className="mx-auto max-w-sm space-y-4">
         <div className="flex items-center gap-2 text-lg font-semibold">
@@ -192,11 +194,12 @@ export function BreedAdminPanel() {
       <BreedEditPanel
         slug={editingSlug}
         adminSecret={secret}
+        embedded={embedded}
         onCancel={() => {
           setEditingSlug(null);
-          void loadBreeds(secret);
+          void loadBreeds();
         }}
-        onSaved={() => void loadBreeds(secret)}
+        onSaved={() => void loadBreeds()}
       />
     );
   }
@@ -214,20 +217,22 @@ export function BreedAdminPanel() {
           </Link>
           <button
             type="button"
-            onClick={() => void loadBreeds(secret)}
+            onClick={() => void loadBreeds()}
             disabled={loading}
             className="inline-flex items-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-sm"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             새로고침
           </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-muted"
-          >
-            로그아웃
-          </button>
+          {!embedded ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-muted"
+            >
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </div>
 

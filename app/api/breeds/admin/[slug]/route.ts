@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
+import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { getBreedBySlug, upsertBreed } from "@/lib/breeds/queries";
 import { loadAllBreedsFromR2, normalizeBreedSlug } from "@/lib/breeds/r2-read";
@@ -17,13 +17,8 @@ function unauthorized() {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   const { slug: raw } = await context.params;
   const slug = normalizeBreedSlug(raw);
@@ -41,13 +36,8 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   const { slug: raw } = await context.params;
   const slug = normalizeBreedSlug(raw);

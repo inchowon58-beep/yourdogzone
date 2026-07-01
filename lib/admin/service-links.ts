@@ -27,3 +27,19 @@ export const SERVICE_ADMIN_LINKS = [
     publicHref: "/dognose",
   },
 ] as const;
+
+export const MAIN_ADMIN_SECTIONS = [
+  ...SERVICE_ADMIN_LINKS,
+  {
+    id: "regional",
+    title: "지역 SEO 페이지",
+    publicHref: "/services/academy",
+  },
+  {
+    id: "advisory",
+    title: "공식 자문단 위원장",
+    publicHref: "/services/academy/advisory",
+  },
+] as const;
+
+export type MainAdminSectionId = (typeof MAIN_ADMIN_SECTIONS)[number]["id"];

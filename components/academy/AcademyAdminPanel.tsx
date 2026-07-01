@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { KeyRound, RefreshCw, Star, Trash2 } from "lucide-react";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
+import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
 
 type AcademyRow = {
   slug: string;
@@ -16,7 +17,12 @@ type AcademyRow = {
 
 const STORAGE_KEY = "academy-admin-secret";
 
-export function AcademyAdminPanel() {
+type Props = {
+  /** 메인 관리자(/admin)에 임베드 — 별도 비밀키 없이 쿠키 인증 */
+  embedded?: boolean;
+};
+
+export function AcademyAdminPanel({ embedded = false }: Props) {
   const [secret, setSecret] = useState("");
   const [inputSecret, setInputSecret] = useState("");
   const [academies, setAcademies] = useState<AcademyRow[]>([]);
@@ -32,13 +38,13 @@ export function AcademyAdminPanel() {
     [academies.length, selected.size]
   );
 
-  const loadAcademies = useCallback(async (adminSecret: string) => {
+  const loadAcademies = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
       const res = await fetch("/api/academy/admin", {
-        headers: { "x-admin-secret": adminSecret },
+        headers: adminPanelHeaders(secret, embedded),
       });
       const data = await res.json();
 
@@ -58,15 +64,19 @@ export function AcademyAdminPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [embedded, secret]);
 
   useEffect(() => {
+    if (embedded) {
+      void loadAcademies();
+      return;
+    }
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
       setSecret(saved);
-      void loadAcademies(saved);
+      void loadAcademies();
     }
-  }, [loadAcademies]);
+  }, [embedded, loadAcademies]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +84,7 @@ export function AcademyAdminPanel() {
     if (!trimmed) return;
     sessionStorage.setItem(STORAGE_KEY, trimmed);
     setSecret(trimmed);
-    void loadAcademies(trimmed);
+    void loadAcademies();
   }
 
   function handleLogout() {
@@ -111,10 +121,7 @@ export function AcademyAdminPanel() {
     try {
       const res = await fetch("/api/academy/admin", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": secret,
-        },
+        headers: adminPanelJsonHeaders(secret, embedded),
         body: JSON.stringify({ slug: academy.slug, is_premium: next }),
       });
       const data = await res.json();
@@ -179,10 +186,7 @@ export function AcademyAdminPanel() {
     try {
       const res = await fetch("/api/academy/admin", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": secret,
-        },
+        headers: adminPanelJsonHeaders(secret, embedded),
         body: JSON.stringify({ slugs: [...selected] }),
       });
       const data = await res.json();
@@ -203,7 +207,7 @@ export function AcademyAdminPanel() {
     }
   }
 
-  if (!secret) {
+  if (!embedded && !secret) {
     return (
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
         <div className="mb-6 flex items-center gap-2 text-primary">
@@ -261,20 +265,22 @@ export function AcademyAdminPanel() {
           )}
           <button
             type="button"
-            onClick={() => void loadAcademies(secret)}
+            onClick={() => void loadAcademies()}
             disabled={loading}
             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             새로고침
           </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-muted"
-          >
-            로그아웃
-          </button>
+          {!embedded ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-muted"
+            >
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
+import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { isListingCategory, listingBasePath } from "@/lib/listings/config";
 import {
   deleteListings,
@@ -30,13 +30,8 @@ export async function GET(request: Request, context: RouteContext) {
   const category = await parseCategory(context);
   if (category instanceof NextResponse) return category;
 
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   const listings = await getListings(category);
   return NextResponse.json({
@@ -56,13 +51,8 @@ export async function PATCH(request: Request, context: RouteContext) {
   const category = await parseCategory(context);
   if (category instanceof NextResponse) return category;
 
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   try {
     const body = await request.json();
@@ -112,13 +102,8 @@ export async function DELETE(request: Request, context: RouteContext) {
   const category = await parseCategory(context);
   if (category instanceof NextResponse) return category;
 
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   try {
     const body = await request.json();

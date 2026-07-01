@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
+import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { deleteBreeds, getBreeds } from "@/lib/breeds/queries";
 import { loadAllBreedsFromR2 } from "@/lib/breeds/r2-read";
@@ -13,13 +13,8 @@ function unauthorized() {
 }
 
 export async function GET(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   const all = await getBreeds();
   const remoteSlugs = new Set((await loadAllBreedsFromR2()).map((b) => b.slug));
@@ -38,13 +33,8 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!isAdminConfigured()) {
-    return NextResponse.json(
-      { error: "ACADEMY_ADMIN_SECRET 환경 변수가 설정되지 않았습니다." },
-      { status: 503 }
-    );
-  }
-  if (!verifyAdminSecret(request)) return unauthorized();
+  const denied = await enforceAdminAccess(request);
+  if (denied) return denied;
 
   try {
     const body = await request.json();
