@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, MessageCircle, Quote } from "lucide-react";
-import { getChairmanConsultConfig } from "@/lib/site/chairman-consult";
+import {
+  buildChairmanQuote,
+  getChairmanConsultConfig,
+} from "@/lib/site/chairman-consult";
 
 type Props = {
   /** 지역명 (선택) — 맥락 문구에 사용 */
@@ -10,6 +13,7 @@ type Props = {
 
 export function ChairmanConsultBanner({ regionLabel }: Props) {
   const config = getChairmanConsultConfig();
+  const quote = buildChairmanQuote(regionLabel);
 
   return (
     <section
@@ -26,7 +30,7 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
             <div className="relative h-36 w-36 overflow-hidden rounded-2xl border-2 border-white bg-white shadow-md sm:h-40 sm:w-40">
               <Image
                 src={config.profileImage}
-                alt={`${config.orgTitle} ${config.name} 프로필`}
+                alt={config.profileAlt}
                 fill
                 className="object-cover object-[center_15%]"
                 sizes="(max-width: 768px) 144px, 160px"
@@ -45,12 +49,12 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
             1:1 맞춤 학원 매칭
             {regionLabel ? ` · ${regionLabel}` : ""}
           </p>
-          <h2
+          <h3
             id="chairman-consult-heading"
             className="mt-2 text-lg font-bold leading-snug text-slate-900 sm:text-xl"
           >
             {config.fullTitle}
-          </h2>
+          </h3>
 
           <blockquote className="relative mt-4 rounded-xl border border-indigo-100 bg-white/80 px-4 py-3.5 text-left shadow-sm">
             <Quote
@@ -58,7 +62,7 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
               aria-hidden
             />
             <p className="text-sm leading-relaxed text-slate-600 sm:text-[0.95rem]">
-              {config.quote}
+              {quote}
             </p>
           </blockquote>
 
