@@ -1,5 +1,5 @@
-import type { RegionalLandingPage } from "@/lib/academy/regional-landing";
-import { regionalLandingPath } from "@/lib/academy/regional-landing";
+import type { RegionalLandingPage } from "@/lib/types/regional-landing";
+import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 
 export function buildRegionalAcademyListJsonLd(

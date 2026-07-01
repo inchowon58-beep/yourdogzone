@@ -1,3 +1,5 @@
+import "server-only";
+
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";

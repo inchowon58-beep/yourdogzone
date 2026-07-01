@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MapPin, ChevronRight } from "lucide-react";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
-import { regionalLandingPath } from "@/lib/academy/regional-landing";
+import { regionalLandingPath } from "@/lib/academy/regional-path";
 
 type Props = {
   currentLabel: string;

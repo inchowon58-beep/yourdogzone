@@ -1,15 +1,13 @@
+import "server-only";
+
 import { getAcademies } from "@/lib/academy/queries";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
-import { LISTING_CATEGORIES, LISTING_CATEGORY_CONFIG } from "@/lib/listings/config";
+import { LISTING_CATEGORIES } from "@/lib/listings/config";
 import { getListings } from "@/lib/listings/queries";
 import { getBreeds } from "@/lib/breeds/queries";
+import type { AdminOverviewStats } from "@/lib/admin/service-links";
 
-export type AdminOverviewStats = {
-  academy: { total: number; premium: number };
-  regionalPages: { total: number; published: number };
-  listings: Record<string, { total: number; premium: number }>;
-  breeds: number;
-};
+export type { AdminOverviewStats } from "@/lib/admin/service-links";
 
 export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const [academies, regional, breeds] = await Promise.all([
@@ -42,24 +40,3 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     breeds: breeds.length,
   };
 }
-
-export const SERVICE_ADMIN_LINKS = [
-  {
-    id: "academy",
-    title: "애견미용학원",
-    href: "/services/academy/admin",
-    publicHref: "/services/academy",
-  },
-  ...LISTING_CATEGORIES.map((cat) => ({
-    id: cat,
-    title: LISTING_CATEGORY_CONFIG[cat].title,
-    href: `/services/${cat}/admin`,
-    publicHref: `/services/${cat}`,
-  })),
-  {
-    id: "breeds",
-    title: "견종소개",
-    href: "/dognose/admin",
-    publicHref: "/dognose",
-  },
-] as const;

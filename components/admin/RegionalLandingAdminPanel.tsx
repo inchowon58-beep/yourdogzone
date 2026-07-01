@@ -12,7 +12,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
-import { regionalLandingPath } from "@/lib/academy/regional-landing";
+import { regionalLandingPath } from "@/lib/academy/regional-path";
 
 export function RegionalLandingAdminPanel() {
   const [pages, setPages] = useState<RegionalLandingPage[]>([]);

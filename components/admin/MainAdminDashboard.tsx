@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, LogOut } from "lucide-react";
-import type { AdminOverviewStats } from "@/lib/admin/overview";
-import { SERVICE_ADMIN_LINKS } from "@/lib/admin/overview";
+import type { AdminOverviewStats } from "@/lib/admin/service-links";
+import { SERVICE_ADMIN_LINKS } from "@/lib/admin/service-links";
 import { RegionalLandingAdminPanel } from "@/components/admin/RegionalLandingAdminPanel";
 
 type Props = {

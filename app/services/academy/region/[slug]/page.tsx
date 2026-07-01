@@ -10,10 +10,11 @@ import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalGuideFaqItems,
-  buildRegionalLandingMetadata,
   buildRegionalSeoContent,
+} from "@/lib/academy/regional-seo-content";
+import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
+import {
   getPublishedRegionalSlugs,
-  regionalLandingPath,
   resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";

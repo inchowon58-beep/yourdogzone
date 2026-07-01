@@ -5,7 +5,8 @@ import { getLandingPages } from "@/lib/seo/landing-pages";
 import { LISTING_CATEGORIES, listingBasePath } from "@/lib/listings/config";
 import { getListings } from "@/lib/listings/queries";
 import { getAcademies } from "@/lib/academy/queries";
-import { getAllRegionalLandings, regionalLandingPath } from "@/lib/academy/regional-landing";
+import { getAllRegionalLandings } from "@/lib/academy/regional-landing";
+import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { getBreeds } from "@/lib/breeds/queries";
 import { breedDetailPath } from "@/lib/breeds/config";
 

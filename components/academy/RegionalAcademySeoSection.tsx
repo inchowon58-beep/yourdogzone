@@ -1,4 +1,4 @@
-import type { RegionalSeoBlock } from "@/lib/academy/regional-landing";
+import type { RegionalSeoBlock } from "@/lib/academy/regional-seo-content";
 
 type Props = {
   label: string;
