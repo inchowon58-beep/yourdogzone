@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -13,6 +14,8 @@ import requests
 LogFn = Callable[[str], None]
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
+GEMINI_RETRY_DELAY_SEC = float(os.getenv("GEMINI_RETRY_DELAY_SEC", "5"))
 API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -281,6 +284,22 @@ def _extract_response_text(data: dict[str, Any]) -> tuple[str, str | None]:
     return text, None
 
 
+def _is_retryable_error(error: str | None) -> bool:
+    if not error:
+        return False
+    lowered = error.lower()
+    return (
+        "http 503" in lowered
+        or "http 429" in lowered
+        or "http 500" in lowered
+        or "http 502" in lowered
+        or "unavailable" in lowered
+        or "json 파싱 실패" in lowered
+        or "응답 텍스트 없음" in lowered
+        or "네트워크 오류" in lowered
+    )
+
+
 def _call_gemini(
     api_key: str,
     prompt: str,
@@ -352,18 +371,31 @@ def refine_place_copy(
     last_error = "Gemini 호출 실패"
 
     for json_mode, max_tokens in attempts:
-        result = _call_gemini(
-            api_key,
-            prompt,
-            json_mode=json_mode,
-            category=category,
-            max_output_tokens=max_tokens,
-        )
-        if result.ok:
-            log("    ✓ Gemini 변환 완료")
-            return result
-        last_error = result.error or last_error
-        log(f"    ⚠ Gemini: {last_error}")
+        last_error = "Gemini 호출 실패"
+        for attempt in range(1, GEMINI_MAX_RETRIES + 1):
+            result = _call_gemini(
+                api_key,
+                prompt,
+                json_mode=json_mode,
+                category=category,
+                max_output_tokens=max_tokens,
+            )
+            if result.ok:
+                log("    ✓ Gemini 변환 완료")
+                return result
+
+            last_error = result.error or last_error
+            retryable = _is_retryable_error(last_error)
+            if retryable and attempt < GEMINI_MAX_RETRIES:
+                log(
+                    f"    ⚠ Gemini ({attempt}/{GEMINI_MAX_RETRIES}): {last_error} "
+                    f"→ {GEMINI_RETRY_DELAY_SEC:.0f}초 후 재시도"
+                )
+                time.sleep(GEMINI_RETRY_DELAY_SEC)
+                continue
+
+            log(f"    ⚠ Gemini: {last_error}")
+            break
 
     return RefineResult(ok=False, error=last_error)
 

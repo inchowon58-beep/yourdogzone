@@ -1,3 +1,12 @@
+import {
+  GEMINI_MAX_RETRIES,
+  GEMINI_RETRY_DELAY_MS,
+  GeminiJsonParseError,
+  isRetryableGeminiError,
+  parseGeminiJson,
+  sleep,
+} from "@/lib/ai/parse-gemini-json";
+
 type RefinedCopy = {
   title_copy: string;
   curriculum: string;
@@ -12,26 +21,32 @@ export type GeminiRefineResult =
 const DEFAULT_MODELS = ["gemini-2.5-flash"];
 
 function parseRefinedCopy(text: string, model: string): GeminiRefineResult {
+  let parsed: RefinedCopy;
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as RefinedCopy;
-    if (!parsed.title_copy || !parsed.curriculum) {
-      return { ok: false, error: `Gemini ${model}: JSON 필드 누락` };
-    }
-
+    parsed = parseGeminiJson<RefinedCopy>(text);
+  } catch (e) {
+    const preview =
+      e instanceof GeminiJsonParseError ? e.rawPreview : text.slice(0, 80);
     return {
-      ok: true,
-      data: {
-        title_copy: String(parsed.title_copy).slice(0, 200),
-        curriculum: String(parsed.curriculum).slice(0, 2000),
-        tuition_info: parsed.tuition_info
-          ? String(parsed.tuition_info).slice(0, 1000)
-          : null,
-      },
+      ok: false,
+      error: `Gemini ${model}: JSON 파싱 실패 (${preview})`,
     };
-  } catch {
-    return { ok: false, error: `Gemini ${model}: JSON 파싱 실패` };
   }
+
+  if (!parsed.title_copy || !parsed.curriculum) {
+    return { ok: false, error: `Gemini ${model}: JSON 필드 누락` };
+  }
+
+  return {
+    ok: true,
+    data: {
+      title_copy: String(parsed.title_copy).slice(0, 200),
+      curriculum: String(parsed.curriculum).slice(0, 2000),
+      tuition_info: parsed.tuition_info
+        ? String(parsed.tuition_info).slice(0, 1000)
+        : null,
+    },
+  };
 }
 
 async function callGeminiModel(
@@ -115,22 +130,44 @@ ${rawDescription.slice(0, 4000)}
 
   for (const model of models) {
     for (const jsonMode of [true, false] as const) {
-      try {
-        const result = await callGeminiModel(apiKey, model, prompt, jsonMode);
-        if (result.ok) return result;
+      for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+        try {
+          const result = await callGeminiModel(apiKey, model, prompt, jsonMode);
+          if (result.ok) return result;
 
-        errors.push(result.error);
-        console.error("[Gemini]", result.error);
+          errors.push(result.error);
+          console.error("[Gemini]", result.error);
 
-        // 모델 자체가 없으면 다음 모델로
-        if (result.error.includes("HTTP 404")) {
+          if (result.error.includes("HTTP 404")) {
+            break;
+          }
+
+          const shouldRetry =
+            attempt < GEMINI_MAX_RETRIES &&
+            isRetryableGeminiError(result.error);
+          if (shouldRetry) {
+            console.warn(
+              `[Gemini] ${model} 시도 ${attempt}/${GEMINI_MAX_RETRIES}, ${GEMINI_RETRY_DELAY_MS / 1000}초 후 재시도`
+            );
+            await sleep(GEMINI_RETRY_DELAY_MS);
+            continue;
+          }
+          break;
+        } catch (error) {
+          const msg =
+            error instanceof Error ? error.message : "Gemini 알 수 없는 오류";
+          errors.push(`Gemini ${model}: ${msg}`);
+          console.error("[Gemini]", msg);
+
+          if (
+            attempt < GEMINI_MAX_RETRIES &&
+            isRetryableGeminiError(msg)
+          ) {
+            await sleep(GEMINI_RETRY_DELAY_MS);
+            continue;
+          }
           break;
         }
-      } catch (error) {
-        const msg =
-          error instanceof Error ? error.message : "Gemini 알 수 없는 오류";
-        errors.push(`Gemini ${model}: ${msg}`);
-        console.error("[Gemini]", msg);
       }
     }
   }

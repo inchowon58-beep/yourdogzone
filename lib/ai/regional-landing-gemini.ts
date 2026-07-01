@@ -5,6 +5,14 @@ import type {
   RegionalSeoBlockStored,
 } from "@/lib/types/regional-landing";
 import {
+  GEMINI_MAX_RETRIES,
+  GEMINI_RETRY_DELAY_MS,
+  GeminiJsonParseError,
+  isRetryableGeminiError,
+  parseGeminiJson,
+  sleep,
+} from "@/lib/ai/parse-gemini-json";
+import {
   NEARBY_ACADEMY_VAR,
   NEARBY_REGION_VAR,
   RECOMMENDED_ACADEMY_VAR,
@@ -38,16 +46,26 @@ function parseRegionalContent(
   text: string,
   model: string
 ): RegionalGeminiResult {
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text) as {
-      regionInfo?: string;
-      nearbyIntro?: string;
-      metaDescription?: string;
-      seoBlocks?: RegionalSeoBlockStored[];
-      faqItems?: RegionalFaqItemStored[];
-    };
+  let parsed: {
+    regionInfo?: string;
+    nearbyIntro?: string;
+    metaDescription?: string;
+    seoBlocks?: RegionalSeoBlockStored[];
+    faqItems?: RegionalFaqItemStored[];
+  };
 
+  try {
+    parsed = parseGeminiJson(text);
+  } catch (e) {
+    const preview =
+      e instanceof GeminiJsonParseError ? e.rawPreview : text.slice(0, 80);
+    return {
+      ok: false,
+      error: `Gemini ${model}: JSON 파싱 실패 (${preview})`,
+    };
+  }
+
+  try {
     if (!parsed.regionInfo?.trim() || !Array.isArray(parsed.seoBlocks)) {
       return { ok: false, error: `Gemini ${model}: 필수 필드 누락` };
     }
@@ -103,8 +121,9 @@ function parseRegionalContent(
               ],
       },
     };
-  } catch {
-    return { ok: false, error: `Gemini ${model}: JSON 파싱 실패` };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "콘텐츠 검증 실패";
+    return { ok: false, error: `Gemini ${model}: ${msg}` };
   }
 }
 
@@ -289,15 +308,37 @@ export async function generateRegionalLandingWithGemini(input: {
   const errors: string[] = [];
 
   for (const model of models) {
-    const result = await callRegionalGemini(
-      apiKey,
-      model,
-      prompt,
-      input.academyImageUrl
-    );
-    if (result.ok) return result;
-    errors.push(result.error);
-    if (result.error.includes("HTTP 404")) continue;
+    for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+      const result = await callRegionalGemini(
+        apiKey,
+        model,
+        prompt,
+        input.academyImageUrl
+      );
+      if (result.ok) return result;
+
+      const isLastAttempt = attempt >= GEMINI_MAX_RETRIES;
+      const shouldRetry =
+        !isLastAttempt && isRetryableGeminiError(result.error);
+
+      if (shouldRetry) {
+        console.warn(
+          `[Gemini regional] ${model} 시도 ${attempt}/${GEMINI_MAX_RETRIES} 실패, ${GEMINI_RETRY_DELAY_MS / 1000}초 후 재시도: ${result.error}`
+        );
+        await sleep(GEMINI_RETRY_DELAY_MS);
+        continue;
+      }
+
+      errors.push(
+        attempt > 1
+          ? `${result.error} (${attempt}회 시도)`
+          : result.error
+      );
+      break;
+    }
+
+    const lastError = errors[errors.length - 1] ?? "";
+    if (lastError.includes("HTTP 404")) continue;
   }
 
   return {
