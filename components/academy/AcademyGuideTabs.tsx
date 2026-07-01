@@ -25,6 +25,8 @@ type AcademyGuideTabsProps = {
   listHref?: string;
   /** 하단 전체 목록 건수 (미리보기 링크용) */
   totalListCount?: number;
+  /** 인증추천 전체 건수 (가이드 미리보기 링크용) */
+  premiumListCount?: number;
 };
 
 function GuidePanel({
@@ -34,6 +36,7 @@ function GuidePanel({
   previewAcademies,
   listHref,
   totalListCount,
+  premiumListCount,
 }: {
   tab: AcademyGuideTab;
   geoLabel: string | null;
@@ -41,10 +44,12 @@ function GuidePanel({
   previewAcademies?: Academy[];
   listHref?: string;
   totalListCount?: number;
+  premiumListCount?: number;
 }) {
   const regionalHeading = buildGeoAcademyHeading(geoLabel, tab.geoHint ?? "");
   const preview = previewAcademies ?? [];
   const listTotal = totalListCount ?? academies.length;
+  const premiumTotal = premiumListCount ?? preview.length;
 
   return (
     <div className="space-y-6">
@@ -87,9 +92,11 @@ function GuidePanel({
           {regionalHeading}
         </h3>
         <p className="mt-1 text-xs text-muted">
-          {geoLabel
-            ? `${geoLabel} 지역 검색 결과를 바탕으로 학원을 비교해 보세요.`
-            : "지역 탭이나 검색창에 동네·시군구 이름을 입력하면 맞춤 리스트가 표시됩니다."}
+          {preview.length > 0
+            ? `전국 인증 추천 학원 중 ${preview.length}곳을 소개합니다. 새로고침 시 다른 학원이 노출될 수 있습니다.`
+            : geoLabel
+              ? `${geoLabel} 지역 검색 결과를 바탕으로 학원을 비교해 보세요.`
+              : "지역 탭이나 검색창에 동네·시군구 이름을 입력하면 맞춤 리스트가 표시됩니다."}
         </p>
 
         {preview.length > 0 ? (
@@ -98,26 +105,32 @@ function GuidePanel({
               <li key={academy.id}>
                 <Link
                   href={`/services/academy/${academy.slug}`}
-                  className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-white sm:px-4"
+                  className="flex items-center gap-3 px-3 py-3.5 transition-colors hover:bg-white sm:gap-4 sm:px-4 sm:py-4"
                 >
                   <AcademyThumbnail
                     src={getAcademyThumbnail(academy)}
                     alt={academy.name}
-                    className="h-11 w-11 shrink-0 rounded-lg"
+                    className="h-14 w-14 shrink-0 rounded-xl sm:h-16 sm:w-16"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">
                       {academy.name}
                       {academy.is_premium && (
-                        <span className="ml-1.5 text-xs text-primary">
+                        <span className="ml-1.5 text-xs font-semibold text-primary">
                           인증
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">
+                    {academy.title_copy ? (
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted sm:line-clamp-1">
+                        {academy.title_copy}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 flex items-start gap-1 text-xs text-muted">
+                      <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span className="line-clamp-2 sm:truncate">
                         {academy.region_big} {academy.region_small}
+                        {academy.address ? ` · ${academy.address}` : ""}
                       </span>
                     </p>
                   </div>
@@ -136,7 +149,13 @@ function GuidePanel({
           </p>
         )}
 
-        {listTotal > preview.length && (
+        {premiumTotal > preview.length && preview.length > 0 && (
+          <p className="mt-3 text-xs text-muted">
+            인증 추천 학원 전체 {premiumTotal}곳 중 {preview.length}곳 표시
+          </p>
+        )}
+
+        {listTotal > 0 && (
           listHref ? (
             <Link
               href={listHref}
@@ -167,6 +186,7 @@ export function AcademyGuideTabs({
   previewAcademies,
   listHref,
   totalListCount,
+  premiumListCount,
 }: AcademyGuideTabsProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const geoLabel = resolveGeoLabel(region, query);
@@ -234,6 +254,7 @@ export function AcademyGuideTabs({
             previewAcademies={previewAcademies}
             listHref={listHref}
             totalListCount={totalListCount}
+            premiumListCount={premiumListCount}
           />
         </div>
       )}

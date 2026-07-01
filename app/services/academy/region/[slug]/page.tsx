@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { unstable_noStore } from "next/cache";
 import { ArrowLeft, MapPin, Plus } from "lucide-react";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
@@ -16,6 +17,8 @@ import {
   resolveBoundSeoSectionIntro,
 } from "@/lib/academy/regional-seo-resolve";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
+import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
+import { buildRegionalSeoContext } from "@/lib/academy/regional-seo-vars";
 import { ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
@@ -23,7 +26,7 @@ import {
   resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";
-import { sampleStableRandom } from "@/lib/utils/random-sample";
+import { sampleRandom, sampleStableRandom } from "@/lib/utils/random-sample";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalAcademyBreadcrumbJsonLd,
@@ -31,7 +34,9 @@ import {
 } from "@/lib/seo/regional-academy-jsonld";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+
+const TOP_PREMIUM_COUNT = 3;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",
@@ -52,17 +57,26 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps) {
+  unstable_noStore();
   const { slug } = await params;
   let page = await resolveRegionalLanding(slug);
   if (!page) return {};
 
-  const { seoCtx } = await loadRegionalPageContext(page);
+  const allPremium = await getAllPremiumAcademies();
+  const seoAcademy = sampleRandom(allPremium, 1)[0] ?? null;
+  const pageCtx = await loadRegionalPageContext(page);
+  const seoCtx = seoAcademy
+    ? buildRegionalSeoContext(page.label, seoAcademy, null)
+    : pageCtx.seoCtx;
+
   page = await ensureRegionalSeoContent(page, seoCtx);
 
   return buildRegionalLandingMetadata(page, seoCtx);
 }
 
 export default async function RegionalAcademyLandingPage({ params }: PageProps) {
+  unstable_noStore();
+
   const { slug } = await params;
   const decoded = decodeURIComponent(slug);
 
@@ -78,30 +92,40 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
 
-  const pageCtx = await loadRegionalPageContext(page);
-  page = await ensureRegionalSeoContent(page, pageCtx.seoCtx);
+  const [pageCtx, allPremium] = await Promise.all([
+    loadRegionalPageContext(page),
+    getAllPremiumAcademies(),
+  ]);
 
-  const { premium, regular, nearbyPremium, seoCtx } = pageCtx;
+  const seoAcademy = sampleRandom(allPremium, 1)[0] ?? null;
+  const seoCtx = seoAcademy
+    ? buildRegionalSeoContext(label, seoAcademy, null)
+    : pageCtx.seoCtx;
+
+  page = await ensureRegionalSeoContent(page, seoCtx);
+
+  const { premium, regular, nearbyPremium } = pageCtx;
+
+  const topPremium = sampleRandom(
+    allPremium,
+    Math.min(TOP_PREMIUM_COUNT, allPremium.length)
+  );
+  const guidePreview = sampleRandom(allPremium, 5);
 
   const nearby = await resolveNearbyPages(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
   const seoBlocks = resolveBoundSeoBlocks(page, seoCtx);
   const faqItems = resolveBoundFaqItems(page, seoCtx);
   const listAnchor = "#academy-list";
-
-  const guidePool = premium.length > 0 ? premium : nearbyPremium;
-  const guidePreview = sampleStableRandom(guidePool, 5, `${page.slug}-guide`);
   const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
 
-  const featuredAcademySource =
-    pageCtx.recommended ?? pageCtx.nearbyPremium[0] ?? null;
-  const featuredAcademy = featuredAcademySource
+  const featuredAcademy = seoAcademy
     ? {
-        name: featuredAcademySource.name,
-        slug: featuredAcademySource.slug,
-        images: getAcademyGalleryImages(featuredAcademySource, 3),
-        regionLabel: `${featuredAcademySource.region_small}`,
-        isNearby: !pageCtx.recommended,
+        name: seoAcademy.name,
+        slug: seoAcademy.slug,
+        images: getAcademyGalleryImages(seoAcademy, 3),
+        regionLabel: seoAcademy.region_small,
+        isNearby: !premium.some((a) => a.slug === seoAcademy.slug),
       }
     : null;
 
@@ -134,7 +158,15 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
       </section>
 
-      {premium.length > 0 ? (
+      {topPremium.length > 0 ? (
+        <section className="mb-12">
+          <PremiumAcademyGrid
+            academies={topPremium}
+            premiumTitle="인증 추천 학원"
+            premiumBadge="인증 추천"
+          />
+        </section>
+      ) : premium.length > 0 ? (
         <section className="mb-12">
           <PremiumAcademyGrid
             academies={premium}
@@ -164,6 +196,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
           previewAcademies={guidePreview}
           listHref={listAnchor}
           totalListCount={regular.length}
+          premiumListCount={allPremium.length}
         />
       </section>
 

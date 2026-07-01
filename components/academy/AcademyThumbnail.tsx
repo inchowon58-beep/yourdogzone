@@ -23,8 +23,12 @@ export function AcademyThumbnail({
     return <AcademyNoImage className={className} iconClassName="h-7 w-7" />;
   }
 
+  const fixedSize = /\b(?:w-|h-|size-)\S/.test(className);
+
   return (
-    <div className={`relative w-full max-w-full overflow-hidden bg-gray-100 ${className}`}>
+    <div
+      className={`relative overflow-hidden bg-gray-100 ${fixedSize ? "shrink-0" : "w-full max-w-full"} ${className}`}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src!}

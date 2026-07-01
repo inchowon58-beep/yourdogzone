@@ -17,7 +17,8 @@ import {
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
-import { sampleStableRandom } from "@/lib/utils/random-sample";
+import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
+import { sampleRandom } from "@/lib/utils/random-sample";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -45,13 +46,10 @@ type PageProps = {
 export default async function AcademyPage({ searchParams }: PageProps) {
   const { region = "전체", q, page: pageParam } = await searchParams;
   const all = await getAcademies({ region, query: q });
+  const allPremium = await getAllPremiumAcademies();
   const premium = all.filter((a) => a.is_premium);
   const regular = all.filter((a) => !a.is_premium);
-  const guidePreview = sampleStableRandom(
-    premium,
-    5,
-    `academy-guide-${region}-${q ?? "all"}`
-  );
+  const guidePreview = sampleRandom(allPremium, 5);
   const listPage = paginate(regular, parsePageParam(pageParam));
   const listQuery = { region: region !== "전체" ? region : undefined, q };
 
@@ -99,6 +97,7 @@ export default async function AcademyPage({ searchParams }: PageProps) {
         academies={all}
         previewAcademies={guidePreview}
         totalListCount={regular.length}
+        premiumListCount={allPremium.length}
       />
 
       <section className="mb-8">

@@ -18,7 +18,7 @@ export function resolveBoundSeoSectionIntro(
   const { recommended, nearby } = resolveBindableAcademyNames(ctx);
 
   if (ctx.hasRecommendedAcademy) {
-    return `${label} 지역 인증 추천 학원 ${recommended}을 포함해, 예비 수강생·학원 원장님·검색 사용자 모두를 위한 정보입니다.`;
+    return `${label} 애견미용학원 안내와 함께, 인증 추천 학원 ${recommended} 정보를 참고해 보세요.`;
   }
 
   if (ctx.hasNearbyRecommendedAcademy) {
