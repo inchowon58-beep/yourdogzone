@@ -17,7 +17,7 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
 
   return (
     <section
-      className="mb-12 overflow-hidden rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 p-5 shadow-sm sm:p-6 md:p-8"
+      className="mb-5 overflow-hidden rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 p-5 shadow-sm sm:p-6 md:p-8"
       aria-labelledby="chairman-consult-heading"
     >
       <div className="flex flex-col items-center gap-6 md:flex-row md:items-stretch md:gap-8">
