@@ -1,26 +1,28 @@
 import type { RegionalSeoBlock } from "@/lib/academy/regional-seo-content";
+import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
+import Link from "next/link";
+
+type FeaturedAcademy = {
+  name: string;
+  slug: string;
+  images: string[];
+  regionLabel?: string;
+  isNearby?: boolean;
+};
 
 type Props = {
   label: string;
   blocks: RegionalSeoBlock[];
-  recommendedAcademyName?: string;
-  nearbyAcademyName?: string;
-  nearbyRegion?: string;
+  intro: string;
+  featuredAcademy?: FeaturedAcademy | null;
 };
 
 export function RegionalAcademySeoSection({
   label,
   blocks,
-  recommendedAcademyName,
-  nearbyAcademyName,
-  nearbyRegion,
+  intro,
+  featuredAcademy,
 }: Props) {
-  const intro = recommendedAcademyName
-    ? `${label} 지역 인증 추천 학원 [${recommendedAcademyName}]을 포함해, 예비 수강생·학원 원장님·검색 사용자 모두를 위한 정보입니다.`
-    : nearbyAcademyName
-      ? `${label}에는 아직 인증 추천 학원이 없습니다. 인근 ${nearbyRegion ?? "지역"} [{nearbyAcademyName}]도 참고하면 좋을 것 같습니다.`
-      : `${label}에서 애견미용학원을 찾고 계신가요? 수강료·자격증·실습 환경 비교 가이드입니다.`;
-
   return (
     <section
       className="mb-12 rounded-2xl border border-gray-100 bg-white p-6 shadow-[var(--card-shadow)] sm:p-8"
@@ -36,6 +38,33 @@ export function RegionalAcademySeoSection({
         {label} 애견미용학원 — 수강 전 꼭 알아둘 정보
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{intro}</p>
+
+      {featuredAcademy && featuredAcademy.images.length > 0 && (
+        <div className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5">
+          <p className="text-sm font-semibold text-foreground">
+            {featuredAcademy.isNearby
+              ? `인근 ${featuredAcademy.regionLabel ?? "지역"} 인증 추천 학원`
+              : `${label} 인증 추천 학원`}
+            {" · "}
+            <Link
+              href={`/services/academy/${featuredAcademy.slug}`}
+              className="text-primary hover:underline"
+            >
+              {featuredAcademy.name}
+            </Link>
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {featuredAcademy.images.map((url, index) => (
+              <AcademyThumbnail
+                key={url}
+                src={url}
+                alt={`${featuredAcademy.name} 사진 ${index + 1}`}
+                className={`aspect-[4/3] rounded-lg${index >= 2 ? " hidden sm:block" : ""}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-8 space-y-10">
         {blocks.map((block, index) => {

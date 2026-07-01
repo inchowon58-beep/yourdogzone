@@ -47,5 +47,7 @@ export async function fetchNearbyPremiumAcademies(
     }
   }
 
-  return result.slice(0, limit);
+  return result
+    .sort((a, b) => a.slug.localeCompare(b.slug))
+    .slice(0, limit);
 }

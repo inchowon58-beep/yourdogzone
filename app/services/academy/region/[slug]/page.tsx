@@ -13,7 +13,9 @@ import {
   resolveBoundFaqItems,
   resolveBoundRegionInfo,
   resolveBoundSeoBlocks,
+  resolveBoundSeoSectionIntro,
 } from "@/lib/academy/regional-seo-resolve";
+import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { ensureRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import {
@@ -21,7 +23,7 @@ import {
   resolveRegionalLanding,
 } from "@/lib/academy/regional-landing";
 import { resolveNearbyPages } from "@/lib/academy/regional-store";
-import { sampleRandom } from "@/lib/utils/random-sample";
+import { sampleStableRandom } from "@/lib/utils/random-sample";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalAcademyBreadcrumbJsonLd,
@@ -88,8 +90,20 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const listAnchor = "#academy-list";
 
   const guidePool = premium.length > 0 ? premium : nearbyPremium;
-  const guidePreview = sampleRandom(guidePool, 5);
-  const listSample = sampleRandom(regular, 5);
+  const guidePreview = sampleStableRandom(guidePool, 5, `${page.slug}-guide`);
+  const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
+
+  const featuredAcademySource =
+    pageCtx.recommended ?? pageCtx.nearbyPremium[0] ?? null;
+  const featuredAcademy = featuredAcademySource
+    ? {
+        name: featuredAcademySource.name,
+        slug: featuredAcademySource.slug,
+        images: getAcademyGalleryImages(featuredAcademySource, 3),
+        regionLabel: `${featuredAcademySource.region_small}`,
+        isNearby: !pageCtx.recommended,
+      }
+    : null;
 
   return (
     <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
@@ -138,21 +152,8 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
       <RegionalAcademySeoSection
         label={label}
         blocks={seoBlocks}
-        recommendedAcademyName={
-          seoCtx.hasRecommendedAcademy
-            ? seoCtx.recommendedAcademyName
-            : undefined
-        }
-        nearbyAcademyName={
-          !seoCtx.hasRecommendedAcademy && seoCtx.hasNearbyRecommendedAcademy
-            ? seoCtx.nearbyRecommendedAcademyName
-            : undefined
-        }
-        nearbyRegion={
-          !seoCtx.hasRecommendedAcademy && seoCtx.hasNearbyRecommendedAcademy
-            ? seoCtx.nearbyRecommendedRegion
-            : undefined
-        }
+        intro={resolveBoundSeoSectionIntro(label, seoCtx)}
+        featuredAcademy={featuredAcademy}
       />
 
       <section className="mb-12">

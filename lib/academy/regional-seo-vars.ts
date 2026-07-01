@@ -21,8 +21,9 @@ export type RegionalSeoContext = {
   hasRecommendedAcademy: boolean;
   nearbyRecommendedAcademyName: string;
   nearbyRecommendedRegion: string;
+  nearbyRecommendedAcademyHighlight: string;
   hasNearbyRecommendedAcademy: boolean;
-  /** OG·Gemini 참고용 대표 이미지 (추천학원 → 없으면 인근 추천학원) */
+  /** OG·SEO 섹션용 대표 이미지 (추천학원 → 없으면 인근 추천학원) */
   ogImageUrl: string | null;
 };
 
@@ -30,11 +31,48 @@ const DEFAULT_ACADEMY_NAME = "인증 추천 애견미용학원";
 const DEFAULT_HIGHLIGHT =
   "실습견 매칭·위생 관리·1:1 맞춤 피드백 등 교육 품질 기준";
 
+const DEFAULT_NEARBY_NAME = "인근 인증 추천 애견미용학원";
+
 export function pickRecommendedAcademy(
   premiumAcademies: Academy[]
 ): Academy | null {
   if (premiumAcademies.length === 0) return null;
-  return premiumAcademies[0];
+  const sorted = [...premiumAcademies].sort((a, b) =>
+    a.slug.localeCompare(b.slug)
+  );
+  return sorted[0];
+}
+
+function academyHighlight(academy: Academy | null): string {
+  if (!academy) return DEFAULT_HIGHLIGHT;
+  return (
+    academy.title_copy?.trim().slice(0, 100) ||
+    academy.curriculum?.trim().slice(0, 100) ||
+    DEFAULT_HIGHLIGHT
+  );
+}
+
+/** 본문 변수 치환용 학원명 (지역 추천 없으면 인근 추천학원명 사용) */
+export function resolveBindableAcademyNames(ctx: RegionalSeoContext): {
+  recommended: string;
+  nearby: string;
+  highlight: string;
+} {
+  const recommended = ctx.hasRecommendedAcademy
+    ? ctx.recommendedAcademyName
+    : ctx.hasNearbyRecommendedAcademy
+      ? ctx.nearbyRecommendedAcademyName
+      : DEFAULT_ACADEMY_NAME;
+
+  const nearby = ctx.nearbyRecommendedAcademyName || DEFAULT_NEARBY_NAME;
+
+  const highlight = ctx.hasRecommendedAcademy
+    ? ctx.recommendedAcademyHighlight
+    : ctx.hasNearbyRecommendedAcademy
+      ? ctx.nearbyRecommendedAcademyHighlight
+      : DEFAULT_HIGHLIGHT;
+
+  return { recommended, nearby, highlight };
 }
 
 export function pickRegionalSeoImageAcademy(
@@ -56,14 +94,12 @@ export function buildRegionalSeoContext(
   return {
     region: regionLabel,
     recommendedAcademyName: recommended?.name ?? DEFAULT_ACADEMY_NAME,
-    recommendedAcademyHighlight:
-      recommended?.title_copy?.trim().slice(0, 100) ||
-      recommended?.curriculum?.trim().slice(0, 100) ||
-      DEFAULT_HIGHLIGHT,
+    recommendedAcademyHighlight: academyHighlight(recommended),
     recommendedAcademySlug: recommended?.slug,
     hasRecommendedAcademy,
     nearbyRecommendedAcademyName: nearby?.name ?? "",
     nearbyRecommendedRegion: nearby?.region_small ?? "",
+    nearbyRecommendedAcademyHighlight: academyHighlight(nearby),
     hasNearbyRecommendedAcademy: Boolean(nearby),
     ogImageUrl: imageAcademy ? getAcademyThumbnail(imageAcademy) : null,
   };
@@ -73,18 +109,20 @@ export function bindRegionalSeoText(
   text: string,
   ctx: RegionalSeoContext
 ): string {
+  const { recommended, nearby, highlight } = resolveBindableAcademyNames(ctx);
+
   let bound = text
     .replaceAll(REGION_VAR, ctx.region)
-    .replaceAll(RECOMMENDED_ACADEMY_VAR, ctx.recommendedAcademyName)
-    .replaceAll(RECOMMENDED_HIGHLIGHT_VAR, ctx.recommendedAcademyHighlight)
-    .replaceAll(
-      NEARBY_REGION_VAR,
-      ctx.nearbyRecommendedRegion || "인근 지역"
-    )
-    .replaceAll(
-      NEARBY_ACADEMY_VAR,
-      ctx.nearbyRecommendedAcademyName || "인근 인증 추천 애견미용학원"
-    );
+    .replaceAll(RECOMMENDED_ACADEMY_VAR, recommended)
+    .replaceAll(RECOMMENDED_HIGHLIGHT_VAR, highlight)
+    .replaceAll(NEARBY_REGION_VAR, ctx.nearbyRecommendedRegion || "인근 지역")
+    .replaceAll(NEARBY_ACADEMY_VAR, nearby)
+    .replaceAll(`[${RECOMMENDED_ACADEMY_VAR}]`, recommended)
+    .replaceAll(`[${NEARBY_ACADEMY_VAR}]`, nearby)
+    .replaceAll(`[${DEFAULT_ACADEMY_NAME}]`, recommended)
+    .replace(/\[\{recommendedAcademyName\}\]/g, recommended)
+    .replace(/\[\{nearbyRecommendedAcademyName\}\]/g, nearby)
+    .replace(/\[\{nearbyAcademyName\}\]/g, nearby);
 
   if (!ctx.hasNearbyRecommendedAcademy) {
     bound = bound

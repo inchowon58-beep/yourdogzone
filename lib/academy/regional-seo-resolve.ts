@@ -6,9 +6,27 @@ import {
   bindRegionalSeoBlocks,
   bindRegionalSeoText,
   buildPlaceholderSeoBlocks,
+  resolveBindableAcademyNames,
   type RegionalSeoContext,
 } from "@/lib/academy/regional-seo-vars";
 import type { RegionalSeoBlock } from "@/lib/academy/regional-seo-content";
+
+export function resolveBoundSeoSectionIntro(
+  label: string,
+  ctx: RegionalSeoContext
+): string {
+  const { recommended, nearby } = resolveBindableAcademyNames(ctx);
+
+  if (ctx.hasRecommendedAcademy) {
+    return `${label} 지역 인증 추천 학원 ${recommended}을 포함해, 예비 수강생·학원 원장님·검색 사용자 모두를 위한 정보입니다.`;
+  }
+
+  if (ctx.hasNearbyRecommendedAcademy) {
+    return `${label}에는 아직 인증 추천 학원이 없습니다. 인근 ${ctx.nearbyRecommendedRegion} ${nearby}도 참고하면 좋을 것 같습니다.`;
+  }
+
+  return `${label}에서 애견미용학원을 찾고 계신가요? 수강료·자격증·실습 환경 비교 가이드입니다.`;
+}
 
 export function resolveBoundNearbyIntro(
   page: RegionalLandingPage,

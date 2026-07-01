@@ -17,7 +17,7 @@ import {
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
-import { sampleRandom } from "@/lib/utils/random-sample";
+import { sampleStableRandom } from "@/lib/utils/random-sample";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -47,7 +47,11 @@ export default async function AcademyPage({ searchParams }: PageProps) {
   const all = await getAcademies({ region, query: q });
   const premium = all.filter((a) => a.is_premium);
   const regular = all.filter((a) => !a.is_premium);
-  const guidePreview = sampleRandom(premium, 5);
+  const guidePreview = sampleStableRandom(
+    premium,
+    5,
+    `academy-guide-${region}-${q ?? "all"}`
+  );
   const listPage = paginate(regular, parsePageParam(pageParam));
   const listQuery = { region: region !== "전체" ? region : undefined, q };
 

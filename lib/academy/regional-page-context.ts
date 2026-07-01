@@ -32,7 +32,9 @@ export async function loadRegionalPageContext(
     query: searchQuery,
   });
 
-  const premium = all.filter((a) => a.is_premium);
+  const premium = all
+    .filter((a) => a.is_premium)
+    .sort((a, b) => a.slug.localeCompare(b.slug));
   const recommended = pickRecommendedAcademy(premium);
 
   const nearbyPages = await resolveNearbyPages(page);
