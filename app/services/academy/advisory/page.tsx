@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { AdvisoryBannerHeadline } from "@/components/academy/AdvisoryBannerHeadline";
 import { AdvisoryMemberCard } from "@/components/academy/AdvisoryMemberCard";
 import {
   ADVISORY_BANNER_DESCRIPTION,
   ADVISORY_BANNER_EYEBROW,
-  ADVISORY_BANNER_HEADLINE,
 } from "@/lib/site/advisory-banner";
 import { getAllAdvisoryMembers } from "@/lib/site/advisory-members-store";
 import { buildPageMetadata } from "@/lib/seo/metadata";
@@ -43,9 +43,7 @@ export default async function AdvisoryMembersPage() {
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
           {ADVISORY_BANNER_EYEBROW}
         </p>
-        <h1 className="certificate-serif mt-3 text-2xl font-bold leading-snug text-[#1e3a8a] sm:text-3xl">
-          {ADVISORY_BANNER_HEADLINE}
-        </h1>
+        <AdvisoryBannerHeadline as="h1" size="page" className="mt-3" />
         <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
           {ADVISORY_BANNER_DESCRIPTION}
         </p>

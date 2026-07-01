@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ChevronRight, ShieldCheck } from "lucide-react";
+import { AdvisoryBannerHeadline } from "@/components/academy/AdvisoryBannerHeadline";
 import {
   ADVISORY_BANNER_DESCRIPTION,
   ADVISORY_BANNER_EYEBROW,
-  ADVISORY_BANNER_HEADLINE,
   ADVISORY_PAGE_PATH,
 } from "@/lib/site/advisory-banner";
 
@@ -17,9 +17,7 @@ export function OfficialAdvisoryBanner() {
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
         {ADVISORY_BANNER_EYEBROW}
       </p>
-      <h2 className="certificate-serif mt-3 text-base font-bold leading-snug text-[#1e3a8a] sm:text-lg">
-        {ADVISORY_BANNER_HEADLINE}
-      </h2>
+      <AdvisoryBannerHeadline as="h2" size="banner" className="mt-3" />
       <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-[0.95rem]">
         {ADVISORY_BANNER_DESCRIPTION}
       </p>
