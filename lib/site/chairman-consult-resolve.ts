@@ -40,8 +40,4 @@ export async function resolveChairmanConsultConfig() {
   return { ...config, profileImage };
 }
 
-export function isRemoteProfileImage(src: string): boolean {
-  return src.startsWith("http://") || src.startsWith("https://");
-}
-
 export const CHAIRMAN_IMAGE_FALLBACK = CHAIRMAN_PROFILE_IMAGE;

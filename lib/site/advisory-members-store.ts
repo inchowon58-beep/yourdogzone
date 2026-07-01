@@ -66,10 +66,24 @@ export async function getAllAdvisoryMembers(options?: {
   includeUnpublished?: boolean;
   noCache?: boolean;
 }): Promise<AdvisoryMember[]> {
-  const fromR2 = await fetchAdvisoryMembersFromR2({
-    noCache: options?.noCache,
-  });
-  const members = fromR2.length > 0 ? fromR2 : await readLocalSeed();
+  const [fromR2, localSeed] = await Promise.all([
+    fetchAdvisoryMembersFromR2({ noCache: options?.noCache }),
+    readLocalSeed(),
+  ]);
+
+  const localById = new Map(localSeed.map((m) => [m.id, m]));
+
+  const members =
+    fromR2.length > 0
+      ? fromR2.map((member) => {
+          const seed = localById.get(member.id);
+          if (!member.profilePhotoUrl?.trim() && seed?.profilePhotoUrl?.trim()) {
+            return { ...member, profilePhotoUrl: seed.profilePhotoUrl };
+          }
+          return member;
+        })
+      : localSeed;
+
   if (options?.includeUnpublished) return members;
   return members.filter((m) => m.isPublished);
 }

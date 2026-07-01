@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, MessageCircle } from "lucide-react";
+import { ProfilePhoto } from "@/components/academy/ProfilePhoto";
 import { GoldCertificationBadge } from "@/components/academy/GoldCertificationBadge";
 import type { AdvisoryMember } from "@/lib/types/advisory-member";
 
@@ -8,13 +8,8 @@ type Props = {
   member: AdvisoryMember;
 };
 
-function resolvePhotoSrc(url?: string): string | null {
-  const trimmed = url?.trim();
-  if (!trimmed) return null;
-  return trimmed;
-}
 export function AdvisoryMemberCard({ member }: Props) {
-  const photoSrc = resolvePhotoSrc(member.profilePhotoUrl);
+  const photoSrc = member.profilePhotoUrl?.trim() || null;
   const displayName = member.name.trim() || member.title;
 
   return (
@@ -22,14 +17,10 @@ export function AdvisoryMemberCard({ member }: Props) {
       <div className="grid grid-cols-2 items-start gap-3 p-4 sm:gap-4 sm:p-5 md:grid-cols-[11rem_minmax(0,1fr)] md:items-center">
         <div className="col-start-1 row-start-1 justify-self-start">
           {photoSrc ? (
-            <div className="relative aspect-square w-full max-w-[9.5rem] overflow-hidden rounded-xl border border-amber-100 bg-slate-50 md:h-40 md:w-40 md:max-w-none">
-              <Image
+            <div className="relative aspect-square w-full max-w-[9.5rem] overflow-hidden rounded-xl border border-amber-100 bg-slate-100 md:h-40 md:w-40 md:max-w-none">
+              <ProfilePhoto
                 src={photoSrc}
                 alt={`${displayName} 프로필`}
-                fill
-                className="object-cover object-[center_15%]"
-                sizes="(max-width: 768px) 45vw, 160px"
-                unoptimized={photoSrc.startsWith("http")}
               />
             </div>
           ) : (
