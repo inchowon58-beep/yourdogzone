@@ -24,12 +24,12 @@ export function AcademyThumbnail({
   }
 
   return (
-    <div className={`overflow-hidden bg-gray-100 ${className}`}>
+    <div className={`relative w-full max-w-full overflow-hidden bg-gray-100 ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src!}
         alt={alt}
-        className={`h-full w-full ${fit === "cover" ? "object-cover" : "object-contain"}`}
+        className={`h-full w-full max-w-full ${fit === "cover" ? "object-cover" : "object-contain"}`}
         loading="lazy"
       />
     </div>

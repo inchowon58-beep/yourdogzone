@@ -68,12 +68,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full w-full overflow-x-hidden">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
-        />
-      </head>
       <body className="flex min-h-full w-full flex-col overflow-x-hidden antialiased">
         <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />
