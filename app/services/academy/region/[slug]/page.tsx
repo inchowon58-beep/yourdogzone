@@ -6,7 +6,9 @@ import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
+import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
 import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
+import { fetchNearbyPremiumAcademies } from "@/lib/academy/nearby-premium-academies";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildRegionalGuideFaqItems,
@@ -75,6 +77,10 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
 
   const premium = all.filter((a) => a.is_premium);
   const regular = all.filter((a) => !a.is_premium);
+  const nearbyPremium =
+    premium.length === 0
+      ? await fetchNearbyPremiumAcademies(nearby, 3)
+      : [];
   const seoBlocks = buildRegionalSeoContent(page);
   const listAnchor = "#academy-list";
 
@@ -84,7 +90,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         data={[
           buildRegionalAcademyListJsonLd(page, all.length),
           buildRegionalAcademyBreadcrumbJsonLd(page),
-          buildFaqPageJsonLd(buildRegionalGuideFaqItems(label)),
+          buildFaqPageJsonLd(buildRegionalGuideFaqItems(page)),
         ]}
       />
 
@@ -110,7 +116,7 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         </p>
       </section>
 
-      {premium.length > 0 && (
+      {premium.length > 0 ? (
         <section className="mb-12">
           <PremiumAcademyGrid
             academies={premium}
@@ -118,6 +124,11 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
             premiumBadge="인증 추천"
           />
         </section>
+      ) : (
+        <NearbyPremiumAcademyFallback
+          label={label}
+          academies={nearbyPremium}
+        />
       )}
 
       <RegionalAcademySeoSection label={label} blocks={seoBlocks} />

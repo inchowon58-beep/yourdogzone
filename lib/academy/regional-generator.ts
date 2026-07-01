@@ -1,5 +1,8 @@
+import "server-only";
+
 import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
 import { getAdjacentLabels } from "@/lib/constants/region-adjacency";
+import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
 import {
   buildRegionalSlug,
   parseLabelFromKeyword,
@@ -23,17 +26,22 @@ function inferRegionBig(label: string): string | undefined {
 
 function buildRegionInfo(label: string, regionBig?: string): string {
   const region = regionBig ? `${regionBig} ` : "";
-  return `${label}은(는) ${region}권에서 반려견 가구가 많고 애견미용·자격증 교육 수요가 꾸준한 지역입니다. ${label} 지역 애견미용학원은 통학 거리, 실습견 환경, 국비지원 과정, 수강료를 기준으로 비교하는 것이 좋습니다. 유아독존에서는 ${label}에 등록된 학원 정보와 인증 추천 학원을 한곳에서 확인할 수 있습니다.`;
+  return `${label}은(는) ${region}권에서 반려견 가구가 많고 애견미용·자격증 교육 수요가 꾸준한 지역입니다. ${label} 지역 애견미용학원은 통학 거리, 실습견 환경, 국비지원 과정, 수강료를 기준으로 비교하는 것이 좋습니다.`;
 }
 
 function buildNearbyIntro(label: string): string {
-  return `${label}에서 애견미용학원을 알아보는 분들이 근방에서 함께 검색·방문하는 지역입니다. 통학 거리와 실습 환경을 비교할 때 아래 지역도 함께 살펴보세요.`;
+  return `${label}에서 애견미용학원을 알아보는 분들이 근방에서 함께 검색·방문하는 지역입니다.`;
 }
 
-/** 키워드 한 줄로 지역 랜딩 페이지 초안 생성 */
+export type RegionalGenerateResult = RegionalLandingInsert & {
+  geminiUsed?: boolean;
+  geminiError?: string;
+};
+
+/** 키워드 한 줄로 지역 랜딩 페이지 초안 생성 (Gemini로 매번 다른 SEO 본문) */
 export async function generateRegionalLandingFromKeyword(
   keyword: string
-): Promise<RegionalLandingInsert> {
+): Promise<RegionalGenerateResult> {
   const trimmed = keyword.trim();
   const label = parseLabelFromKeyword(trimmed);
   if (!label) throw new Error("키워드에서 지역명을 추출할 수 없습니다.");
@@ -50,7 +58,7 @@ export async function generateRegionalLandingFromKeyword(
     .map((adj) => byLabel.get(adj)?.slug ?? buildRegionalSlug(adj))
     .slice(0, 5);
 
-  return {
+  const base: RegionalGenerateResult = {
     slug,
     label,
     keyword: trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
@@ -60,5 +68,30 @@ export async function generateRegionalLandingFromKeyword(
     nearbyIntro: buildNearbyIntro(label),
     nearbySlugs,
     isPublished: true,
+    geminiUsed: false,
+  };
+
+  const gemini = await generateRegionalLandingWithGemini({
+    label,
+    keyword: base.keyword,
+    regionBig,
+    nearbyLabels: adjacent,
+  });
+
+  if (gemini.ok) {
+    return {
+      ...base,
+      regionInfo: gemini.data.regionInfo,
+      nearbyIntro: gemini.data.nearbyIntro,
+      metaDescription: gemini.data.metaDescription,
+      seoBlocks: gemini.data.seoBlocks,
+      faqItems: gemini.data.faqItems,
+      geminiUsed: true,
+    };
+  }
+
+  return {
+    ...base,
+    geminiError: gemini.error,
   };
 }

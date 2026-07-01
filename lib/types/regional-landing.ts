@@ -1,4 +1,15 @@
 /** 지역 애견미용학원 SEO 랜딩 페이지 (관리자에서 키워드로 자동 생성) */
+export type RegionalSeoBlockStored = {
+  title: string;
+  paragraphs: string[];
+  bullets: string[];
+};
+
+export type RegionalFaqItemStored = {
+  question: string;
+  answer: string;
+};
+
 export type RegionalLandingPage = {
   /** 영문 URL 슬러그 (예: ansan-dog-grooming-academy) */
   slug: string;
@@ -16,6 +27,12 @@ export type RegionalLandingPage = {
   nearbyIntro?: string;
   /** 근방 지역 슬러그 (최대 5, 영문 slug) */
   nearbySlugs: string[];
+  /** Gemini 생성 SEO 본문 (생성마다 다름) */
+  seoBlocks?: RegionalSeoBlockStored[];
+  /** Gemini 생성 FAQ */
+  faqItems?: RegionalFaqItemStored[];
+  /** Gemini 생성 메타 설명 */
+  metaDescription?: string;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;

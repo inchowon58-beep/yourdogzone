@@ -54,7 +54,11 @@ export function RegionalLandingAdminPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
-      setMessage(`✓ 생성됨: ${data.page.label} → /region/${data.page.slug}`);
+      setMessage(
+        `✓ 생성됨: ${data.page.label} → /region/${data.page.slug}` +
+          (data.geminiUsed ? " (Gemini)" : "") +
+          (data.geminiError ? ` | Gemini 스킵: ${data.geminiError}` : "")
+      );
       setKeyword("");
       void load();
     } catch (e) {

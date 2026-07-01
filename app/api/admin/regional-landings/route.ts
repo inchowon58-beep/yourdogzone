@@ -59,7 +59,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: result.error }, { status: 500 });
       }
       revalidateRegional(result.page.slug);
-      return NextResponse.json({ page: result.page, generated: true });
+      return NextResponse.json({
+        page: result.page,
+        generated: true,
+        geminiUsed: draft.geminiUsed ?? false,
+        geminiError: draft.geminiError,
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "생성 실패";
       return NextResponse.json({ error: msg }, { status: 400 });
@@ -84,7 +89,11 @@ export async function POST(request: Request) {
       }
     }
     revalidateRegional();
-    return NextResponse.json({ pages: created, errors });
+    return NextResponse.json({
+      pages: created,
+      errors,
+      geminiCount: created.filter((p) => p.seoBlocks?.length).length,
+    });
   }
 
   const page = body.page;

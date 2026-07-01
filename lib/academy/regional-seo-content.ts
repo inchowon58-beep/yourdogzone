@@ -25,6 +25,10 @@ export function buildRegionalLandingKeywords(label: string): string[] {
 export function buildRegionalSeoContent(
   page: RegionalLandingPage
 ): RegionalSeoBlock[] {
+  if (page.seoBlocks?.length) {
+    return page.seoBlocks;
+  }
+
   const { label, regionInfo } = page;
   return [
     {
@@ -57,10 +61,17 @@ export function buildRegionalSeoContent(
   ];
 }
 
-export function buildRegionalGuideFaqItems(label: string): Array<{
+export function buildRegionalGuideFaqItems(
+  page: RegionalLandingPage | string
+): Array<{
   question: string;
   answer: string;
 }> {
+  if (typeof page !== "string" && page.faqItems?.length) {
+    return page.faqItems;
+  }
+
+  const label = typeof page === "string" ? page : page.label;
   return [
     {
       question: `${label} 애견미용학원 수강료는 얼마인가요?`,
