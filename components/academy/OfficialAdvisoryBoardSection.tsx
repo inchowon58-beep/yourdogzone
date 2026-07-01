@@ -1,3 +1,4 @@
+import { GoldCertificationBadge } from "@/components/academy/GoldCertificationBadge";
 import {
   ADVISORY_BOARD_DESCRIPTION,
   ADVISORY_BOARD_EYEBROW,
@@ -8,58 +9,50 @@ import {
 export function OfficialAdvisoryBoardSection() {
   return (
     <section
-      className="relative mb-12 overflow-hidden rounded-2xl border border-slate-700/60 bg-[#0f172a] px-5 py-10 shadow-[0_20px_50px_-12px_rgb(0_0_0/0.45)] sm:px-8 sm:py-12 md:px-10 md:py-16"
+      className="relative mb-12 overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-b from-white to-slate-50 px-5 py-10 shadow-md sm:px-8 sm:py-12 md:px-10 md:py-14"
       aria-labelledby="advisory-board-heading"
     >
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgb(251_191_36/0.08),_transparent_55%)]"
+        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/80 to-transparent"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent"
+        className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100 to-transparent"
         aria-hidden
       />
 
       <div className="relative mx-auto max-w-6xl">
-        <p className="text-center text-xs font-semibold tracking-[0.2em] text-amber-400/90 uppercase md:text-left">
+        <p className="text-center text-xs font-semibold tracking-[0.18em] text-[#b8860b] uppercase md:text-left">
           {ADVISORY_BOARD_EYEBROW}
         </p>
         <h2
           id="advisory-board-heading"
-          className="mt-4 text-center text-xl font-extrabold leading-snug text-red-400 sm:text-2xl md:text-left md:text-[1.65rem] md:leading-tight"
+          className="certificate-serif mt-4 text-center text-xl font-bold leading-snug text-[#1e3a8a] sm:text-2xl md:text-left md:text-[1.65rem] md:leading-tight"
         >
           {ADVISORY_BOARD_HEADLINE}
         </h2>
-        <p className="mt-5 text-center text-sm leading-relaxed text-slate-300 sm:text-[0.95rem] md:max-w-4xl md:text-left md:text-base">
+        <p className="mt-4 text-center text-sm leading-relaxed text-slate-600 sm:text-[0.95rem] md:max-w-4xl md:text-left md:text-base">
           {ADVISORY_BOARD_DESCRIPTION}
         </p>
 
-        <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 md:grid-cols-4">
-          {ADVISORY_BOARD_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.category}>
-                <article className="group flex h-full flex-row items-center gap-3 rounded-xl border border-slate-600/50 bg-[#1e293b] px-3 py-4 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/50 hover:shadow-[0_12px_32px_-8px_rgb(251_191_36/0.25)] sm:px-4 sm:py-5 md:flex-col md:items-stretch md:gap-0 md:px-5 md:py-6">
-                  <div className="flex w-1/2 shrink-0 items-center justify-center md:w-full md:justify-start">
-                    <span
-                      className="inline-flex h-14 w-14 items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-400 transition-colors duration-300 group-hover:border-amber-400/40 group-hover:bg-amber-400/15 md:h-11 md:w-11"
-                      aria-hidden
-                    >
-                      <Icon className="h-6 w-6 stroke-[1.75] md:h-5 md:w-5" />
-                    </span>
-                  </div>
-                  <div className="flex w-1/2 min-w-0 flex-col justify-center md:w-full">
-                    <p className="text-[10px] font-medium leading-tight tracking-wide text-slate-400 sm:text-[11px] md:mt-4">
-                      [{item.category}]
-                    </p>
-                    <h3 className="mt-1 text-xs font-bold leading-snug text-amber-400 sm:text-sm md:mt-2 md:text-[0.95rem]">
-                      {item.title}
-                    </h3>
-                  </div>
-                </article>
-              </li>
-            );
-          })}
+        <ul className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 md:grid-cols-4">
+          {ADVISORY_BOARD_ITEMS.map((item) => (
+            <li key={item.category}>
+              <article className="group grid h-full grid-cols-2 items-start gap-3 rounded-xl border border-amber-100/90 bg-white px-3 py-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md sm:px-4 sm:py-5 md:flex md:flex-col md:items-stretch md:gap-0 md:px-5 md:py-6">
+                <div className="flex min-w-0 items-start justify-start md:w-full md:justify-center">
+                  <GoldCertificationBadge className="h-[4.5rem] w-[4.5rem] shrink-0 transition-transform duration-300 group-hover:scale-105 sm:h-20 sm:w-20 md:mx-auto md:mt-1" />
+                </div>
+                <div className="flex min-w-0 flex-col justify-center text-left md:w-full md:mt-5 md:text-center">
+                  <p className="text-[10px] font-semibold tracking-wide text-amber-700/90 sm:text-[11px]">
+                    [{item.category}]
+                  </p>
+                  <h3 className="certificate-serif mt-1.5 text-xs font-bold leading-snug text-[#1e3a8a] sm:text-sm md:mt-2 md:text-[0.95rem]">
+                    {item.title}
+                  </h3>
+                </div>
+              </article>
+            </li>
+          ))}
         </ul>
       </div>
     </section>

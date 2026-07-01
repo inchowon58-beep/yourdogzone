@@ -20,23 +20,17 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
       className="mb-5 overflow-hidden rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 p-4 shadow-sm sm:p-6 md:p-8"
       aria-labelledby="chairman-consult-heading"
     >
-      <div className="flex flex-row items-start gap-3 md:gap-8">
-        <div className="w-1/2 shrink-0 md:w-auto">
-          <div className="relative">
-            <div
-              className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-indigo-200/60 to-indigo-500/20 blur-sm"
-              aria-hidden
+      <div className="grid grid-cols-2 items-start gap-x-3 gap-y-4 md:grid-cols-[10rem_minmax(0,1fr)] md:gap-x-8">
+        <div className="col-start-1 row-start-1 min-w-0 justify-self-start">
+          <div className="relative aspect-square w-full max-w-[9.5rem] overflow-hidden rounded-2xl border-2 border-white bg-white shadow-md md:h-40 md:w-40 md:max-w-none">
+            <Image
+              src={config.profileImage}
+              alt={config.profileAlt}
+              fill
+              className="object-cover object-[center_15%]"
+              sizes="(max-width: 768px) 45vw, 160px"
+              priority={false}
             />
-            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border-2 border-white bg-white shadow-md md:h-40 md:w-40">
-              <Image
-                src={config.profileImage}
-                alt={config.profileAlt}
-                fill
-                className="object-cover object-[center_15%]"
-                sizes="(max-width: 768px) 50vw, 160px"
-                priority={false}
-              />
-            </div>
           </div>
           <p className="mt-2 hidden items-center gap-1.5 rounded-full bg-indigo-600/10 px-3 py-1 text-xs font-semibold text-indigo-700 md:inline-flex">
             <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
@@ -44,7 +38,7 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
           </p>
         </div>
 
-        <div className="flex w-1/2 min-w-0 flex-col justify-center text-left md:flex-1">
+        <div className="col-start-2 row-start-1 min-w-0 self-center text-left md:self-start">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600 md:text-xs">
             1:1 맞춤 학원 매칭
             {regionLabel ? ` · ${regionLabel}` : ""}
@@ -60,7 +54,7 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
             공식 인증 자문
           </p>
 
-          <blockquote className="relative mt-4 hidden rounded-xl border border-indigo-100 bg-white/80 px-4 py-3.5 shadow-sm md:block">
+          <blockquote className="relative mt-4 hidden rounded-xl border border-indigo-100 bg-white/80 px-4 py-3.5 text-left shadow-sm md:block">
             <Quote
               className="absolute -left-1 -top-2 h-6 w-6 text-indigo-200"
               aria-hidden
@@ -81,36 +75,36 @@ export function ChairmanConsultBanner({ regionLabel }: Props) {
               {config.ctaLabel}
             </Link>
           ) : (
-            <p className="mt-5 hidden rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-3 text-sm text-muted md:block">
+            <p className="mt-5 hidden rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-3 text-left text-sm text-muted md:block">
               카카오톡 1:1 상담 채널 연결 준비 중입니다.
             </p>
           )}
         </div>
+
+        <blockquote className="relative col-span-2 rounded-xl border border-indigo-100 bg-white/80 px-3 py-3 text-left shadow-sm md:hidden">
+          <Quote
+            className="absolute -left-1 -top-2 h-5 w-5 text-indigo-200"
+            aria-hidden
+          />
+          <p className="text-xs leading-relaxed text-slate-600">{quote}</p>
+        </blockquote>
+
+        {config.isEnabled ? (
+          <Link
+            href={config.kakaoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] px-4 py-3 text-sm font-bold text-[#3C1E1E] shadow-sm transition hover:brightness-95 active:scale-[0.98] md:hidden"
+          >
+            <MessageCircle className="h-5 w-5 shrink-0" />
+            {config.ctaLabel}
+          </Link>
+        ) : (
+          <p className="col-span-2 rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-3 text-center text-sm text-muted md:hidden">
+            카카오톡 1:1 상담 채널 연결 준비 중입니다.
+          </p>
+        )}
       </div>
-
-      <blockquote className="relative mt-3 rounded-xl border border-indigo-100 bg-white/80 px-3 py-3 text-left shadow-sm md:hidden">
-        <Quote
-          className="absolute -left-1 -top-2 h-5 w-5 text-indigo-200"
-          aria-hidden
-        />
-        <p className="text-xs leading-relaxed text-slate-600">{quote}</p>
-      </blockquote>
-
-      {config.isEnabled ? (
-        <Link
-          href={config.kakaoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] px-4 py-3 text-sm font-bold text-[#3C1E1E] shadow-sm transition hover:brightness-95 active:scale-[0.98] md:hidden"
-        >
-          <MessageCircle className="h-5 w-5 shrink-0" />
-          {config.ctaLabel}
-        </Link>
-      ) : (
-        <p className="mt-3 rounded-xl border border-dashed border-gray-200 bg-white/60 px-4 py-3 text-center text-sm text-muted md:hidden">
-          카카오톡 1:1 상담 채널 연결 준비 중입니다.
-        </p>
-      )}
     </section>
   );
 }

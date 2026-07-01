@@ -1,4 +1,5 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap");
 @import "tailwindcss";
 
 @source "../components/**/*.{js,ts,jsx,tsx}";
@@ -64,4 +65,9 @@ iframe {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+.certificate-serif {
+  font-family: "Noto Serif KR", "Batang", "Times New Roman", serif;
+  letter-spacing: -0.01em;
 }
