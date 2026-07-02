@@ -4,6 +4,7 @@ import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
+import { generateRegionalNearbyGeoWithGemini } from "@/lib/ai/regional-nearby-geo-gemini";
 import { filterAcademies, getCachedAcademyIndex } from "@/lib/academy/academy-index";
 import { inferRegionBig } from "@/lib/academy/region-metro";
 import {
@@ -127,7 +128,17 @@ export async function generateRegionalLandingFromKeyword(
     };
   }
 
-  const { nearbyAreas, nearbyStations } = fallbackGeo;
+  let { nearbyAreas, nearbyStations } = fallbackGeo;
+  const geoOnly = await generateRegionalNearbyGeoWithGemini({
+    label,
+    keyword: pageKeyword,
+    regionBig,
+  });
+  if (geoOnly.ok) {
+    nearbyAreas = geoOnly.data.nearbyAreas;
+    nearbyStations = geoOnly.data.nearbyStations;
+  }
+
   return {
     slug,
     label,

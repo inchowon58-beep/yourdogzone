@@ -4,6 +4,7 @@ import {
   GEMINI_MAX_RETRIES,
   GEMINI_RETRY_DELAY_MS,
   GeminiJsonParseError,
+  geminiRetryDelayMs,
   isRetryableGeminiError,
   parseGeminiJson,
   sleep,
@@ -22,8 +23,9 @@ export type RegionalNearbyGeoResult =
   | { ok: false; error: string };
 
 const GEO_MODELS = [
-  "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
   "gemini-2.0-flash-lite",
 ];
 
@@ -145,7 +147,7 @@ export async function generateRegionalNearbyGeoWithGemini(input: {
       const shouldRetry =
         attempt < GEMINI_MAX_RETRIES && isRetryableGeminiError(result.error);
       if (shouldRetry) {
-        await sleep(GEMINI_RETRY_DELAY_MS);
+        await sleep(geminiRetryDelayMs(result.error, attempt));
         continue;
       }
       errors.push(result.error);

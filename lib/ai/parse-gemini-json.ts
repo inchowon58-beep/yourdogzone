@@ -37,6 +37,48 @@ function repairJson(candidate: string): string {
   return candidate.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
 }
 
+/** 토큰 한도로 잘린 JSON — 닫는 따옴표·괄호 보정 시도 */
+export function repairTruncatedJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+
+  let slice = text.slice(start).trimEnd();
+  slice = slice.replace(/,\s*"[^"]*":\s*"[^"]*$/, "");
+  slice = slice.replace(/,\s*"[^"]*":\s*$/, "");
+  slice = slice.replace(/,\s*$/, "");
+
+  let inString = false;
+  let escape = false;
+  let depthBrace = 0;
+  let depthBracket = 0;
+
+  for (const ch of slice) {
+    if (inString) {
+      if (escape) escape = false;
+      else if (ch === "\\") escape = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depthBrace++;
+    else if (ch === "}") depthBrace--;
+    else if (ch === "[") depthBracket++;
+    else if (ch === "]") depthBracket--;
+  }
+
+  if (inString) slice += '"';
+  while (depthBracket > 0) {
+    slice += "]";
+    depthBracket--;
+  }
+  while (depthBrace > 0) {
+    slice += "}";
+    depthBrace--;
+  }
+
+  return slice;
+}
+
 export class GeminiJsonParseError extends Error {
   constructor(
     message: string,
@@ -54,6 +96,8 @@ export function parseGeminiJson<T = unknown>(rawText: string): T {
 
   const balanced = findBalancedJsonObject(cleaned);
   if (balanced) candidates.push(balanced);
+  const truncated = repairTruncatedJsonObject(cleaned);
+  if (truncated && !candidates.includes(truncated)) candidates.push(truncated);
   if (cleaned && !candidates.includes(cleaned)) candidates.push(cleaned);
 
   let lastError: Error | null = null;
@@ -78,6 +122,14 @@ export function parseGeminiJson<T = unknown>(rawText: string): T {
 export const GEMINI_RETRY_DELAY_MS = 5000;
 export const GEMINI_MAX_RETRIES = 3;
 
+export function geminiRetryDelayMs(error: string, attempt: number): number {
+  const base =
+    error.includes("HTTP 503") || error.includes("UNAVAILABLE")
+      ? 8000
+      : GEMINI_RETRY_DELAY_MS;
+  return base + (attempt - 1) * 2000;
+}
+
 export function isRetryableGeminiError(error: string): boolean {
   return (
     error.includes("HTTP 503") ||
@@ -87,7 +139,8 @@ export function isRetryableGeminiError(error: string): boolean {
     error.includes("UNAVAILABLE") ||
     error.includes("JSON 파싱 실패") ||
     error.includes("응답 없음") ||
-    error.includes("생성 중단")
+    error.includes("생성 중단") ||
+    error.includes("토큰 한도")
   );
 }
 

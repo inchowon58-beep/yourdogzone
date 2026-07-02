@@ -8,6 +8,7 @@ import {
   GEMINI_MAX_RETRIES,
   GEMINI_RETRY_DELAY_MS,
   GeminiJsonParseError,
+  geminiRetryDelayMs,
   isRetryableGeminiError,
   parseGeminiJson,
   sleep,
@@ -36,8 +37,9 @@ export type RegionalGeminiResult =
   | { ok: false; error: string };
 
 const REGIONAL_MODELS = [
-  "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
   "gemini-2.0-flash-lite",
 ];
 
@@ -210,7 +212,8 @@ async function callRegionalGemini(
   model: string,
   prompt: string,
   label: string,
-  academyImageUrl?: string | null
+  academyImageUrl?: string | null,
+  compact = false
 ): Promise<RegionalGeminiResult> {
   const parts: GeminiPart[] = [{ text: prompt }];
 
@@ -227,8 +230,8 @@ async function callRegionalGemini(
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
-          temperature: 0.85,
-          maxOutputTokens: 3072,
+          temperature: compact ? 0.7 : 0.85,
+          maxOutputTokens: compact ? 6144 : 8192,
           responseMimeType: "application/json",
         },
       }),
@@ -241,11 +244,24 @@ async function callRegionalGemini(
   }
 
   const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
   };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const candidate = data.candidates?.[0];
+  const finishReason = candidate?.finishReason ?? "";
+  const text = candidate?.content?.parts?.[0]?.text?.trim();
   if (!text) {
     return { ok: false, error: `Gemini ${model}: 응답 없음` };
+  }
+  if (finishReason === "MAX_TOKENS") {
+    const partial = parseRegionalContent(text, model, label);
+    if (partial.ok) return partial;
+    return {
+      ok: false,
+      error: `Gemini ${model}: 토큰 한도로 응답 잘림`,
+    };
   }
 
   return parseRegionalContent(text, model, label);
@@ -258,6 +274,7 @@ function buildRegionalGeminiPrompt(input: {
   hasRecommendedAcademy: boolean;
   hasNearbyRecommendedAcademy: boolean;
   hasAcademyImage: boolean;
+  compact?: boolean;
 }): string {
   const regionLine = input.regionBig
     ? `${input.regionBig} ${input.label}`
@@ -273,6 +290,10 @@ function buildRegionalGeminiPrompt(input: {
     ? `- 첨부 학원 이미지 참고 가능(과장 금지).`
     : "";
 
+  const lengthRule = input.compact
+    ? `8. **간결 모드**: regionInfo 2문장, paragraphs 각 1~2문장, bullets 3개, FAQ answer 2문장 이내.`
+    : "";
+
   return `너는 네이버·구글 SEO에 최적화된 애견미용학원 지역 랜딩 글 작성 전문가다.
 키워드 "${input.keyword}"에 맞는 **단일 SEO 문서**와 **근방 지역·지하철역**을 한 번에 작성한다.
 
@@ -281,7 +302,8 @@ function buildRegionalGeminiPrompt(input: {
 - 행정·지역: ${regionLine}
 
 [플레이스홀더 — 실제 지명·학원명으로 치환하지 말 것]
-- ${REGION_VAR}, ${RECOMMENDED_ACADEMY_VAR}, ${RECOMMENDED_HIGHLIGHT_VAR}
+- 지역명은 반드시 ${REGION_VAR}만 사용. "서울 ${REGION_VAR}"처럼 시·도와 함께 쓰지 말 것.
+- ${RECOMMENDED_ACADEMY_VAR}, ${RECOMMENDED_HIGHLIGHT_VAR}
 - ${NEARBY_REGION_VAR}, ${NEARBY_ACADEMY_VAR}, ${NEARBY_HIGHLIGHT_VAR}
 
 [작성 규칙]
@@ -294,6 +316,7 @@ function buildRegionalGeminiPrompt(input: {
 7. nearbyStations: 통학에 자주 쓰이는 **지하철·전철역** 5곳. 반드시 '역'으로 끝남. 실존 역만.
 ${academyRule}
 ${imageRule}
+${lengthRule}
 
 반드시 아래 JSON만 출력:
 {
@@ -334,24 +357,27 @@ export async function generateRegionalLandingWithGemini(input: {
   ];
 
   const hasAcademyImage = Boolean(input.academyImageUrl?.startsWith("http"));
-  const prompt = buildRegionalGeminiPrompt({
-    label: input.label,
-    keyword: input.keyword,
-    regionBig: input.regionBig,
-    hasRecommendedAcademy: input.hasRecommendedAcademy,
-    hasNearbyRecommendedAcademy: input.hasNearbyRecommendedAcademy,
-    hasAcademyImage,
-  });
   const errors: string[] = [];
 
   for (const model of models) {
+    let useCompact = false;
     for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+      const prompt = buildRegionalGeminiPrompt({
+        label: input.label,
+        keyword: input.keyword,
+        regionBig: input.regionBig,
+        hasRecommendedAcademy: input.hasRecommendedAcademy,
+        hasNearbyRecommendedAcademy: input.hasNearbyRecommendedAcademy,
+        hasAcademyImage,
+        compact: useCompact,
+      });
       const result = await callRegionalGemini(
         apiKey,
         model,
         prompt,
         input.label,
-        input.academyImageUrl
+        input.academyImageUrl,
+        useCompact
       );
       if (result.ok) return result;
 
@@ -359,11 +385,25 @@ export async function generateRegionalLandingWithGemini(input: {
       const shouldRetry =
         !isLastAttempt && isRetryableGeminiError(result.error);
 
-      if (shouldRetry) {
+      if (
+        !useCompact &&
+        (result.error.includes("JSON 파싱 실패") ||
+          result.error.includes("토큰 한도"))
+      ) {
+        useCompact = true;
         console.warn(
-          `[Gemini regional] ${model} 시도 ${attempt}/${GEMINI_MAX_RETRIES} 실패, ${GEMINI_RETRY_DELAY_MS / 1000}초 후 재시도: ${result.error}`
+          `[Gemini regional] ${model} 간결 모드로 재시도: ${result.error}`
         );
         await sleep(GEMINI_RETRY_DELAY_MS);
+        continue;
+      }
+
+      if (shouldRetry) {
+        const delay = geminiRetryDelayMs(result.error, attempt);
+        console.warn(
+          `[Gemini regional] ${model} 시도 ${attempt}/${GEMINI_MAX_RETRIES} 실패, ${delay / 1000}초 후 재시도: ${result.error}`
+        );
+        await sleep(delay);
         continue;
       }
 
@@ -381,6 +421,6 @@ export async function generateRegionalLandingWithGemini(input: {
 
   return {
     ok: false,
-    error: errors.slice(0, 2).join(" | ") || "Gemini 호출 실패",
+    error: errors.slice(0, 3).join(" | ") || "Gemini 호출 실패",
   };
 }

@@ -13,6 +13,7 @@ import {
   listRegionalLandingsForAdmin,
 } from "@/lib/academy/regional-admin-list";
 import { generateRegionalLandingFromKeyword } from "@/lib/academy/regional-generator";
+import { runRegionalPageBackfill } from "@/lib/academy/regional-backfill";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
@@ -94,6 +95,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: result.error }, { status: 500 });
       }
       revalidateRegional(result.page.slug);
+      if (draft.geminiError) {
+        void runRegionalPageBackfill(result.page.slug);
+      }
       return NextResponse.json({
         page: result.page,
         generated: true,
