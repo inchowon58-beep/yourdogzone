@@ -15,6 +15,7 @@ import {
   buildAcademyListJsonLd,
 } from "@/lib/seo/academy-jsonld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
@@ -26,6 +27,7 @@ export const metadata: Metadata = buildPageMetadata({
   description:
     "서울·경기·인천 등 전국 애견미용학원을 지역별로 검색하세요. 인증 추천 학원, 교육과정, 수강료, 위치 정보를 한곳에서 확인할 수 있습니다.",
   path: "/services/academy",
+  ogSubtitle: ACADEMY_OG_SUBTITLE,
   keywords: [
     "애견미용학원",
     "전국 애견미용학원",

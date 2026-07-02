@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     description:
       "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.",
     path: "/",
+    ogSubtitle: "반려견 생활 정보",
     keywords: [
       "유아독존",
       "반려견",

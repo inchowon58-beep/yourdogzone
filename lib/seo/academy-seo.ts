@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { resolveOgImageUrls } from "@/lib/seo/og-image";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 
 export type AcademySeoContent = {
   title: string;
@@ -73,17 +73,15 @@ export function buildAcademySeoContent(academy: Academy): AcademySeoContent {
   };
 }
 
-export function buildAcademyDetailMetadata(
-  academy: Academy,
-  images: string[]
-): Metadata {
+export function buildAcademyDetailMetadata(academy: Academy): Metadata {
   const seo = buildAcademySeoContent(academy);
   const base = buildPageMetadata({
     title: seo.title,
     description: seo.description,
     path: seo.path,
     keywords: seo.keywords,
-    images,
+    ogSubtitle: ACADEMY_OG_SUBTITLE,
+    imageAlt: seo.ogImageAlt,
     type: "article",
   });
 
@@ -95,14 +93,10 @@ export function buildAcademyDetailMetadata(
     openGraph: {
       ...base.openGraph,
       title: `${seo.title} | ${SITE_NAME}`,
-      images: images.length
-        ? images.map((url) => ({ url, alt: seo.ogImageAlt }))
-        : (base.openGraph?.images ?? resolveOgImageUrls().map((url) => ({ url, alt: seo.ogImageAlt }))),
     },
     twitter: {
       ...base.twitter,
       title: `${seo.title} | ${SITE_NAME}`,
-      images: images.length ? images : resolveOgImageUrls(),
     },
   };
 }

@@ -8,6 +8,7 @@ import {
   SITE_NAME,
 } from "@/lib/site/config";
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/seo/site-jsonld";
+import { buildBrandedOgImageUrl } from "@/lib/seo/og-image";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,7 +41,12 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} | 반려동물 통합 포털`,
     description: SITE_DESCRIPTION,
-    images: [{ url: "/og-default.png", alt: `${SITE_NAME} | 반려동물 통합 포털` }],
+    images: [
+      {
+        url: buildBrandedOgImageUrl("반려견 생활 정보"),
+        alt: `${SITE_NAME} | 반려동물 통합 포털`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

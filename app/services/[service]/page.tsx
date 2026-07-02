@@ -15,6 +15,7 @@ import {
 } from "@/lib/listings/config";
 import { getListings, listingAsAcademy } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 import type { ListingCategory } from "@/lib/types/listing";
 
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: config.description,
     path: listingBasePath(service),
     keywords: config.seoKeywords,
+    ogSubtitle: buildCategoryOgSubtitle(config.title),
   });
 }
 

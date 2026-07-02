@@ -8,8 +8,8 @@ import {
   breedDetailPath,
 } from "@/lib/breeds/config";
 import { getBreedBySlug } from "@/lib/breeds/queries";
-import { getBreedOgImages } from "@/lib/breeds/images";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: breed.summary,
     path: breedDetailPath(breed.slug),
     keywords: [breed.name_ko, breed.name_en, "견종소개", ...breed.tags],
-    images: getBreedOgImages(breed),
+    ogSubtitle: buildCategoryOgSubtitle("견종소개"),
     imageAlt: `${breed.name_ko} 견종 사진`,
   });
 }

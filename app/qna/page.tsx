@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 
 const SAMPLE_QNA = [
   {
@@ -28,6 +29,7 @@ export const metadata: Metadata = buildPageMetadata({
   description:
     "강아지 산책, 사료 급여, 미용 주기 등 반려견 양육에 대한 자주 묻는 질문과 답변.",
   path: "/qna",
+  ogSubtitle: buildCategoryOgSubtitle("Q&A"),
   keywords: ["강아지 Q&A", "반려견 질문", "강아지 미용", "강아지 산책"],
 });
 

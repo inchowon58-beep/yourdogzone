@@ -38,8 +38,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const academy = await getAcademyBySlug(slug);
   if (!academy) return { title: "학원을 찾을 수 없습니다" };
 
-  const images = getAcademyGalleryImages(academy, 3);
-  return buildAcademyDetailMetadata(academy, images);
+  return buildAcademyDetailMetadata(academy);
 }
 
 export default async function AcademyDetailPage({ params }: PageProps) {

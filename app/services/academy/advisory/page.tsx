@@ -9,12 +9,14 @@ import {
 } from "@/lib/site/advisory-banner";
 import { getAllAdvisoryMembers } from "@/lib/site/advisory-members-store";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "공식 자문단 인증 위원장",
   description:
     "한국애견연맹 분야별 위원장단이 검증한 유아독존 공식 자문단 위원장 프로필과 자문 정보를 확인하세요.",
   path: "/services/academy/advisory",
+  ogSubtitle: ACADEMY_OG_SUBTITLE,
   keywords: [
     "유아독존 공식 자문",
     "한국애견연맹 위원장",

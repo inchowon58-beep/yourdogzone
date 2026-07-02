@@ -3,6 +3,7 @@ import "server-only";
 import type { Metadata } from "next";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { buildRegionalLandingKeywords } from "@/lib/academy/regional-seo-content";
 import { buildNearbyDistrictKeywords } from "@/lib/constants/region-nearby-districts";
@@ -71,7 +72,7 @@ export function buildRegionalLandingMetadata(
     description,
     path,
     keywords,
-    images: seoCtx.ogImageUrl ? [seoCtx.ogImageUrl] : undefined,
+    ogSubtitle: ACADEMY_OG_SUBTITLE,
     imageAlt,
   });
 }

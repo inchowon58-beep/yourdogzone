@@ -8,12 +8,14 @@ import { BreedSearchBar } from "@/components/breed/BreedSearchBar";
 import type { BreedGroupTab } from "@/lib/breeds/config";
 import { getBreeds } from "@/lib/breeds/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "견종소개",
   description:
     "말티즈, 포메라니안, 말티푸, 골든두들 등 인기 견종·믹스견의 유래, 성격, 털 관리, 건강 정보를 확인하세요.",
   path: "/dognose",
+  ogSubtitle: buildCategoryOgSubtitle("견종소개"),
   keywords: [
     "견종소개",
     "견종 정보",

@@ -12,6 +12,7 @@ import {
 } from "@/lib/listings/config";
 import { getGalleryImages, getListingBySlug } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 import type { ListingCategory } from "@/lib/types/listing";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +28,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const listing = await getListingBySlug(service, slug);
   if (!listing) return { title: "찾을 수 없습니다" };
   const config = getListingConfig(service);
-  const images = getGalleryImages(listing, 3);
   return buildPageMetadata({
     title: `${listing.name} | ${listing.region_big} ${config.title}`,
     description: listing.title_copy || `${listing.name} ${config.title}`,
     path: listingDetailPath(service, listing.slug),
     keywords: [listing.name, config.title, listing.region_big, listing.region_small],
-    images,
+    ogSubtitle: buildCategoryOgSubtitle(config.title),
     imageAlt: `${listing.name} ${config.title} 사진`,
   });
 }

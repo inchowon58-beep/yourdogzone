@@ -8,6 +8,8 @@ type PageMetadataInput = {
   path: string;
   keywords?: string[];
   images?: (string | null | undefined)[];
+  /** 브랜드 OG 자동 생성용 부제 (예: 애견미용학원 정보, 강아지분양 정보) */
+  ogSubtitle?: string;
   imageAlt?: string;
   noIndex?: boolean;
   type?: "website" | "article";
@@ -19,14 +21,16 @@ export function buildPageMetadata({
   path,
   keywords,
   images,
+  ogSubtitle,
   imageAlt,
   noIndex = false,
   type = "website",
 }: PageMetadataInput): Metadata {
   const url = absoluteUrl(path);
   const ogImageAlt = imageAlt ?? title;
-  const ogImages = buildOgImageMetadata(ogImageAlt, images);
-  const ogImageUrls = resolveOgImageUrls(images);
+  const ogOptions = { images, ogSubtitle };
+  const ogImages = buildOgImageMetadata(ogImageAlt, ogOptions);
+  const ogImageUrls = resolveOgImageUrls(ogOptions);
 
   return {
     title,
