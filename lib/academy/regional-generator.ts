@@ -25,7 +25,7 @@ export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiError?: string;
 };
 
-function resolveNearbyGeoForDraft(label: string): {
+function resolveNearbyGeoFallback(label: string): {
   nearbyAreas: string[];
   nearbyStations: string[];
 } {
@@ -35,7 +35,16 @@ function resolveNearbyGeoForDraft(label: string): {
   };
 }
 
-/** 키워드 한 줄로 지역 랜딩 페이지 생성 (인증추천학원 변수 반영 Gemini SEO) */
+function buildNearbySlugs(
+  areas: string[],
+  byLabel: Map<string, RegionalLandingPage>
+): string[] {
+  return areas
+    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
+    .slice(0, 5);
+}
+
+/** 키워드 한 줄로 지역 랜딩 페이지 생성 (Gemini SEO + 근방 GEO 단일 호출) */
 export async function generateRegionalLandingFromKeyword(
   keyword: string
 ): Promise<RegionalGenerateResult> {
@@ -46,16 +55,10 @@ export async function generateRegionalLandingFromKeyword(
   const slug = buildRegionalSlug(label);
   const regionBig = inferRegionBig(label);
   const query = REGION_BIG_SET.has(label) ? label : label;
+  const pageKeyword = trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`;
 
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
   const byLabel = new Map(allLandings.map((p) => [p.label, p]));
-
-  const geo = resolveNearbyGeoForDraft(label);
-  const { nearbyAreas, nearbyStations } = geo;
-
-  const nearbySlugs = nearbyAreas
-    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
-    .slice(0, 5);
 
   const allAcademies = await getCachedAcademyIndex();
   const academies = filterAcademies(allAcademies, {
@@ -69,12 +72,10 @@ export async function generateRegionalLandingFromKeyword(
   const draftPage: RegionalLandingPage = {
     slug,
     label,
-    keyword: trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
+    keyword: pageKeyword,
     regionBig,
     query,
-    nearbySlugs,
-    nearbyAreas,
-    nearbyStations,
+    nearbySlugs: [],
     isPublished: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -91,25 +92,10 @@ export async function generateRegionalLandingFromKeyword(
     premiumPick.seoNearby
   );
 
-  const base: RegionalGenerateResult = {
-    slug,
-    label,
-    keyword: trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
-    regionBig,
-    query,
-    nearbySlugs,
-    nearbyAreas,
-    nearbyStations,
-    isPublished: true,
-    geminiUsed: false,
-  };
-
   const gemini = await generateRegionalLandingWithGemini({
     label,
-    keyword: base.keyword,
+    keyword: pageKeyword,
     regionBig,
-    nearbyLabels: nearbyAreas,
-    nearbyStations,
     recommendedAcademyName: seoCtx.recommendedAcademyName,
     recommendedAcademyHighlight: seoCtx.recommendedAcademyHighlight,
     hasRecommendedAcademy: seoCtx.hasRecommendedAcademy,
@@ -119,19 +105,40 @@ export async function generateRegionalLandingFromKeyword(
     academyImageUrl: seoCtx.ogImageUrl,
   });
 
+  const fallbackGeo = resolveNearbyGeoFallback(label);
+
   if (gemini.ok) {
+    const { nearbyAreas, nearbyStations } = gemini.data;
     return {
-      ...base,
+      slug,
+      label,
+      keyword: pageKeyword,
+      regionBig,
+      query,
+      nearbySlugs: buildNearbySlugs(nearbyAreas, byLabel),
+      nearbyAreas,
+      nearbyStations,
       regionInfo: gemini.data.regionInfo,
       metaDescription: gemini.data.metaDescription,
       seoBlocks: gemini.data.seoBlocks,
       faqItems: gemini.data.faqItems,
+      isPublished: true,
       geminiUsed: true,
     };
   }
 
+  const { nearbyAreas, nearbyStations } = fallbackGeo;
   return {
-    ...base,
+    slug,
+    label,
+    keyword: pageKeyword,
+    regionBig,
+    query,
+    nearbySlugs: buildNearbySlugs(nearbyAreas, byLabel),
+    nearbyAreas,
+    nearbyStations,
+    isPublished: true,
+    geminiUsed: false,
     geminiError: gemini.error,
   };
 }

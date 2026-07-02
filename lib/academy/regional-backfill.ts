@@ -3,7 +3,9 @@ import "server-only";
 import { after } from "next/server";
 import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
 import {
+  fillRegionalNearbyGeo,
   fillRegionalSeoContent,
+  needsRegionalNearbyGeo,
   needsRegionalSeoContent,
 } from "@/lib/academy/regional-seo-sync";
 import { getRegionalLandingBySlug } from "@/lib/academy/regional-store";
@@ -21,10 +23,17 @@ export async function runRegionalPageBackfill(slug: string): Promise<void> {
     if (!page) return;
 
     const needsSeo = needsRegionalSeoContent(page);
-    if (!needsSeo) return;
+    const needsGeo = needsRegionalNearbyGeo(page);
+    if (!needsSeo && !needsGeo) return;
 
     const pageCtx = await loadRegionalPageContext(page);
-    await fillRegionalSeoContent(page, pageCtx.seoCtx);
+
+    if (needsSeo) {
+      page =
+        (await fillRegionalSeoContent(page, pageCtx.seoCtx)) ?? page;
+    } else if (needsGeo) {
+      page = (await fillRegionalNearbyGeo(page)) ?? page;
+    }
   } catch (e) {
     console.error(`[regional-backfill] ${key} 실패:`, e);
   } finally {

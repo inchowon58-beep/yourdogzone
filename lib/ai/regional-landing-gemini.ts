@@ -20,12 +20,15 @@ import {
   RECOMMENDED_HIGHLIGHT_VAR,
   REGION_VAR,
 } from "@/lib/academy/regional-seo-vars";
+import { formatStationName } from "@/lib/constants/region-nearby-stations";
 
 export type RegionalLandingGeminiContent = {
   regionInfo: string;
   metaDescription: string;
   seoBlocks: RegionalSeoBlockStored[];
   faqItems: RegionalFaqItemStored[];
+  nearbyAreas: string[];
+  nearbyStations: string[];
 };
 
 export type RegionalGeminiResult =
@@ -69,6 +72,25 @@ function normalizeSeoBlocks(
   return normalized;
 }
 
+function normalizeGeoList(raw: unknown, limit = 5): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => String(x).trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeNearbyAreas(raw: unknown, label: string): string[] {
+  const key = label.trim();
+  return normalizeGeoList(raw)
+    .filter((area) => area !== key && !area.startsWith(`${key} `))
+    .slice(0, 5);
+}
+
+function normalizeNearbyStations(raw: unknown): string[] {
+  return normalizeGeoList(raw).map(formatStationName).slice(0, 5);
+}
+
 function normalizeFaqItems(
   items: RegionalFaqItemStored[] | undefined
 ): RegionalFaqItemStored[] {
@@ -101,13 +123,16 @@ function normalizeFaqItems(
 
 function parseRegionalContent(
   text: string,
-  model: string
+  model: string,
+  label: string
 ): RegionalGeminiResult {
   let parsed: {
     regionInfo?: string;
     metaDescription?: string;
     seoBlocks?: RegionalSeoBlockStored[];
     faqItems?: RegionalFaqItemStored[];
+    nearbyAreas?: unknown;
+    nearbyStations?: unknown;
   };
 
   try {
@@ -129,6 +154,15 @@ function parseRegionalContent(
     const seoBlocks = normalizeSeoBlocks(parsed.seoBlocks, model);
     if ("error" in seoBlocks) return { ok: false, error: seoBlocks.error };
 
+    const nearbyAreas = normalizeNearbyAreas(parsed.nearbyAreas, label);
+    const nearbyStations = normalizeNearbyStations(parsed.nearbyStations);
+    if (nearbyAreas.length < 3 || nearbyStations.length < 3) {
+      return {
+        ok: false,
+        error: `Gemini ${model}: nearbyAreas·nearbyStations 3개 이상 필요`,
+      };
+    }
+
     return {
       ok: true,
       data: {
@@ -138,6 +172,8 @@ function parseRegionalContent(
         ).slice(0, 155),
         seoBlocks,
         faqItems: normalizeFaqItems(parsed.faqItems),
+        nearbyAreas,
+        nearbyStations,
       },
     };
   } catch (e) {
@@ -173,6 +209,7 @@ async function callRegionalGemini(
   apiKey: string,
   model: string,
   prompt: string,
+  label: string,
   academyImageUrl?: string | null
 ): Promise<RegionalGeminiResult> {
   const parts: GeminiPart[] = [{ text: prompt }];
@@ -191,7 +228,7 @@ async function callRegionalGemini(
         contents: [{ parts }],
         generationConfig: {
           temperature: 0.85,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 3072,
           responseMimeType: "application/json",
         },
       }),
@@ -211,15 +248,13 @@ async function callRegionalGemini(
     return { ok: false, error: `Gemini ${model}: 응답 없음` };
   }
 
-  return parseRegionalContent(text, model);
+  return parseRegionalContent(text, model, label);
 }
 
 function buildRegionalGeminiPrompt(input: {
   label: string;
   keyword: string;
   regionBig?: string;
-  nearbyLabels: string[];
-  nearbyStations: string[];
   hasRecommendedAcademy: boolean;
   hasNearbyRecommendedAcademy: boolean;
   hasAcademyImage: boolean;
@@ -227,9 +262,6 @@ function buildRegionalGeminiPrompt(input: {
   const regionLine = input.regionBig
     ? `${input.regionBig} ${input.label}`
     : input.label;
-  const nearby = input.nearbyLabels.slice(0, 5).join(", ") || "인근 구·동";
-  const stations =
-    input.nearbyStations.slice(0, 5).join(", ") || "인근 지하철역";
 
   const academyRule = input.hasRecommendedAcademy
     ? `- 지역 내 인증 추천 학원이 있음 → 소제목·본문 중 1곳 이상에서 [{recommendedAcademyName}]과 {recommendedAcademyHighlight}를 자연스럽게 언급.`
@@ -242,13 +274,11 @@ function buildRegionalGeminiPrompt(input: {
     : "";
 
   return `너는 네이버·구글 SEO에 최적화된 애견미용학원 지역 랜딩 글 작성 전문가다.
-키워드 "${input.keyword}"에 맞는 **단일 SEO 문서**만 작성한다. A/B안 분리 없음.
+키워드 "${input.keyword}"에 맞는 **단일 SEO 문서**와 **근방 지역·지하철역**을 한 번에 작성한다.
 
 [컨텍스트]
 - 타깃 키워드: ${input.keyword}
 - 행정·지역: ${regionLine}
-- 근방 구·동(참고): ${nearby}
-- 인근 역(참고): ${stations}
 
 [플레이스홀더 — 실제 지명·학원명으로 치환하지 말 것]
 - ${REGION_VAR}, ${RECOMMENDED_ACADEMY_VAR}, ${RECOMMENDED_HIGHLIGHT_VAR}
@@ -260,6 +290,8 @@ function buildRegionalGeminiPrompt(input: {
 3. faqItems 4개 — 수강료, 학원 선택, 국비지원·자격증, 인증 추천 관련.
 4. metaDescription: 네이버 검색 스니펫용 140자 내외, 키워드 포함.
 5. regionInfo: 페이지 상단 히어로 2~3문장.
+6. nearbyAreas: ${input.label} 기준 통학·검색 연관 **구·동·읍·면** 5곳. 광역시·도 이름(서울, 경기 등) 제외. 기준 지역 자신 제외. 실존 지명만.
+7. nearbyStations: 통학에 자주 쓰이는 **지하철·전철역** 5곳. 반드시 '역'으로 끝남. 실존 역만.
 ${academyRule}
 ${imageRule}
 
@@ -267,6 +299,8 @@ ${imageRule}
 {
   "regionInfo": "...",
   "metaDescription": "...",
+  "nearbyAreas": ["구·동1", "구·동2", "구·동3", "구·동4", "구·동5"],
+  "nearbyStations": ["...역", "...역", "...역", "...역", "...역"],
   "seoBlocks": [
     { "title": "소제목", "paragraphs": ["..."], "bullets": ["..."] }
   ],
@@ -280,8 +314,6 @@ export async function generateRegionalLandingWithGemini(input: {
   label: string;
   keyword: string;
   regionBig?: string;
-  nearbyLabels: string[];
-  nearbyStations?: string[];
   recommendedAcademyName: string;
   recommendedAcademyHighlight: string;
   hasRecommendedAcademy: boolean;
@@ -306,8 +338,6 @@ export async function generateRegionalLandingWithGemini(input: {
     label: input.label,
     keyword: input.keyword,
     regionBig: input.regionBig,
-    nearbyLabels: input.nearbyLabels,
-    nearbyStations: input.nearbyStations ?? [],
     hasRecommendedAcademy: input.hasRecommendedAcademy,
     hasNearbyRecommendedAcademy: input.hasNearbyRecommendedAcademy,
     hasAcademyImage,
@@ -320,6 +350,7 @@ export async function generateRegionalLandingWithGemini(input: {
         apiKey,
         model,
         prompt,
+        input.label,
         input.academyImageUrl
       );
       if (result.ok) return result;
