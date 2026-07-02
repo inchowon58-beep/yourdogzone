@@ -4,9 +4,8 @@ import { REGION_BIG_OPTIONS } from "@/lib/constants/regions";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
-import { generateRegionalNearbyGeoWithGemini } from "@/lib/ai/regional-nearby-geo-gemini";
+import { filterAcademies, getCachedAcademyIndex } from "@/lib/academy/academy-index";
 import { inferRegionBig } from "@/lib/academy/region-metro";
-import { getAcademies } from "@/lib/academy/queries";
 import {
   buildRegionalSlug,
   parseLabelFromKeyword,
@@ -26,33 +25,21 @@ export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiError?: string;
 };
 
-async function resolveNearbyGeoForDraft(
-  label: string,
-  keyword: string,
-  regionBig?: string
-): Promise<{
+function resolveNearbyGeoForDraft(label: string): {
   nearbyAreas: string[];
   nearbyStations: string[];
-  nearbyIntro?: string;
-}> {
+} {
   const staticAreas = getNearbyDistricts(label, 5);
   const staticStations = getNearbyStations(label, 5);
-  if (staticAreas.length > 0 && staticStations.length > 0) {
-    return { nearbyAreas: staticAreas, nearbyStations: staticStations };
-  }
-
-  const gemini = await generateRegionalNearbyGeoWithGemini({
-    label,
-    keyword,
-    regionBig,
-  });
-  if (gemini.ok) {
-    return gemini.data;
-  }
-
+  const trimmed = label.trim();
   return {
-    nearbyAreas: staticAreas,
-    nearbyStations: staticStations,
+    nearbyAreas: staticAreas.length > 0 ? staticAreas : [trimmed],
+    nearbyStations:
+      staticStations.length > 0
+        ? staticStations
+        : trimmed.endsWith("역")
+          ? [trimmed]
+          : [`${trimmed}역`],
   };
 }
 
@@ -71,18 +58,15 @@ export async function generateRegionalLandingFromKeyword(
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
   const byLabel = new Map(allLandings.map((p) => [p.label, p]));
 
-  const geo = await resolveNearbyGeoForDraft(
-    label,
-    trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`,
-    regionBig
-  );
-  const { nearbyAreas, nearbyStations, nearbyIntro } = geo;
+  const geo = resolveNearbyGeoForDraft(label);
+  const { nearbyAreas, nearbyStations } = geo;
 
   const nearbySlugs = nearbyAreas
     .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
     .slice(0, 5);
 
-  const academies = await getAcademies({
+  const allAcademies = await getCachedAcademyIndex();
+  const academies = filterAcademies(allAcademies, {
     region: regionBig ?? "전체",
     query,
   });
@@ -99,13 +83,16 @@ export async function generateRegionalLandingFromKeyword(
     nearbySlugs,
     nearbyAreas,
     nearbyStations,
-    nearbyIntro,
     isPublished: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  const premiumPick = await pickRegionalPremiumForSeo(draftPage, recommended);
+  const premiumPick = pickRegionalPremiumForSeo(
+    draftPage,
+    recommended,
+    allAcademies
+  );
   const seoCtx = buildRegionalSeoContext(
     label,
     recommended,
@@ -121,7 +108,6 @@ export async function generateRegionalLandingFromKeyword(
     nearbySlugs,
     nearbyAreas,
     nearbyStations,
-    nearbyIntro,
     isPublished: true,
     geminiUsed: false,
   };
@@ -146,7 +132,7 @@ export async function generateRegionalLandingFromKeyword(
       ...base,
       regionInfo: gemini.data.regionInfo,
       regionInfoNearby: gemini.data.regionInfoNearby,
-      nearbyIntro: gemini.data.nearbyIntro ?? nearbyIntro,
+      nearbyIntro: gemini.data.nearbyIntro,
       metaDescription: gemini.data.metaDescription,
       metaDescriptionNearby: gemini.data.metaDescriptionNearby,
       seoBlocks: gemini.data.seoBlocks,

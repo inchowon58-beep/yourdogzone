@@ -58,19 +58,13 @@ export async function fetchAcademyFromR2(
   return list.find((a) => a.slug === slug) ?? null;
 }
 
-/** index + 개별 data JSON을 병합해 최신 학원 목록 반환 (is_premium 등 유지) */
-export async function loadLatestAcademyList(): Promise<Academy[]> {
-  const indexList = await fetchAcademiesFromR2({ noCache: true });
-  if (indexList.length === 0) return [];
-
-  const merged = await Promise.all(
-    indexList.map(async (summary) => {
-      const latest = await fetchAcademyFromR2(summary.slug, { noCache: true });
-      return latest ?? summary;
-    })
+/** index.json 기준 학원 목록 (쓰기 경로·관리자용 — 개별 JSON N+1 merge 없음) */
+export async function loadLatestAcademyList(options?: {
+  noCache?: boolean;
+}): Promise<Academy[]> {
+  return fetchAcademiesFromR2(
+    options?.noCache ? { noCache: true } : undefined
   );
-
-  return merged;
 }
 
 export async function prepareAcademyR2Insert(
@@ -79,7 +73,7 @@ export async function prepareAcademyR2Insert(
   | { record: Academy; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const existing = await loadLatestAcademyList();
+  const existing = await loadLatestAcademyList({ noCache: true });
   if (existing.some((a) => a.slug === payload.slug)) {
     return {
       record: null,
@@ -207,7 +201,7 @@ export async function prepareAcademyPremiumUpdate(
   | { record: Academy; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const academies = await loadLatestAcademyList();
+  const academies = await loadLatestAcademyList({ noCache: true });
   const target =
     (await fetchAcademyFromR2(slug, { noCache: true })) ??
     academies.find((a) => a.slug === slug);
@@ -255,7 +249,7 @@ export async function prepareAcademyR2Deletes(
     return { deleted: [], uploads: null, error: "삭제할 slug가 없습니다." };
   }
 
-  const academies = await loadLatestAcademyList();
+  const academies = await loadLatestAcademyList({ noCache: true });
   const toDelete = academies.filter((a) => slugSet.has(a.slug));
   if (toDelete.length === 0) {
     return {

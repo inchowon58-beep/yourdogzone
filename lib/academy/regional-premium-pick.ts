@@ -1,17 +1,14 @@
 import "server-only";
 
+import { filterPremiumAcademies } from "@/lib/academy/academy-index";
 import { fetchNearbyPremiumWithFallback } from "@/lib/academy/regional-academy-fallback";
-import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
 import type { Academy } from "@/lib/types/academy";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 
 export type RegionalPremiumPick = {
   local: Academy | null;
-  /** 지역 확장 검색 또는 전국 인증추천 풀에서 선택한 SEO·상단용 1곳 */
   seoNearby: Academy | null;
-  /** 인근 목록 (상단 그리드용, 최대 limit) */
   nearbyList: Academy[];
-  /** 전국 풀 폴백으로 잡았는지 */
   isPoolFallback: boolean;
 };
 
@@ -20,11 +17,12 @@ function sortPremiumStable(academies: Academy[]): Academy[] {
 }
 
 /** SEO A/B·상단 인증추천 — 지역 내 → 인근 검색 → 전국 인증추천 풀 순 */
-export async function pickRegionalPremiumForSeo(
+export function pickRegionalPremiumForSeo(
   page: RegionalLandingPage,
   localRecommended: Academy | null,
+  allAcademies: Academy[],
   limit = 3
-): Promise<RegionalPremiumPick> {
+): RegionalPremiumPick {
   if (localRecommended) {
     return {
       local: localRecommended,
@@ -34,7 +32,7 @@ export async function pickRegionalPremiumForSeo(
     };
   }
 
-  const regional = await fetchNearbyPremiumWithFallback(page, limit);
+  const regional = fetchNearbyPremiumWithFallback(page, allAcademies, limit);
   if (regional.academies.length > 0) {
     const list = sortPremiumStable(regional.academies);
     return {
@@ -45,7 +43,7 @@ export async function pickRegionalPremiumForSeo(
     };
   }
 
-  const pool = sortPremiumStable(await getAllPremiumAcademies());
+  const pool = sortPremiumStable(filterPremiumAcademies(allAcademies));
   const seoNearby = pool[0] ?? null;
 
   return {

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import {
   fetchAcademiesFromR2,
@@ -8,6 +9,10 @@ import {
   prepareAcademyR2Insert,
   type R2UploadTask,
 } from "@/lib/academy/r2-store";
+import {
+  filterAcademies,
+  getCachedAcademyIndex,
+} from "@/lib/academy/academy-index";
 import type { Academy, AcademyInsert } from "@/lib/types/academy";
 
 export async function getAcademies(options?: {
@@ -16,8 +21,8 @@ export async function getAcademies(options?: {
 }): Promise<Academy[]> {
   const supabase = createSupabaseClient();
   if (!supabase) {
-    const fromR2 = await loadLatestAcademyList();
-    if (fromR2.length > 0) return filterAcademies(fromR2, options);
+    const index = await getCachedAcademyIndex();
+    if (index.length > 0) return filterAcademies(index, options);
     return getMockAcademies(options);
   }
 
@@ -43,12 +48,13 @@ export async function getAcademies(options?: {
   return data as Academy[];
 }
 
-export async function getAcademyBySlug(slug: string): Promise<Academy | null> {
+export const getAcademyBySlug = cache(async (slug: string): Promise<Academy | null> => {
   const supabase = createSupabaseClient();
   if (!supabase) {
     const fromR2 = await fetchAcademyFromR2(slug);
     if (fromR2) return fromR2;
-    return getMockAcademies().find((a) => a.slug === slug) ?? null;
+    const index = await getCachedAcademyIndex();
+    return index.find((a) => a.slug === slug) ?? getMockAcademies().find((a) => a.slug === slug) ?? null;
   }
 
   const { data, error } = await supabase
@@ -61,13 +67,13 @@ export async function getAcademyBySlug(slug: string): Promise<Academy | null> {
     return getMockAcademies().find((a) => a.slug === slug) ?? null;
   }
   return data as Academy;
-}
+});
 
 export async function getAcademySlugs(): Promise<string[]> {
   const supabase = createSupabaseClient();
   if (!supabase) {
-    const fromR2 = await loadLatestAcademyList();
-    if (fromR2.length > 0) return fromR2.map((a) => a.slug);
+    const index = await getCachedAcademyIndex();
+    if (index.length > 0) return index.map((a) => a.slug);
     return getMockAcademies().map((a) => a.slug);
   }
 
@@ -182,27 +188,6 @@ export async function deleteAcademies(
     deleted: prepared.deleted,
     uploads: prepared.uploads,
   };
-}
-
-function filterAcademies(
-  academies: Academy[],
-  options?: { region?: string; query?: string }
-): Academy[] {
-  let result = academies;
-  if (options?.region && options.region !== "전체") {
-    result = result.filter((a) => a.region_big === options.region);
-  }
-  if (options?.query) {
-    const q = options.query.toLowerCase();
-    result = result.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.region_small.includes(q) ||
-        a.address.includes(q) ||
-        a.title_copy.includes(q)
-    );
-  }
-  return result;
 }
 
 function getMockAcademies(options?: {

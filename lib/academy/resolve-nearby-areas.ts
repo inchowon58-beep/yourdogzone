@@ -7,19 +7,24 @@ import {
 } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 
-/** 페이지에 저장된 근방 구·동 또는 라벨 기준 자동 추론 (최대 5) */
+/** 페이지 라벨 기준 근방 구·동 (상수 → 없으면 해당 지역만) */
 export function resolveNearbyAreas(page: RegionalLandingPage): string[] {
   const stored = page.nearbyAreas?.filter((a) => a?.trim()).slice(0, 5);
   if (stored && stored.length > 0) return stored;
-  return getNearbyDistricts(page.label, 5);
+  const inferred = getNearbyDistricts(page.label, 5);
+  if (inferred.length > 0) return inferred;
+  return [page.label.trim()];
 }
 
-/** 페이지에 저장된 인근 지하철역 또는 라벨 기준 자동 추론 (최대 5) */
+/** 페이지 라벨 기준 인근 역 (상수 → 없으면 해당 지역역) */
 export function resolveNearbyStations(page: RegionalLandingPage): string[] {
   const stored = page.nearbyStations
     ?.filter((s) => s?.trim())
     .map(formatStationName)
     .slice(0, 5);
   if (stored && stored.length > 0) return stored;
-  return getNearbyStations(page.label, 5);
+  const inferred = getNearbyStations(page.label, 5);
+  if (inferred.length > 0) return inferred;
+  const label = page.label.trim();
+  return label.endsWith("역") ? [label] : [`${label}역`];
 }

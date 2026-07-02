@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getAdjacentLabels } from "@/lib/constants/region-adjacency";
-import { getAcademies } from "@/lib/academy/queries";
+import { filterAcademies } from "@/lib/academy/academy-index";
 import { inferRegionBig, isMetroRegion } from "@/lib/academy/region-metro";
 import type { Academy } from "@/lib/types/academy";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
@@ -33,19 +33,16 @@ function buildRegionalSearchSteps(page: RegionalLandingPage): SearchStep[] {
     steps.push(step);
   };
 
-  // 1) 해당 하위 지역 정확 검색
   add({
     region: regionBig ?? "전체",
     query,
     sourceLabel: label,
   });
 
-  // 2) 소속 광역 전체 (부평 → 인천 전체)
   if (regionBig && regionBig !== "전체") {
     add({ region: regionBig, sourceLabel: regionBig });
   }
 
-  // 3) 인접 지역 순차 확장 (부평 → 인천 → 부천 → …)
   const adjacent = getAdjacentLabels(label, 8);
   const expansion = [
     ...(regionBig && regionBig !== label ? [regionBig] : []),
@@ -74,14 +71,15 @@ function buildRegionalSearchSteps(page: RegionalLandingPage): SearchStep[] {
   return steps;
 }
 
-/** 지역 키워드에 맞는 학원 조회 — 없으면 광역·인근 순으로 확장 */
-export async function fetchRegionalAcademiesWithFallback(
-  page: RegionalLandingPage
-): Promise<RegionalAcademyFallback> {
+/** 지역 키워드에 맞는 학원 — 없으면 광역·인근 순으로 확장 (메모리 필터) */
+export function fetchRegionalAcademiesWithFallback(
+  page: RegionalLandingPage,
+  allAcademies: Academy[]
+): RegionalAcademyFallback {
   const label = page.label.trim();
 
   for (const step of buildRegionalSearchSteps(page)) {
-    const academies = await getAcademies({
+    const academies = filterAcademies(allAcademies, {
       region: step.region,
       query: step.query,
     });
@@ -98,11 +96,12 @@ export async function fetchRegionalAcademiesWithFallback(
   return { academies: [], isNearbyFallback: false };
 }
 
-/** 인근 인증 추천 학원 — 지역 페이지 유무와 관계없이 라벨 기준 확장 검색 */
-export async function fetchNearbyPremiumWithFallback(
+/** 인근 인증 추천 학원 — 메모리 필터 */
+export function fetchNearbyPremiumWithFallback(
   page: RegionalLandingPage,
+  allAcademies: Academy[],
   limit = 3
-): Promise<{ academies: Academy[]; sourceLabel?: string }> {
+): { academies: Academy[]; sourceLabel?: string } {
   const seen = new Set<string>();
   const result: Academy[] = [];
   let sourceLabel: string | undefined;
@@ -110,7 +109,7 @@ export async function fetchNearbyPremiumWithFallback(
   for (const step of buildRegionalSearchSteps(page)) {
     if (result.length >= limit) break;
 
-    const items = await getAcademies({
+    const items = filterAcademies(allAcademies, {
       region: step.region,
       query: step.query,
     });

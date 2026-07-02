@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
+import { filterAcademies, filterPremiumAcademies, getCachedAcademyIndex } from "@/lib/academy/academy-index";
 import { getAcademies } from "@/lib/academy/queries";
 import { AcademySearchBar } from "@/components/academy/AcademySearchBar";
 import { RegionTabs } from "@/components/academy/RegionTabs";
@@ -18,7 +19,6 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
-import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
 import { sampleRandom } from "@/lib/utils/random-sample";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 
@@ -41,14 +41,18 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
+export const revalidate = 60;
+
 type PageProps = {
   searchParams: Promise<{ region?: string; q?: string; page?: string }>;
 };
 
 export default async function AcademyPage({ searchParams }: PageProps) {
   const { region = "전체", q, page: pageParam } = await searchParams;
-  const all = await getAcademies({ region, query: q });
-  const allPremium = await getAllPremiumAcademies();
+  const index = await getCachedAcademyIndex();
+  const source = index.length > 0 ? index : await getAcademies();
+  const all = filterAcademies(source, { region, query: q });
+  const allPremium = filterPremiumAcademies(source);
   const premium = all.filter((a) => a.is_premium);
   const regular = all.filter((a) => !a.is_premium);
   const guidePreview = sampleRandom(allPremium, 5);

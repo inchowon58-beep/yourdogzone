@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
-import { getAcademyBySlug, getAcademySlugs, getAcademies } from "@/lib/academy/queries";
-import { getAllPremiumAcademies } from "@/lib/academy/premium-pool";
+import { getAcademyBySlug, getAcademySlugs } from "@/lib/academy/queries";
+import { filterAcademies, filterPremiumAcademies, getCachedAcademyIndex } from "@/lib/academy/academy-index";
 import { sampleRandom } from "@/lib/utils/random-sample";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { absoluteUrl } from "@/lib/site/config";
@@ -46,11 +46,12 @@ export default async function AcademyDetailPage({ params }: PageProps) {
   const academy = await getAcademyBySlug(slug);
   if (!academy) notFound();
 
-  const regionalAcademies = await getAcademies({
+  const index = await getCachedAcademyIndex();
+  const regionalAcademies = filterAcademies(index, {
     region: academy.region_big,
     query: academy.region_small,
   });
-  const allPremium = await getAllPremiumAcademies();
+  const allPremium = filterPremiumAcademies(index);
   const guidePreview = sampleRandom(allPremium, 5);
   const regularRegional = regionalAcademies.filter((a) => !a.is_premium);
   const listHref = `/services/academy?region=${encodeURIComponent(academy.region_big)}`;

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";
@@ -57,11 +58,15 @@ export async function fetchRegionalLandingsFromR2(options?: {
   }
 }
 
+const loadRegionalLandingsIndex = cache(async (): Promise<RegionalLandingPage[]> => {
+  const fromR2 = await fetchRegionalLandingsFromR2();
+  return fromR2.length > 0 ? fromR2 : await readLocalSeed();
+});
+
 export async function getAllRegionalLandings(options?: {
   includeUnpublished?: boolean;
 }): Promise<RegionalLandingPage[]> {
-  const fromR2 = await fetchRegionalLandingsFromR2();
-  const pages = fromR2.length > 0 ? fromR2 : await readLocalSeed();
+  const pages = await loadRegionalLandingsIndex();
   if (options?.includeUnpublished) return pages;
   return pages.filter((p) => p.isPublished);
 }

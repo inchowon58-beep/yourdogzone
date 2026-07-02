@@ -1,6 +1,10 @@
 import "server-only";
 
-import { getAcademies } from "@/lib/academy/queries";
+import {
+  filterAcademies,
+  filterPremiumAcademies,
+  getCachedAcademyIndex,
+} from "@/lib/academy/academy-index";
 import { fetchRegionalAcademiesWithFallback } from "@/lib/academy/regional-academy-fallback";
 import { inferRegionBig } from "@/lib/academy/region-metro";
 import { pickRegionalPremiumForSeo } from "@/lib/academy/regional-premium-pick";
@@ -16,9 +20,7 @@ export type RegionalPageContext = {
   all: Academy[];
   premium: Academy[];
   regular: Academy[];
-  /** 해당 지역(키워드) 내 인증추천 */
   recommended: Academy | null;
-  /** SEO·상단용 인근(또는 풀) 인증추천 1곳 */
   seoNearby: Academy | null;
   nearbyPremium: Academy[];
   isPoolPremiumFallback: boolean;
@@ -27,16 +29,17 @@ export type RegionalPageContext = {
   nearbySourceLabel?: string;
 };
 
-/** 지역 랜딩 페이지 로드 시 인증추천학원을 최우선 조회 */
+/** 지역 랜딩 — index 1회 로드 후 메모리 필터 */
 export async function loadRegionalPageContext(
   page: RegionalLandingPage
 ): Promise<RegionalPageContext> {
+  const allAcademies = await getCachedAcademyIndex();
   const regionBig = page.regionBig ?? inferRegionBig(page.label);
   const searchQuery = page.query ?? page.label;
   const pageWithMetro =
     !page.regionBig && regionBig ? { ...page, regionBig } : page;
 
-  const local = await getAcademies({
+  const local = filterAcademies(allAcademies, {
     region: regionBig ?? "전체",
     query: searchQuery,
   });
@@ -53,13 +56,14 @@ export async function loadRegionalPageContext(
           isNearbyFallback: false,
           sourceLabel: undefined as string | undefined,
         }
-      : await fetchRegionalAcademiesWithFallback(pageWithMetro);
+      : fetchRegionalAcademiesWithFallback(pageWithMetro, allAcademies);
 
   const all = listFallback.academies;
 
-  const premiumPick = await pickRegionalPremiumForSeo(
+  const premiumPick = pickRegionalPremiumForSeo(
     pageWithMetro,
-    localRecommended
+    localRecommended,
+    allAcademies
   );
 
   const seoNearby = premiumPick.seoNearby;

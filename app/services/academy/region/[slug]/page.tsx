@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { unstable_noStore } from "next/cache";
 import { ArrowLeft, MapPin, Plus } from "lucide-react";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
@@ -10,10 +9,8 @@ import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanne
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
 import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
 import { NearbyPremiumAcademyFallback } from "@/components/academy/NearbyPremiumAcademyFallback";
-import { NearbyRegionalLinks } from "@/components/academy/NearbyRegionalLinks";
 import { loadRegionalPageBundle } from "@/lib/academy/regional-page-loader";
 import {
-  resolveBoundNearbyIntro,
   resolveBoundFaqItems,
   resolveBoundRegionInfo,
   resolveBoundSeoBlocks,
@@ -21,18 +18,11 @@ import {
 } from "@/lib/academy/regional-seo-resolve";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { scheduleRegionalPageBackfill } from "@/lib/academy/regional-backfill";
-import {
-  needsRegionalNearbyGeo,
-  needsRegionalSeoContent,
-} from "@/lib/academy/regional-seo-sync";
+import { needsRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
-import {
-  getPublishedRegionalSlugs,
-  getAllRegionalLandings,
-} from "@/lib/academy/regional-landing";
+import { getPublishedRegionalSlugs } from "@/lib/academy/regional-landing";
 import { NearbyStationSeoSection } from "@/components/academy/NearbyStationSeoSection";
 import { resolveNearbyAreas, resolveNearbyStations } from "@/lib/academy/resolve-nearby-areas";
-import { resolveNearbyPages } from "@/lib/academy/regional-store";
 import { sampleStableRandom } from "@/lib/utils/random-sample";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -41,7 +31,7 @@ import {
 } from "@/lib/seo/regional-academy-jsonld";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",
@@ -62,7 +52,6 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  unstable_noStore();
   const { slug } = await params;
   const bundle = await loadRegionalPageBundle(slug);
   if (!bundle) return {};
@@ -71,8 +60,6 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function RegionalAcademyLandingPage({ params }: PageProps) {
-  unstable_noStore();
-
   const { slug } = await params;
   const decoded = decodeURIComponent(slug);
 
@@ -90,11 +77,9 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
   const regionFilter = regionBig ?? "전체";
   const seoCtx = pageCtx.seoCtx;
 
-  if (needsRegionalNearbyGeo(page) || needsRegionalSeoContent(page)) {
+  if (needsRegionalSeoContent(page)) {
     scheduleRegionalPageBackfill(page.slug);
   }
-
-  const [allRegionalLandings] = await Promise.all([getAllRegionalLandings()]);
 
   const {
     premium,
@@ -119,7 +104,6 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
     `${page.slug}-guide`
   );
 
-  const nearby = await resolveNearbyPages(page);
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
@@ -224,23 +208,9 @@ export default async function RegionalAcademyLandingPage({ params }: PageProps) 
         />
       </div>
 
-      <NearbyDistrictSeoSection
-        currentLabel={label}
-        areas={nearbyAreas}
-        publishedLandings={allRegionalLandings}
-      />
+      <NearbyDistrictSeoSection currentLabel={label} areas={nearbyAreas} />
 
-      <NearbyStationSeoSection
-        currentLabel={label}
-        stations={nearbyStations}
-        publishedLandings={allRegionalLandings}
-      />
-
-      <NearbyRegionalLinks
-        currentLabel={label}
-        intro={resolveBoundNearbyIntro(page, seoCtx) ?? page.nearbyIntro}
-        nearby={nearby}
-      />
+      <NearbyStationSeoSection currentLabel={label} stations={nearbyStations} />
 
       {pageCtx.all.length === 0 && (
         <p className="mt-6 text-center text-sm text-muted">
