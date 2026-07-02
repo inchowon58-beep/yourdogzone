@@ -9,6 +9,7 @@ import {
 } from "@/lib/site/config";
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/seo/site-jsonld";
 import { buildBrandedOgImageUrl } from "@/lib/seo/og-image";
+import { getSiteIconsMetadata } from "@/lib/site/favicon";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,6 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
   robots: { index: true, follow: true },
+  icons: getSiteIconsMetadata(),
   verification: {
     other: {
       "naver-site-verification": "4b76245dea128c61246f068d9449786517ecd73d",
