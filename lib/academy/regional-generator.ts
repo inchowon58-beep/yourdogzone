@@ -29,17 +29,9 @@ function resolveNearbyGeoForDraft(label: string): {
   nearbyAreas: string[];
   nearbyStations: string[];
 } {
-  const staticAreas = getNearbyDistricts(label, 5);
-  const staticStations = getNearbyStations(label, 5);
-  const trimmed = label.trim();
   return {
-    nearbyAreas: staticAreas.length > 0 ? staticAreas : [trimmed],
-    nearbyStations:
-      staticStations.length > 0
-        ? staticStations
-        : trimmed.endsWith("역")
-          ? [trimmed]
-          : [`${trimmed}역`],
+    nearbyAreas: getNearbyDistricts(label, 5),
+    nearbyStations: getNearbyStations(label, 5),
   };
 }
 
