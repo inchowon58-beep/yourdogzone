@@ -619,7 +619,6 @@ class NaverPlaceCrawler:
             "a[href*='photo']",
             "a[href*='home']",
             "a[role='tab']",
-            "a[role='button']",
             "a._tab-menu",
         )
         candidates: list = []
@@ -632,6 +631,8 @@ class NaverPlaceCrawler:
         seen: set[str] = set()
         for el in candidates:
             try:
+                if self._is_save_or_bookmark_element(el):
+                    continue
                 text = (el.text or el.get_attribute("textContent") or "").strip()
                 href = (el.get_attribute("href") or "").lower()
                 key = f"{text}|{href}"
@@ -683,6 +684,89 @@ class NaverPlaceCrawler:
             self._sleep(0.5)
         return False
 
+    def _is_unwanted_navigation_url(self, url: str) -> bool:
+        """플레이스 상세가 아닌 저장·등록·수정 제안 페이지."""
+        u = (url or "").lower()
+        if "smartplace.naver.com" in u:
+            return True
+        if "home-engage" in u or "moredetail" in u:
+            return True
+        if "place/manage" in u or "place/register" in u:
+            return True
+        return False
+
+    def _is_save_or_bookmark_element(self, el) -> bool:
+        """목록·상세의 저장(찜)·공유·수정 제안 버튼."""
+        try:
+            href = (el.get_attribute("href") or "").lower()
+            if self._is_unwanted_navigation_url(href):
+                return True
+            for attr in ("aria-label", "title", "data-clickcode"):
+                val = (el.get_attribute(attr) or "").strip()
+                lower = val.lower()
+                if any(
+                    k in val
+                    for k in ("저장", "찜", "북마크", "내 장소", "수정 제안", "플레이스 등록")
+                ):
+                    return True
+                if any(k in lower for k in ("save", "bookmark", "zzim", "favorite")):
+                    return True
+            text = (el.text or el.get_attribute("textContent") or "").strip()
+            if text in ("저장", "찜", "공유", "수정"):
+                return True
+            cls = (el.get_attribute("class") or "").lower()
+            if any(
+                n in cls
+                for n in ("bookmark", "zzim", "save", "favorite", "clip", "pin")
+            ):
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _recover_from_unwanted_page(self, search_url: str = "") -> None:
+        """저장/등록 페이지로 잘못 이동했을 때 검색·상세로 복귀."""
+        self.log("    ⚠ 저장·등록 페이지로 이동됨 — 뒤로가기로 복귀")
+        self._top_document()
+        for _ in range(4):
+            url = self.driver.current_url or ""
+            if not self._is_unwanted_navigation_url(url):
+                if search_url and "/search/" in url:
+                    break
+                if self._place_id_from_url(url):
+                    break
+                if self._switch_frame("entryIframe"):
+                    break
+            try:
+                self.driver.back()
+                self._sleep(1.2)
+            except Exception:
+                break
+        if search_url and self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.driver.get(search_url)
+            self._sleep(2)
+        self._wait_captcha_if_needed()
+
+    def _get_place_click_target(self, row):
+        """업체명(span.YwYLL)만 클릭 — 행 좌측 저장·찜 버튼 회피."""
+        try:
+            name_el = row.find_element(By.CSS_SELECTOR, "span.YwYLL")
+            if name_el.is_displayed() and not self._is_save_or_bookmark_element(name_el):
+                return name_el
+        except Exception:
+            pass
+        link = self._get_place_row_link(row)
+        if link and not self._is_save_or_bookmark_element(link):
+            return link
+        return None
+
+    def _safe_click_place_target(self, row) -> bool:
+        target = self._get_place_click_target(row)
+        if not target:
+            return False
+        self._safe_click(target)
+        return True
+
     def _is_external_ad_href(self, href: str) -> bool:
         """플레이스 패널이 아닌 외부·광고 URL."""
         h = (href or "").strip().lower()
@@ -691,6 +775,8 @@ class NaverPlaceCrawler:
         if h.startswith("http"):
             if "map.naver.com" in h and "/place/" in h:
                 return False
+            if "smartplace.naver.com" in h:
+                return True
             return True
         ad_hints = (
             "adcr",
@@ -706,8 +792,10 @@ class NaverPlaceCrawler:
         return any(x in h for x in ad_hints)
 
     def _is_place_name_link(self, link) -> bool:
-        """플레이스 업체 이름 링크 (배너·외부 광고 링크 제외)."""
+        """플레이스 업체 이름 링크 (배너·외부 광고·저장 버튼 제외)."""
         try:
+            if self._is_save_or_bookmark_element(link):
+                return False
             if self._is_ad_link(link):
                 return False
             href = (link.get_attribute("href") or "").strip()
@@ -726,9 +814,7 @@ class NaverPlaceCrawler:
                 return True
             try:
                 link.find_element(By.CSS_SELECTOR, "span.YwYLL")
-                role = (link.get_attribute("role") or "").lower()
-                if role == "button" and href in ("", "#"):
-                    return True
+                return True
             except Exception:
                 pass
         except Exception:
@@ -737,6 +823,13 @@ class NaverPlaceCrawler:
 
     def _get_place_row_link(self, row):
         """목록 행에서 플레이스 업체 이름 링크만 반환."""
+        try:
+            name_el = row.find_element(By.CSS_SELECTOR, "span.YwYLL")
+            link = name_el.find_element(By.XPATH, "./ancestor::a[1]")
+            if self._is_place_name_link(link):
+                return link
+        except Exception:
+            pass
         for sel in (
             "a.U70Fj.k4f_J",
             "a.U70Fj",
@@ -774,7 +867,10 @@ class NaverPlaceCrawler:
     def _verify_place_detail_opened(self) -> bool:
         """클릭 후 플레이스 상세가 열렸는지."""
         self._top_document()
-        if self._place_id_from_url(self.driver.current_url or ""):
+        url = self.driver.current_url or ""
+        if self._is_unwanted_navigation_url(url):
+            return False
+        if self._place_id_from_url(url):
             return True
         if self._switch_frame("entryIframe"):
             return True
@@ -1080,10 +1176,6 @@ class NaverPlaceCrawler:
                 pid = self._extract_id_from_row(row)
                 row_title = self._extract_row_name(row)
                 label = row_title or target or title or "(업체)"
-                link = self._get_place_row_link(row)
-                if not link:
-                    self._sleep(0.4)
-                    continue
                 try:
                     self.driver.execute_script(
                         "arguments[0].scrollIntoView({block:'center'});",
@@ -1093,10 +1185,17 @@ class NaverPlaceCrawler:
                 except Exception:
                     pass
                 self.log(f"    → 목록 클릭: {label}")
-                self._safe_click(link)
+                if not self._safe_click_place_target(row):
+                    self._sleep(0.4)
+                    continue
 
                 self._sleep(2.0)
                 self._wait_captcha_if_needed()
+                if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+                    self.log(f"    ⊘ 저장/등록 페이지 오클릭 — 스킵: {label}")
+                    self._recover_from_unwanted_page()
+                    self._switch_frame("searchIframe")
+                    continue
                 if not self._verify_place_detail_opened():
                     self.log(f"    ⊘ 광고/배너 항목 — 스킵: {label}")
                     self._top_document()
@@ -1150,17 +1249,18 @@ class NaverPlaceCrawler:
 
     def _click_row_get_id(self, row) -> str:
         """목록 행 1회 클릭 → URL에서 place ID (검색으로 돌아가지 않음)."""
-        link = self._get_place_row_link(row)
-        if not link:
-            return ""
-        title = self._extract_row_name(row) or (
-            (link.text or "").split("\n")[0].strip()[:36]
-        )
+        title = self._extract_row_name(row) or "(업체)"
         self.log(f"    → 목록 클릭: {title}")
-        self._safe_click(link)
+        if not self._safe_click_place_target(row):
+            return ""
 
         self._sleep(2.2)
         self._wait_captcha_if_needed()
+
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.log(f"    ⊘ 저장/등록 페이지 오클릭 — 스킵: {title}")
+            self._recover_from_unwanted_page()
+            return ""
 
         if not self._verify_place_detail_opened():
             self.log(f"    ⊘ 광고/배너 항목 — 스킵: {title}")
@@ -1176,6 +1276,10 @@ class NaverPlaceCrawler:
         """검색 목록으로 복귀 — 뒤로가기 우선(스크롤 위치 유지), 실패 시 URL 이동."""
         self.log("    ← 검색 목록으로 복귀")
         self._top_document()
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self._recover_from_unwanted_page(search_url)
+            self._switch_frame("searchIframe")
+            return
         restored = False
         for _ in range(3):
             try:
@@ -1196,14 +1300,16 @@ class NaverPlaceCrawler:
     def _open_row(self, row) -> tuple[str, bool]:
         """목록 행 클릭 → (place_id, 이미 상세 열림 여부)."""
         pid = self._extract_id_from_row(row)
-        link = self._get_place_row_link(row)
-        if not link:
-            return "", False
         title = self._extract_row_name(row) or (row.text or "").split("\n")[0].strip()[:36]
         self.log(f"    → 목록 클릭: {title}")
-        self._safe_click(link)
+        if not self._safe_click_place_target(row):
+            return "", False
         self._sleep(2.0)
         self._wait_captcha_if_needed()
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.log(f"    ⊘ 저장/등록 페이지 오클릭 — 스킵: {title}")
+            self._recover_from_unwanted_page()
+            return "", False
         if not self._verify_place_detail_opened():
             self.log(f"    ⊘ 광고/배너 항목 — 스킵: {title}")
             return "", False
@@ -1290,6 +1396,13 @@ class NaverPlaceCrawler:
         fallback_name: str = "",
     ) -> PlaceData | None:
         """place ID로 홈 → 정보 → 사진 탭 순서 수집."""
+        self._top_document()
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.log("    ⚠ 저장/등록 페이지 감지 — 복귀 후 재시도")
+            self._recover_from_unwanted_page(
+                f"https://map.naver.com/p/search/{quote(query)}" if query else ""
+            )
+
         place_url = self._place_tab_url(place_id, "home", query)
 
         if already_open:
@@ -1631,14 +1744,24 @@ class NaverPlaceCrawler:
         """업체 링크 클릭 → 상세 패널 열기."""
         if not self._is_place_name_link(link):
             return "", "", ""
+        if self._is_save_or_bookmark_element(link):
+            return "", "", ""
         title = (link.text or link.get_attribute("textContent") or "").strip()
         place_id = self._place_id_from_link(link)
         place_url = link.get_attribute("href") or ""
 
         self.log(f"    → '{title or place_id or '업체'}' 클릭 (상세 진입)")
-        self._human_click(link)
+        try:
+            name_el = link.find_element(By.CSS_SELECTOR, "span.YwYLL")
+            self._human_click(name_el)
+        except Exception:
+            self._human_click(link)
         self._sleep(2.5)
         self._wait_captcha_if_needed()
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.log(f"    ⊘ 저장/등록 페이지 오클릭 — 스킵: {title or place_id}")
+            self._recover_from_unwanted_page()
+            return "", "", ""
         self._wait_detail_panel()
 
         if not place_id:
@@ -1729,13 +1852,23 @@ class NaverPlaceCrawler:
 
         self.log(f"    → ID 확인 클릭: {title}")
         try:
-            self._safe_click(link)
-        except Exception as e:
-            self.log(f"    ⚠ 클릭 실패: {e}")
-            return ""
+            row = link.find_element(By.XPATH, "./ancestor::li[1]")
+            if not self._safe_click_place_target(row):
+                self._safe_click(link)
+        except Exception:
+            try:
+                self._safe_click(link)
+            except Exception as e:
+                self.log(f"    ⚠ 클릭 실패: {e}")
+                return ""
 
         self._sleep(2.2)
         self._wait_captcha_if_needed()
+
+        if self._is_unwanted_navigation_url(self.driver.current_url or ""):
+            self.log(f"    ⊘ 저장/등록 페이지 오클릭 — 스킵: {title}")
+            self._recover_from_unwanted_page(search_url)
+            return ""
 
         pid = self._place_id_from_url(self.driver.current_url or "")
         if not pid:
@@ -1905,6 +2038,8 @@ class NaverPlaceCrawler:
                 continue
             try:
                 for tab in self.driver.find_elements(By.CSS_SELECTOR, sel):
+                    if self._is_save_or_bookmark_element(tab):
+                        continue
                     label = (tab.text or tab.get_attribute("textContent") or "").strip()
                     if "사진" in label or "photo" in (tab.get_attribute("href") or ""):
                         self._human_click(tab)
