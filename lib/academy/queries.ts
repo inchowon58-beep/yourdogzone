@@ -51,10 +51,12 @@ export async function getAcademies(options?: {
 export const getAcademyBySlug = cache(async (slug: string): Promise<Academy | null> => {
   const supabase = createSupabaseClient();
   if (!supabase) {
+    const index = await getCachedAcademyIndex();
+    const fromIndex = index.find((a) => a.slug === slug);
+    if (fromIndex) return fromIndex;
     const fromR2 = await fetchAcademyFromR2(slug);
     if (fromR2) return fromR2;
-    const index = await getCachedAcademyIndex();
-    return index.find((a) => a.slug === slug) ?? getMockAcademies().find((a) => a.slug === slug) ?? null;
+    return getMockAcademies().find((a) => a.slug === slug) ?? null;
   }
 
   const { data, error } = await supabase

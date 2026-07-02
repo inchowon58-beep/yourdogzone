@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cache } from "react";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";
@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types/regional-landing";
 
 const INDEX_KEY = "regional-landings/index.json";
+export const REGIONAL_LANDINGS_TAG = "regional-landings";
 const LOCAL_FILE = path.join(process.cwd(), "data", "regional-landings.json");
 
 type IndexPayload = {
@@ -58,10 +59,14 @@ export async function fetchRegionalLandingsFromR2(options?: {
   }
 }
 
-const loadRegionalLandingsIndex = cache(async (): Promise<RegionalLandingPage[]> => {
-  const fromR2 = await fetchRegionalLandingsFromR2();
-  return fromR2.length > 0 ? fromR2 : await readLocalSeed();
-});
+const loadRegionalLandingsIndex = unstable_cache(
+  async (): Promise<RegionalLandingPage[]> => {
+    const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
+    return fromR2.length > 0 ? fromR2 : await readLocalSeed();
+  },
+  ["regional-landings-index-v1"],
+  { revalidate: 300, tags: [REGIONAL_LANDINGS_TAG] }
+);
 
 export async function getAllRegionalLandings(options?: {
   includeUnpublished?: boolean;
@@ -99,6 +104,7 @@ export async function saveRegionalLandings(
 
   try {
     await writeLocalSeed(pages);
+    revalidateTag(REGIONAL_LANDINGS_TAG, "max");
   } catch {
     // Vercel 등 읽기 전용 환경에서는 R2만 사용
   }
@@ -119,6 +125,7 @@ export async function saveRegionalLandings(
         body,
       },
     ]);
+    revalidateTag(REGIONAL_LANDINGS_TAG, "max");
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "R2 저장 실패";

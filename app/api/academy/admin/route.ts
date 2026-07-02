@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
+import { ACADEMY_INDEX_TAG } from "@/lib/academy/academy-index";
 import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
@@ -63,6 +64,7 @@ export async function PATCH(request: Request) {
 
     if (result.uploads?.length) {
       await completeR2Uploads(result.uploads);
+      revalidateTag(ACADEMY_INDEX_TAG, "max");
     }
 
     revalidatePath(`/services/academy/${result.data.slug}`);
@@ -110,6 +112,7 @@ export async function DELETE(request: Request) {
 
     if (result.uploads?.length) {
       await completeR2Uploads(result.uploads);
+      revalidateTag(ACADEMY_INDEX_TAG, "max");
     }
 
     for (const slug of result.deleted) {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { getCachedAcademyIndex } from "@/lib/academy/academy-index";
 import { loadRegionalPageContext } from "@/lib/academy/regional-page-context";
 import type { RegionalPageContext } from "@/lib/academy/regional-page-context";
 import { resolveRegionalLanding } from "@/lib/academy/regional-landing";
@@ -11,11 +12,14 @@ export type RegionalPageBundle = {
   pageCtx: RegionalPageContext;
 };
 
-/** 동일 요청 내 metadata·page 중복 조회 방지 */
+/** 동일 요청 내 metadata·page 중복 조회 방지 + 학원 index 선로드 */
 export const loadRegionalPageBundle = cache(
   async (slug: string): Promise<RegionalPageBundle | null> => {
     const decoded = decodeURIComponent(slug).trim();
-    const page = await resolveRegionalLanding(decoded);
+    const [page] = await Promise.all([
+      resolveRegionalLanding(decoded),
+      getCachedAcademyIndex(),
+    ]);
     if (!page) return null;
     const pageCtx = await loadRegionalPageContext(page);
     return { page, pageCtx };

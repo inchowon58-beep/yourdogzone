@@ -31,7 +31,7 @@ import {
 } from "@/lib/seo/regional-academy-jsonld";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",

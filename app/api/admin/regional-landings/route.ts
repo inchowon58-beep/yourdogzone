@@ -14,6 +14,7 @@ import {
 } from "@/lib/academy/regional-admin-list";
 import { generateRegionalLandingFromKeyword } from "@/lib/academy/regional-generator";
 import { runRegionalPageBackfill } from "@/lib/academy/regional-backfill";
+import { scheduleRegionalPageWarmup } from "@/lib/academy/regional-page-warmup";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
@@ -31,7 +32,10 @@ async function requireMainAdmin(): Promise<NextResponse | null> {
 function revalidateRegional(slug?: string) {
   revalidatePath("/services/academy/region/[slug]", "page");
   revalidatePath("/sitemap.xml");
-  if (slug) revalidatePath(`/services/academy/region/${slug}`);
+  if (slug) {
+    revalidatePath(`/services/academy/region/${slug}`);
+    scheduleRegionalPageWarmup(slug);
+  }
 }
 
 export async function GET(request: Request) {
@@ -128,6 +132,9 @@ export async function POST(request: Request) {
       }
     }
     revalidateRegional();
+    for (const page of created) {
+      scheduleRegionalPageWarmup(page.slug);
+    }
     return NextResponse.json({
       pages: created,
       errors,
