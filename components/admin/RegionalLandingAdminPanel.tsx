@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Plus,
   RefreshCw,
@@ -11,25 +13,34 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import type { RegionalLandingPage } from "@/lib/types/regional-landing";
-import { regionalLandingPath } from "@/lib/academy/regional-path";
+import type { RegionalLandingAdminSummary } from "@/lib/academy/regional-admin-list";
+
+const PAGE_SIZE = 10;
 
 export function RegionalLandingAdminPanel() {
-  const [pages, setPages] = useState<RegionalLandingPage[]>([]);
+  const [pages, setPages] = useState<RegionalLandingAdminSummary[]>([]);
+  const [listPage, setListPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [batchKeywords, setBatchKeywords] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (page: number) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/regional-landings");
+      const res = await fetch(
+        `/api/admin/regional-landings?page=${page}&limit=${PAGE_SIZE}`
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "불러오기 실패");
       setPages(data.pages ?? []);
+      setListPage(data.page ?? page);
+      setTotalPages(data.totalPages ?? 1);
+      setTotal(data.total ?? 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     } finally {
@@ -38,8 +49,8 @@ export function RegionalLandingAdminPanel() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(listPage);
+  }, [listPage, load]);
 
   async function generateOne() {
     const kw = keyword.trim();
@@ -60,7 +71,8 @@ export function RegionalLandingAdminPanel() {
           (data.geminiError ? ` | Gemini 스킵: ${data.geminiError}` : "")
       );
       setKeyword("");
-      void load();
+      if (listPage === 1) void load(1);
+      else setListPage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     }
@@ -84,21 +96,24 @@ export function RegionalLandingAdminPanel() {
           (data.errors?.length ? ` | 실패 ${data.errors.length}건` : "")
       );
       setBatchKeywords("");
-      void load();
+      if (listPage === 1) void load(1);
+      else setListPage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     }
   }
 
-  async function togglePublish(page: RegionalLandingPage) {
+  async function togglePublish(summary: RegionalLandingAdminSummary) {
     const res = await fetch("/api/admin/regional-landings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        page: { ...page, isPublished: !page.isPublished },
+        action: "toggle_publish",
+        slug: summary.slug,
+        isPublished: !summary.isPublished,
       }),
     });
-    if (res.ok) void load();
+    if (res.ok) void load(listPage);
   }
 
   async function remove(slug: string) {
@@ -107,7 +122,23 @@ export function RegionalLandingAdminPanel() {
       `/api/admin/regional-landings?slug=${encodeURIComponent(slug)}`,
       { method: "DELETE" }
     );
-    if (res.ok) void load();
+    if (res.ok) {
+      const nextPage =
+        pages.length === 1 && listPage > 1 ? listPage - 1 : listPage;
+      setListPage(nextPage);
+      void load(nextPage);
+    }
+  }
+
+  function formatDate(iso: string) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   }
 
   return (
@@ -119,13 +150,13 @@ export function RegionalLandingAdminPanel() {
             지역 애견미용학원 SEO 페이지
           </h2>
           <p className="mt-1 text-sm text-muted">
-            키워드 입력 시 영문 URL로 페이지가 자동 생성됩니다. (예: 안산
-            애견미용학원 → ansan-dog-grooming-academy)
+            키워드 입력 시 영문 URL로 페이지가 자동 생성됩니다. 최신 등록순 ·
+            페이지당 {PAGE_SIZE}건
           </p>
         </div>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void load(listPage)}
           className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"
         >
           <RefreshCw className="h-4 w-4" />
@@ -176,17 +207,25 @@ export function RegionalLandingAdminPanel() {
       {message && <p className="mb-3 text-sm text-emerald-700">{message}</p>}
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+        <span>전체 {total}건</span>
+        <span>
+          {listPage} / {totalPages} 페이지
+        </span>
+      </div>
+
       {loading ? (
         <p className="text-sm text-muted">불러오는 중…</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b text-muted">
+                <th className="py-2 pr-4">등록일</th>
                 <th className="py-2 pr-4">지역</th>
                 <th className="py-2 pr-4">키워드</th>
                 <th className="py-2 pr-4">영문 URL</th>
-                <th className="py-2 pr-4">근방</th>
+                <th className="py-2 pr-4">SEO</th>
                 <th className="py-2 pr-4">상태</th>
                 <th className="py-2">관리</th>
               </tr>
@@ -194,13 +233,20 @@ export function RegionalLandingAdminPanel() {
             <tbody>
               {pages.map((p) => (
                 <tr key={p.slug} className="border-b border-gray-50">
+                  <td className="py-3 pr-4 text-muted whitespace-nowrap">
+                    {formatDate(p.createdAt)}
+                  </td>
                   <td className="py-3 pr-4 font-medium">{p.label}</td>
                   <td className="py-3 pr-4 text-muted">{p.keyword}</td>
                   <td className="py-3 pr-4">
                     <code className="text-xs">{p.slug}</code>
                   </td>
-                  <td className="py-3 pr-4 text-muted">
-                    {p.nearbySlugs?.length ?? 0}곳
+                  <td className="py-3 pr-4">
+                    {p.hasSeo ? (
+                      <span className="text-emerald-600">완료</span>
+                    ) : (
+                      <span className="text-amber-600">대기</span>
+                    )}
                   </td>
                   <td className="py-3 pr-4">
                     {p.isPublished ? (
@@ -212,7 +258,7 @@ export function RegionalLandingAdminPanel() {
                   <td className="py-3">
                     <div className="flex flex-wrap gap-2">
                       <Link
-                        href={regionalLandingPath(p)}
+                        href={`/services/academy/region/${p.slug}`}
                         target="_blank"
                         className="inline-flex items-center gap-1 text-primary hover:underline"
                       >
@@ -251,6 +297,35 @@ export function RegionalLandingAdminPanel() {
             </p>
           )}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav
+          className="mt-6 flex items-center justify-center gap-2"
+          aria-label="SEO 페이지 목록"
+        >
+          <button
+            type="button"
+            disabled={listPage <= 1 || loading}
+            onClick={() => setListPage((p) => Math.max(1, p - 1))}
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            이전
+          </button>
+          <span className="px-2 text-sm text-muted">
+            {listPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={listPage >= totalPages || loading}
+            onClick={() => setListPage((p) => Math.min(totalPages, p + 1))}
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+          >
+            다음
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </nav>
       )}
     </section>
   );

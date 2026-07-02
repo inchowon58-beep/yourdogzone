@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, LogOut } from "lucide-react";
@@ -18,17 +18,47 @@ import { ListingAdminPanel } from "@/components/listing/ListingAdminPanel";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type Props = {
-  stats: AdminOverviewStats;
   username: string;
 };
+
+function emptyStats(): AdminOverviewStats {
+  return {
+    academy: { total: 0, premium: 0 },
+    regionalPages: { total: 0, published: 0 },
+    listings: {},
+    breeds: 0,
+  };
+}
 
 function isListingCategory(id: string): id is ListingCategory {
   return (LISTING_CATEGORIES as readonly string[]).includes(id);
 }
 
-export function MainAdminDashboard({ stats, username }: Props) {
+export function MainAdminDashboard({ username }: Props) {
   const router = useRouter();
   const [active, setActive] = useState<MainAdminSectionId | null>(null);
+  const [stats, setStats] = useState<AdminOverviewStats>(emptyStats);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/overview");
+        const data = await res.json();
+        if (!cancelled && res.ok && data.stats) {
+          setStats(data.stats as AdminOverviewStats);
+        }
+      } catch {
+        // 통계 없이 메뉴는 바로 사용 가능
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -43,6 +73,7 @@ export function MainAdminDashboard({ stats, username }: Props) {
   }
 
   function sectionStat(id: MainAdminSectionId): string {
+    if (statsLoading) return "집계 중…";
     if (id === "academy") {
       return `${stats.academy.total}건 (인증 ${stats.academy.premium})`;
     }

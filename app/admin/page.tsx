@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { isMainAdminAuthenticated } from "@/lib/admin/main-auth";
 import { getMainAdminCredentials } from "@/lib/admin/main-auth-core";
-import { getAdminOverviewStats } from "@/lib/admin/overview";
 import { MainAdminDashboard } from "@/components/admin/MainAdminDashboard";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -17,12 +16,11 @@ export default async function MainAdminPage() {
   const authed = await isMainAdminAuthenticated();
   if (!authed) redirect("/admin/login");
 
-  const stats = await getAdminOverviewStats();
   const { username } = getMainAdminCredentials();
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-      <MainAdminDashboard stats={stats} username={username} />
+      <MainAdminDashboard username={username} />
     </main>
   );
 }

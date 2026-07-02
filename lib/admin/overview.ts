@@ -1,42 +1,52 @@
 import "server-only";
 
-import { getAcademies } from "@/lib/academy/queries";
+import {
+  filterPremiumAcademies,
+  getCachedAcademyIndex,
+} from "@/lib/academy/academy-index";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
+import { getSeedBreeds } from "@/lib/breeds/data";
+import { fetchBreedsIndexFromR2 } from "@/lib/breeds/r2-read";
 import { LISTING_CATEGORIES } from "@/lib/listings/config";
-import { getListings } from "@/lib/listings/queries";
-import { getBreeds } from "@/lib/breeds/queries";
+import { fetchListingsFromR2 } from "@/lib/listings/r2-read";
 import type { AdminOverviewStats } from "@/lib/admin/service-links";
 
 export type { AdminOverviewStats } from "@/lib/admin/service-links";
 
+/** 관리자 대시보드 — index.json만 조회 (N+1 없음) */
 export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
-  const [academies, regional, breeds] = await Promise.all([
-    getAcademies(),
-    getAllRegionalLandings({ includeUnpublished: true }),
-    getBreeds(),
-  ]);
+  const [academyIndex, regional, breedsRemote, ...listingIndexes] =
+    await Promise.all([
+      getCachedAcademyIndex(),
+      getAllRegionalLandings({ includeUnpublished: true }),
+      fetchBreedsIndexFromR2(),
+      ...LISTING_CATEGORIES.map((cat) => fetchListingsFromR2(cat)),
+    ]);
 
   const listings: AdminOverviewStats["listings"] = {};
-  await Promise.all(
-    LISTING_CATEGORIES.map(async (cat) => {
-      const items = await getListings(cat);
-      listings[cat] = {
-        total: items.length,
-        premium: items.filter((i) => i.is_premium).length,
-      };
-    })
-  );
+  LISTING_CATEGORIES.forEach((cat, i) => {
+    const items = listingIndexes[i] ?? [];
+    listings[cat] = {
+      total: items.length,
+      premium: items.filter((item) => item.is_premium).length,
+    };
+  });
+
+  const breedSlugs = new Set([
+    ...getSeedBreeds().map((b) => b.slug),
+    ...breedsRemote.map((b) => b.slug),
+  ]);
 
   return {
     academy: {
-      total: academies.length,
-      premium: academies.filter((a) => a.is_premium).length,
+      total: academyIndex.length,
+      premium: filterPremiumAcademies(academyIndex).length,
     },
     regionalPages: {
       total: regional.length,
       published: regional.filter((p) => p.isPublished).length,
     },
     listings,
-    breeds: breeds.length,
+    breeds: breedSlugs.size,
   };
 }

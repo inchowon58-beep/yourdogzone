@@ -6,9 +6,12 @@ import {
 } from "@/lib/admin/main-auth-core";
 import {
   deleteRegionalLanding,
-  getAllRegionalLandings,
   upsertRegionalLanding,
 } from "@/lib/academy/regional-store";
+import {
+  getRegionalLandingForAdmin,
+  listRegionalLandingsForAdmin,
+} from "@/lib/academy/regional-admin-list";
 import { generateRegionalLandingFromKeyword } from "@/lib/academy/regional-generator";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
@@ -30,23 +33,53 @@ function revalidateRegional(slug?: string) {
   if (slug) revalidatePath(`/services/academy/region/${slug}`);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const denied = await requireMainAdmin();
   if (denied) return denied;
 
-  const pages = await getAllRegionalLandings({ includeUnpublished: true });
-  return NextResponse.json({ pages });
+  const { searchParams } = new URL(request.url);
+  const page = Number(searchParams.get("page") ?? "1");
+  const limit = Number(searchParams.get("limit") ?? "10");
+
+  const result = await listRegionalLandingsForAdmin({ page, limit });
+  return NextResponse.json(result);
 }
 
 export async function POST(request: Request) {
   const denied = await requireMainAdmin();
   if (denied) return denied;
 
-  let body: { action?: string; keyword?: string; page?: RegionalLandingInsert };
+  let body: {
+    action?: string;
+    keyword?: string;
+    slug?: string;
+    isPublished?: boolean;
+    page?: RegionalLandingInsert;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
+  }
+
+  if (body.action === "toggle_publish") {
+    const slug = body.slug?.trim();
+    if (!slug || typeof body.isPublished !== "boolean") {
+      return NextResponse.json({ error: "slug, isPublished 필요" }, { status: 400 });
+    }
+    const existing = await getRegionalLandingForAdmin(slug);
+    if (!existing) {
+      return NextResponse.json({ error: "페이지를 찾을 수 없습니다." }, { status: 404 });
+    }
+    const result = await upsertRegionalLanding({
+      ...existing,
+      isPublished: body.isPublished,
+    });
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
+    revalidateRegional(result.page.slug);
+    return NextResponse.json({ page: result.page });
   }
 
   if (body.action === "generate") {
