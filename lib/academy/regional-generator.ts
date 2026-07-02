@@ -131,22 +131,9 @@ export async function generateRegionalLandingFromKeyword(
     return {
       ...base,
       regionInfo: gemini.data.regionInfo,
-      regionInfoNearby: gemini.data.regionInfoNearby,
-      nearbyIntro: gemini.data.nearbyIntro,
       metaDescription: gemini.data.metaDescription,
-      metaDescriptionNearby: gemini.data.metaDescriptionNearby,
       seoBlocks: gemini.data.seoBlocks,
-      seoBlocksNearby: gemini.data.seoBlocksNearby,
       faqItems: gemini.data.faqItems,
-      faqItemsNearby: gemini.data.faqItemsNearby,
-      nearbyAreas:
-        gemini.data.nearbyAreas.length > 0
-          ? gemini.data.nearbyAreas
-          : nearbyAreas,
-      nearbyStations:
-        gemini.data.nearbyStations.length > 0
-          ? gemini.data.nearbyStations
-          : nearbyStations,
       geminiUsed: true,
     };
   }

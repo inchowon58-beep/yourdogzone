@@ -18,7 +18,6 @@ export function needsRegionalSeoContent(page: RegionalLandingPage): boolean {
   return !page.seoBlocks?.length;
 }
 
-/** 근방 구·역 — 상수/라벨만 사용 (Gemini·R2 불필요) */
 export async function fillRegionalNearbyGeo(
   page: RegionalLandingPage
 ): Promise<RegionalLandingPage> {
@@ -55,14 +54,9 @@ export async function fillRegionalSeoContent(
   const updated = {
     ...page,
     regionInfo: gemini.data.regionInfo,
-    regionInfoNearby: gemini.data.regionInfoNearby,
-    nearbyIntro: gemini.data.nearbyIntro ?? page.nearbyIntro,
     metaDescription: gemini.data.metaDescription,
-    metaDescriptionNearby: gemini.data.metaDescriptionNearby,
     seoBlocks: gemini.data.seoBlocks,
-    seoBlocksNearby: gemini.data.seoBlocksNearby,
     faqItems: gemini.data.faqItems,
-    faqItemsNearby: gemini.data.faqItemsNearby,
     nearbyAreas: nearbyLabels,
     nearbyStations,
   };

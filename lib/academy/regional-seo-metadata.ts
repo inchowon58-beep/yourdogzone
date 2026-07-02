@@ -23,10 +23,8 @@ export function buildRegionalLandingMetadata(
   const path = regionalLandingPath(page);
 
   const title = seoCtx.hasRecommendedAcademy
-    ? `${region} 애견미용학원 · ${seoCtx.recommendedAcademyName} 추천`
-    : seoCtx.hasNearbyRecommendedAcademy
-      ? `${region} 애견미용학원 · 인근 ${seoCtx.nearbyRecommendedAcademyName} 참고`
-      : `${region} 애견미용학원 추천 · ${region} 지역 미용학원 정보`;
+    ? `${region} 애견미용학원 · ${seoCtx.recommendedAcademyName}`
+    : `${region} 애견미용학원 추천 · ${region} 지역 미용학원 정보`;
 
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
