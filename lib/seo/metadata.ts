@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildOgImageMetadata, resolveOgImageUrls } from "@/lib/seo/og-image";
+import { OG_BRAND_LINE } from "@/lib/seo/og-image-render";
 
 type PageMetadataInput = {
   title: string;
@@ -31,6 +32,9 @@ export function buildPageMetadata({
   const ogOptions = { images, ogSubtitle };
   const ogImages = buildOgImageMetadata(ogImageAlt, ogOptions);
   const ogImageUrls = resolveOgImageUrls(ogOptions);
+  const brandedAlt = ogSubtitle
+    ? `${OG_BRAND_LINE} · ${ogSubtitle}`
+    : ogImageAlt;
 
   return {
     title,
@@ -44,7 +48,10 @@ export function buildPageMetadata({
       locale: "ko_KR",
       type,
       siteName: SITE_NAME,
-      images: ogImages,
+      images: ogImages.map((img) => ({
+        ...img,
+        alt: brandedAlt,
+      })),
     },
     twitter: {
       card: "summary_large_image",

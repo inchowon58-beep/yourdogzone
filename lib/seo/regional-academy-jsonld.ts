@@ -5,6 +5,7 @@ import {
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
+import { buildAcademyOgImageUrl } from "@/lib/seo/og-image";
 
 export function buildRegionalAcademyListJsonLd(
   page: RegionalLandingPage,
@@ -13,11 +14,13 @@ export function buildRegionalAcademyListJsonLd(
   const url = absoluteUrl(regionalLandingPath(page));
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
+  const brandedOg = buildAcademyOgImageUrl();
 
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: `${page.label} 애견미용학원`,
+    image: brandedOg,
     description: [
       `${page.label} 지역 애견미용학원 목록, 인증 추천 학원, 수강료·자격증·실습 환경 안내.`,
       nearbyAreas.length > 0

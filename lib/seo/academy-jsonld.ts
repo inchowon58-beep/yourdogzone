@@ -1,6 +1,7 @@
 import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildAcademySeoContent } from "@/lib/seo/academy-seo";
+import { buildAcademyOgImageUrl } from "@/lib/seo/og-image";
 
 export { buildAcademyDetailKeywords } from "@/lib/seo/academy-seo";
 
@@ -35,11 +36,12 @@ export function buildAcademyBreadcrumbJsonLd(academy: Academy) {
 
 export function buildAcademyLocalBusinessJsonLd(
   academy: Academy,
-  images: string[]
+  _images: string[]
 ) {
   const pageUrl = absoluteUrl(`/services/academy/${academy.slug}`);
   const areaName = `${academy.region_big} ${academy.region_small}`;
   const seo = buildAcademySeoContent(academy);
+  const brandedOg = buildAcademyOgImageUrl();
 
   return {
     "@context": "https://schema.org",
@@ -49,7 +51,7 @@ export function buildAcademyLocalBusinessJsonLd(
     alternateName: `${academy.name} 애견미용학원`,
     description: seo.description,
     url: pageUrl,
-    image: images.length ? images : undefined,
+    image: brandedOg,
     telephone: academy.phone ?? undefined,
     address: {
       "@type": "PostalAddress",

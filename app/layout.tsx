@@ -8,7 +8,7 @@ import {
   SITE_NAME,
 } from "@/lib/site/config";
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/seo/site-jsonld";
-import { buildBrandedOgImageUrl } from "@/lib/seo/og-image";
+import { getDefaultOgImageUrl } from "@/lib/seo/og-image";
 import { getSiteIconsMetadata } from "@/lib/site/favicon";
 import "./globals.css";
 
@@ -44,7 +44,9 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: buildBrandedOgImageUrl("반려견 생활 정보"),
+        url: getDefaultOgImageUrl(),
+        width: 1200,
+        height: 630,
         alt: `${SITE_NAME} | 반려동물 통합 포털`,
       },
     ],

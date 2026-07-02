@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildAcademyOgImageUrl } from "@/lib/seo/og-image";
 import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 
 export type AcademySeoContent = {
@@ -108,10 +109,11 @@ export function buildAcademyDetailKeywords(academy: Academy): string[] {
 
 export function buildAcademyWebPageJsonLd(
   academy: Academy,
-  images: string[]
+  _images: string[]
 ) {
   const seo = buildAcademySeoContent(academy);
   const pageUrl = absoluteUrl(seo.path);
+  const brandedOg = buildAcademyOgImageUrl();
 
   return {
     "@context": "https://schema.org",
@@ -138,7 +140,13 @@ export function buildAcademyWebPageJsonLd(
         addressCountry: "KR",
       },
     },
-    primaryImageOfPage: images[0] ?? undefined,
+    image: brandedOg,
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: brandedOg,
+      width: 1200,
+      height: 630,
+    },
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [

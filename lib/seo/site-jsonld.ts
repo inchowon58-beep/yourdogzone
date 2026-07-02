@@ -1,4 +1,5 @@
 import { absoluteUrl, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site/config";
+import { getDefaultOgImageUrl } from "@/lib/seo/og-image";
 
 export function buildWebSiteJsonLd() {
   return {
@@ -20,12 +21,15 @@ export function buildWebSiteJsonLd() {
 }
 
 export function buildOrganizationJsonLd() {
+  const logo = getDefaultOgImageUrl();
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
     url: absoluteUrl("/"),
     description: SITE_DESCRIPTION,
+    logo,
+    image: logo,
     areaServed: {
       "@type": "Country",
       name: "대한민국",
