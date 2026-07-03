@@ -88,6 +88,7 @@ export function RegionalLandingAdminPanel() {
       ).basePath;
       setMessage(
         `✓ 생성됨: ${data.page.label} → ${path}/region/${data.page.slug}` +
+          (data.isSlugVariant ? " (기존 페이지 있음 → 새 URL)" : "") +
           (data.geminiUsed ? " (Gemini)" : "") +
           (data.geminiError ? ` | Gemini 스킵: ${data.geminiError}` : "")
       );

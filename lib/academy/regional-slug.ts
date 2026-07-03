@@ -94,6 +94,29 @@ export function buildRegionalSlug(
   return `${base}-${suffix}`;
 }
 
+/** 이미 사용 중인 slug가 있으면 -2, -3 … 접미사로 새 slug 부여 */
+export function buildUniqueRegionalSlug(
+  label: string,
+  category: RegionalServiceCategory,
+  takenSlugs: Iterable<string>
+): string {
+  const taken = new Set(takenSlugs);
+  const base = buildRegionalSlug(label, category);
+  if (!taken.has(base)) return base;
+
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+export function isRegionalSlugVariant(
+  slug: string,
+  label: string,
+  category: RegionalServiceCategory
+): boolean {
+  return slug !== buildRegionalSlug(label, category);
+}
+
 export function isEnglishRegionalSlug(slug: string): boolean {
   return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug);
 }

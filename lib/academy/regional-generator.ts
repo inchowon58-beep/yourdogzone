@@ -10,6 +10,8 @@ import { getRegionalEntityIndex } from "@/lib/academy/regional-entity-index";
 import { inferRegionBig } from "@/lib/academy/region-metro";
 import {
   buildRegionalSlug,
+  buildUniqueRegionalSlug,
+  isRegionalSlugVariant,
   parseLabelFromKeyword,
 } from "@/lib/academy/regional-slug";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
@@ -31,6 +33,8 @@ const REGION_BIG_SET = new Set<string>(REGION_BIG_OPTIONS);
 export type RegionalGenerateResult = RegionalLandingInsert & {
   geminiUsed?: boolean;
   geminiError?: string;
+  /** 기존 페이지가 있어 대체 slug(-2 등)로 생성됨 */
+  isSlugVariant?: boolean;
 };
 
 function resolveNearbyGeoFallback(label: string): {
@@ -62,17 +66,21 @@ export async function generateRegionalLandingFromKeyword(
   const label = parseLabelFromKeyword(trimmed, category);
   if (!label) throw new Error("키워드에서 지역명을 추출할 수 없습니다.");
 
-  const slug = buildRegionalSlug(label, category);
   const regionBig = inferRegionBig(label);
   const query = REGION_BIG_SET.has(label) ? label : label;
   const pageKeyword = normalizeRegionalKeyword(trimmed, label, category);
 
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
-  const byLabel = new Map(
-    allLandings
-      .filter((p) => resolvePageCategory(p) === category)
-      .map((p) => [p.label, p])
+  const categoryLandings = allLandings.filter(
+    (p) => resolvePageCategory(p) === category
   );
+  const slug = buildUniqueRegionalSlug(
+    label,
+    category,
+    categoryLandings.map((p) => p.slug)
+  );
+  const isSlugVariant = isRegionalSlugVariant(slug, label, category);
+  const byLabel = new Map(categoryLandings.map((p) => [p.label, p]));
 
   const allEntities = await getRegionalEntityIndex(category);
   const entities = filterAcademies(allEntities, {
@@ -143,6 +151,7 @@ export async function generateRegionalLandingFromKeyword(
       faqItems: gemini.data.faqItems,
       isPublished: true,
       geminiUsed: true,
+      isSlugVariant,
     };
   }
 
@@ -170,5 +179,6 @@ export async function generateRegionalLandingFromKeyword(
     isPublished: true,
     geminiUsed: false,
     geminiError: gemini.error,
+    isSlugVariant,
   };
 }

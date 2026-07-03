@@ -6,6 +6,7 @@ import {
 } from "@/lib/admin/main-auth-core";
 import {
   deleteRegionalLanding,
+  insertRegionalLanding,
   upsertRegionalLanding,
 } from "@/lib/academy/regional-store";
 import {
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
     }
     try {
       const draft = await generateRegionalLandingFromKeyword(keyword, category);
-      const result = await upsertRegionalLanding(draft);
+      const result = await insertRegionalLanding(draft);
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: 500 });
       }
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
         generated: true,
         geminiUsed: draft.geminiUsed ?? false,
         geminiError: draft.geminiError,
+        isSlugVariant: draft.isSlugVariant ?? false,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "생성 실패";
@@ -149,7 +151,7 @@ export async function POST(request: Request) {
     for (const kw of keywords) {
       try {
         const draft = await generateRegionalLandingFromKeyword(kw, category);
-        const result = await upsertRegionalLanding(draft);
+        const result = await insertRegionalLanding(draft);
         if ("error" in result) errors.push(`${kw}: ${result.error}`);
         else created.push(result.page);
       } catch (e) {

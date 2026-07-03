@@ -159,6 +159,35 @@ export async function saveRegionalLandings(
   }
 }
 
+export async function insertRegionalLanding(
+  input: RegionalLandingInsert
+): Promise<{ page: RegionalLandingPage } | { error: string }> {
+  const now = new Date().toISOString();
+  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const category = resolvePageCategory(input);
+
+  const exists = all.some(
+    (p) => p.slug === input.slug && resolvePageCategory(p) === category
+  );
+  if (exists) {
+    return { error: `이미 등록된 URL입니다: ${input.slug}` };
+  }
+
+  const page: RegionalLandingPage = {
+    ...input,
+    category,
+    nearbySlugs: (input.nearbySlugs ?? []).slice(0, 5),
+    nearbyAreas: (input.nearbyAreas ?? []).slice(0, 5),
+    nearbyStations: (input.nearbyStations ?? []).slice(0, 5),
+    createdAt: input.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  const saved = await saveRegionalLandings([...all, page]);
+  if ("error" in saved) return saved;
+  return { page };
+}
+
 export async function upsertRegionalLanding(
   input: RegionalLandingInsert
 ): Promise<{ page: RegionalLandingPage } | { error: string }> {

@@ -12,6 +12,7 @@ export {
   getPublishedRegionalSlugs,
   resolveNearbyPages,
   upsertRegionalLanding,
+  insertRegionalLanding,
   deleteRegionalLanding,
 } from "@/lib/academy/regional-store";
 
