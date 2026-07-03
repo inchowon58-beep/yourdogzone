@@ -1,4 +1,6 @@
-/** 지역 애견미용학원 SEO 랜딩 페이지 (관리자에서 키워드로 자동 생성) */
+import type { RegionalServiceCategory } from "@/lib/seo/regional-service-config";
+
+/** 지역 서비스 SEO 랜딩 페이지 (관리자에서 키워드·카테고리로 자동 생성) */
 export type RegionalSeoBlockStored = {
   title: string;
   paragraphs: string[];
@@ -11,6 +13,8 @@ export type RegionalFaqItemStored = {
 };
 
 export type RegionalLandingPage = {
+  /** 서비스 카테고리 (미설정 시 academy) */
+  category?: RegionalServiceCategory;
   /** 영문 URL 슬러그 (예: ansan-dog-grooming-academy) */
   slug: string;
   /** 화면·SEO 지역명 (예: 안산) */

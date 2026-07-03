@@ -10,6 +10,21 @@ import type {
   RegionalLandingInsert,
   RegionalLandingPage,
 } from "@/lib/types/regional-landing";
+import {
+  resolvePageCategory,
+  type RegionalServiceCategory,
+} from "@/lib/seo/regional-service-config";
+
+function normalizeLandingPage(page: RegionalLandingPage): RegionalLandingPage {
+  return {
+    ...page,
+    category: resolvePageCategory(page),
+  };
+}
+
+function normalizeLandings(pages: RegionalLandingPage[]): RegionalLandingPage[] {
+  return pages.map(normalizeLandingPage);
+}
 
 const INDEX_KEY = "regional-landings/index.json";
 export const REGIONAL_LANDINGS_TAG = "regional-landings";
@@ -62,9 +77,10 @@ export async function fetchRegionalLandingsFromR2(options?: {
 const loadRegionalLandingsIndex = unstable_cache(
   async (): Promise<RegionalLandingPage[]> => {
     const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
-    return fromR2.length > 0 ? fromR2 : await readLocalSeed();
+    const pages = fromR2.length > 0 ? fromR2 : await readLocalSeed();
+    return normalizeLandings(pages);
   },
-  ["regional-landings-index-v1"],
+  ["regional-landings-index-v2"],
   { revalidate: 300, tags: [REGIONAL_LANDINGS_TAG] }
 );
 
@@ -78,19 +94,29 @@ export async function getAllRegionalLandings(options?: {
 
 export async function getRegionalLandingBySlug(
   slug: string,
-  options?: { allowUnpublished?: boolean }
+  options?: { allowUnpublished?: boolean; category?: RegionalServiceCategory }
 ): Promise<RegionalLandingPage | null> {
   const decoded = decodeURIComponent(slug).trim();
   const all = await getAllRegionalLandings({ includeUnpublished: true });
-  const found = all.find((p) => p.slug === decoded);
+  const found = all.find((p) => {
+    if (p.slug !== decoded) return false;
+    if (options?.category && resolvePageCategory(p) !== options.category) {
+      return false;
+    }
+    return true;
+  });
   if (!found) return null;
   if (!found.isPublished && !options?.allowUnpublished) return null;
   return found;
 }
 
-export async function getPublishedRegionalSlugs(): Promise<string[]> {
+export async function getPublishedRegionalSlugs(
+  category?: RegionalServiceCategory
+): Promise<string[]> {
   const pages = await getAllRegionalLandings();
-  return pages.map((p) => p.slug);
+  return pages
+    .filter((p) => !category || resolvePageCategory(p) === category)
+    .map((p) => p.slug);
 }
 
 export async function saveRegionalLandings(
@@ -139,9 +165,14 @@ export async function upsertRegionalLanding(
   const now = new Date().toISOString();
   const all = await getAllRegionalLandings({ includeUnpublished: true });
 
-  const idx = all.findIndex((p) => p.slug === input.slug);
+  const idx = all.findIndex(
+    (p) =>
+      p.slug === input.slug &&
+      resolvePageCategory(p) === resolvePageCategory(input)
+  );
   const page: RegionalLandingPage = {
     ...input,
+    category: resolvePageCategory(input),
     nearbySlugs: (input.nearbySlugs ?? []).slice(0, 5),
     nearbyAreas: (input.nearbyAreas ?? []).slice(0, 5),
     nearbyStations: (input.nearbyStations ?? []).slice(0, 5),
@@ -159,10 +190,15 @@ export async function upsertRegionalLanding(
 }
 
 export async function deleteRegionalLanding(
-  slug: string
+  slug: string,
+  category?: RegionalServiceCategory
 ): Promise<{ ok: true } | { error: string }> {
   const all = await getAllRegionalLandings({ includeUnpublished: true });
-  const next = all.filter((p) => p.slug !== slug);
+  const next = all.filter((p) => {
+    if (p.slug !== slug) return true;
+    if (category && resolvePageCategory(p) !== category) return true;
+    return false;
+  });
   if (next.length === all.length) return { error: "페이지를 찾을 수 없습니다." };
   return saveRegionalLandings(next);
 }
@@ -170,8 +206,13 @@ export async function deleteRegionalLanding(
 export async function resolveNearbyPages(
   page: RegionalLandingPage
 ): Promise<RegionalLandingPage[]> {
+  const category = resolvePageCategory(page);
   const all = await getAllRegionalLandings();
-  const bySlug = new Map(all.map((p) => [p.slug, p]));
+  const bySlug = new Map(
+    all
+      .filter((p) => resolvePageCategory(p) === category)
+      .map((p) => [p.slug, p])
+  );
   return page.nearbySlugs
     .map((s) => bySlug.get(s))
     .filter((p): p is RegionalLandingPage => Boolean(p && p.isPublished))

@@ -5,7 +5,8 @@ import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import { generateRegionalLandingWithGemini } from "@/lib/ai/regional-landing-gemini";
 import { generateRegionalNearbyGeoWithGemini } from "@/lib/ai/regional-nearby-geo-gemini";
-import { filterAcademies, getCachedAcademyIndex } from "@/lib/academy/academy-index";
+import { filterAcademies } from "@/lib/academy/academy-index";
+import { getRegionalEntityIndex } from "@/lib/academy/regional-entity-index";
 import { inferRegionBig } from "@/lib/academy/region-metro";
 import {
   buildRegionalSlug,
@@ -18,6 +19,12 @@ import {
   pickRecommendedAcademy,
 } from "@/lib/academy/regional-seo-vars";
 import type { RegionalLandingInsert, RegionalLandingPage } from "@/lib/types/regional-landing";
+import {
+  getRegionalServiceConfig,
+  normalizeRegionalKeyword,
+  resolvePageCategory,
+  type RegionalServiceCategory,
+} from "@/lib/seo/regional-service-config";
 
 const REGION_BIG_SET = new Set<string>(REGION_BIG_OPTIONS);
 
@@ -38,39 +45,46 @@ function resolveNearbyGeoFallback(label: string): {
 
 function buildNearbySlugs(
   areas: string[],
+  category: RegionalServiceCategory,
   byLabel: Map<string, RegionalLandingPage>
 ): string[] {
   return areas
-    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
+    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area, category))
     .slice(0, 5);
 }
-
-/** 키워드 한 줄로 지역 랜딩 페이지 생성 (Gemini SEO + 근방 GEO 단일 호출) */
+/** 키워드·카테고리로 지역 랜딩 페이지 생성 (Gemini SEO + 근방 GEO 단일 호출) */
 export async function generateRegionalLandingFromKeyword(
-  keyword: string
+  keyword: string,
+  category: RegionalServiceCategory = "academy"
 ): Promise<RegionalGenerateResult> {
   const trimmed = keyword.trim();
-  const label = parseLabelFromKeyword(trimmed);
+  const serviceConfig = getRegionalServiceConfig(category);
+  const label = parseLabelFromKeyword(trimmed, category);
   if (!label) throw new Error("키워드에서 지역명을 추출할 수 없습니다.");
 
-  const slug = buildRegionalSlug(label);
+  const slug = buildRegionalSlug(label, category);
   const regionBig = inferRegionBig(label);
   const query = REGION_BIG_SET.has(label) ? label : label;
-  const pageKeyword = trimmed.includes("애견") ? trimmed : `${label} 애견미용학원`;
+  const pageKeyword = normalizeRegionalKeyword(trimmed, label, category);
 
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
-  const byLabel = new Map(allLandings.map((p) => [p.label, p]));
+  const byLabel = new Map(
+    allLandings
+      .filter((p) => resolvePageCategory(p) === category)
+      .map((p) => [p.label, p])
+  );
 
-  const allAcademies = await getCachedAcademyIndex();
-  const academies = filterAcademies(allAcademies, {
+  const allEntities = await getRegionalEntityIndex(category);
+  const entities = filterAcademies(allEntities, {
     region: regionBig ?? "전체",
     query,
   });
   const recommended = pickRecommendedAcademy(
-    academies.filter((a) => a.is_premium)
+    entities.filter((a) => a.is_premium)
   );
 
   const draftPage: RegionalLandingPage = {
+    category,
     slug,
     label,
     keyword: pageKeyword,
@@ -85,18 +99,21 @@ export async function generateRegionalLandingFromKeyword(
   const premiumPick = pickRegionalPremiumForSeo(
     draftPage,
     recommended,
-    allAcademies
+    allEntities
   );
   const seoCtx = buildRegionalSeoContext(
     label,
     recommended,
-    premiumPick.seoNearby
+    premiumPick.seoNearby,
+    serviceConfig
   );
 
   const gemini = await generateRegionalLandingWithGemini({
     label,
     keyword: pageKeyword,
     regionBig,
+    serviceTitle: serviceConfig.title,
+    entityLabel: serviceConfig.entityLabel,
     recommendedAcademyName: seoCtx.recommendedAcademyName,
     recommendedAcademyHighlight: seoCtx.recommendedAcademyHighlight,
     hasRecommendedAcademy: seoCtx.hasRecommendedAcademy,
@@ -111,12 +128,13 @@ export async function generateRegionalLandingFromKeyword(
   if (gemini.ok) {
     const { nearbyAreas, nearbyStations } = gemini.data;
     return {
+      category,
       slug,
       label,
       keyword: pageKeyword,
       regionBig,
       query,
-      nearbySlugs: buildNearbySlugs(nearbyAreas, byLabel),
+      nearbySlugs: buildNearbySlugs(nearbyAreas, category, byLabel),
       nearbyAreas,
       nearbyStations,
       regionInfo: gemini.data.regionInfo,
@@ -140,12 +158,13 @@ export async function generateRegionalLandingFromKeyword(
   }
 
   return {
+    category,
     slug,
     label,
     keyword: pageKeyword,
     regionBig,
     query,
-    nearbySlugs: buildNearbySlugs(nearbyAreas, byLabel),
+    nearbySlugs: buildNearbySlugs(nearbyAreas, category, byLabel),
     nearbyAreas,
     nearbyStations,
     isPublished: true,

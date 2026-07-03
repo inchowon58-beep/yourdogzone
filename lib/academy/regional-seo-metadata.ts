@@ -3,28 +3,32 @@ import "server-only";
 import type { Metadata } from "next";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
-import { buildRegionalLandingKeywords } from "@/lib/academy/regional-seo-content";
-import { buildNearbyDistrictKeywords } from "@/lib/constants/region-nearby-districts";
-import { buildNearbyStationKeywords } from "@/lib/constants/region-nearby-stations";
 import {
   resolveNearbyAreas,
   resolveNearbyStations,
 } from "@/lib/academy/resolve-nearby-areas";
 import { resolveBoundMetaDescription } from "@/lib/academy/regional-seo-resolve";
 import type { RegionalSeoContext } from "@/lib/academy/regional-seo-vars";
+import {
+  buildRegionalLandingKeywords,
+  getRegionalServiceConfig,
+  resolvePageCategory,
+} from "@/lib/seo/regional-service-config";
 
 export function buildRegionalLandingMetadata(
   page: RegionalLandingPage,
   seoCtx: RegionalSeoContext
 ): Metadata {
+  const category = resolvePageCategory(page);
+  const config = getRegionalServiceConfig(category);
   const { region } = seoCtx;
   const path = regionalLandingPath(page);
+  const serviceTitle = config.title;
 
   const title = seoCtx.hasRecommendedAcademy
-    ? `${region} 애견미용학원 · ${seoCtx.recommendedAcademyName}`
-    : `${region} 애견미용학원 추천 · ${region} 지역 미용학원 정보`;
+    ? `${region} ${serviceTitle} · ${seoCtx.recommendedAcademyName}`
+    : `${region} ${serviceTitle} 추천 · ${region} 지역 ${config.singular} 정보`;
 
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
@@ -32,45 +36,48 @@ export function buildRegionalLandingMetadata(
   const description = [
     resolveBoundMetaDescription(page, seoCtx),
     nearbyAreas.length > 0
-      ? `근방 ${nearbyAreas.join(", ")} 애견미용학원 검색·비교도 함께 안내합니다.`
+      ? `근방 ${nearbyAreas.join(", ")} ${serviceTitle} 검색·비교도 함께 안내합니다.`
       : null,
     nearbyStations.length > 0
-      ? `인근 ${nearbyStations.join(", ")} 지하철역 애견미용학원도 함께 안내합니다.`
+      ? `인근 ${nearbyStations.join(", ")} 지하철역 ${serviceTitle}도 함께 안내합니다.`
       : null,
   ]
     .filter(Boolean)
     .join(" ");
 
   const keywords = [
-    ...buildRegionalLandingKeywords(region),
-    ...buildNearbyDistrictKeywords(nearbyAreas),
-    ...buildNearbyStationKeywords(nearbyStations),
+    ...buildRegionalLandingKeywords(region, category),
+    ...nearbyAreas.flatMap((area) => [
+      `${area} ${serviceTitle}`,
+      `${area} ${config.defaultKeywordSuffix}`,
+    ]),
+    ...nearbyStations.flatMap((station) => [`${station} ${serviceTitle}`]),
     ...(seoCtx.hasRecommendedAcademy
       ? [
           `${region} ${seoCtx.recommendedAcademyName}`,
-          `${seoCtx.recommendedAcademyName} 애견미용학원`,
+          `${seoCtx.recommendedAcademyName} ${serviceTitle}`,
         ]
       : []),
     ...(seoCtx.hasNearbyRecommendedAcademy
       ? [
           `${seoCtx.nearbyRecommendedRegion} ${seoCtx.nearbyRecommendedAcademyName}`,
-          `${seoCtx.nearbyRecommendedAcademyName} 애견미용학원`,
+          `${seoCtx.nearbyRecommendedAcademyName} ${serviceTitle}`,
         ]
       : []),
   ];
 
   const imageAlt = seoCtx.hasRecommendedAcademy
-    ? `${seoCtx.recommendedAcademyName} ${region} 애견미용학원`
+    ? `${seoCtx.recommendedAcademyName} ${region} ${serviceTitle}`
     : seoCtx.hasNearbyRecommendedAcademy
-      ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 애견미용학원`
-      : `${region} 애견미용학원 정보`;
+      ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 ${config.entityLabel}`
+      : `${region} ${serviceTitle} 정보`;
 
   return buildPageMetadata({
     title,
     description,
     path,
     keywords,
-    ogSubtitle: ACADEMY_OG_SUBTITLE,
+    ogSubtitle: config.ogSubtitle,
     imageAlt,
   });
 }

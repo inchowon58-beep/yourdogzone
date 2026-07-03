@@ -6,11 +6,18 @@ import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildAcademyOgImageUrl } from "@/lib/seo/og-image";
+import {
+  getRegionalServiceConfig,
+  resolvePageCategory,
+} from "@/lib/seo/regional-service-config";
 
 export function buildRegionalAcademyListJsonLd(
   page: RegionalLandingPage,
-  academyCount: number
+  entityCount: number
 ) {
+  const category = resolvePageCategory(page);
+  const config = getRegionalServiceConfig(category);
+  const serviceTitle = config.title;
   const url = absoluteUrl(regionalLandingPath(page));
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
@@ -19,15 +26,15 @@ export function buildRegionalAcademyListJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${page.label} 애견미용학원`,
+    name: `${page.label} ${serviceTitle}`,
     image: brandedOg,
     description: [
-      `${page.label} 지역 애견미용학원 목록, 인증 추천 학원, 수강료·자격증·실습 환경 안내.`,
+      `${page.label} 지역 ${serviceTitle} 목록, ${config.premiumLabel}, 이용 안내.`,
       nearbyAreas.length > 0
-        ? `근방 지역: ${nearbyAreas.map((a) => `${a} 애견미용학원`).join(", ")}.`
+        ? `근방 지역: ${nearbyAreas.map((a) => `${a} ${serviceTitle}`).join(", ")}.`
         : null,
       nearbyStations.length > 0
-        ? `인근 지하철역: ${nearbyStations.map((s) => `${s} 애견미용학원`).join(", ")}.`
+        ? `인근 지하철역: ${nearbyStations.map((s) => `${s} ${serviceTitle}`).join(", ")}.`
         : null,
     ]
       .filter(Boolean)
@@ -35,19 +42,19 @@ export function buildRegionalAcademyListJsonLd(
     url,
     inLanguage: "ko-KR",
     keywords: [
-      `${page.label} 애견미용학원`,
-      ...nearbyAreas.map((a) => `${a} 애견미용학원`),
-      ...nearbyStations.map((s) => `${s} 애견미용학원`),
+      `${page.label} ${serviceTitle}`,
+      ...nearbyAreas.map((a) => `${a} ${serviceTitle}`),
+      ...nearbyStations.map((s) => `${s} ${serviceTitle}`),
     ].join(", "),
     isPartOf: {
       "@type": "WebSite",
       name: SITE_NAME,
       url: absoluteUrl("/"),
     },
-    numberOfItems: academyCount,
+    numberOfItems: entityCount,
     about: {
       "@type": "Thing",
-      name: `${page.label} 애견미용학원`,
+      name: `${page.label} ${serviceTitle}`,
       areaServed: [
         {
           "@type": "Place",
@@ -60,7 +67,7 @@ export function buildRegionalAcademyListJsonLd(
         },
         ...nearbyAreas.map((area) => ({
           "@type": "Place",
-          name: `${area} 애견미용학원`,
+          name: `${area} ${serviceTitle}`,
           address: {
             "@type": "PostalAddress",
             addressCountry: "KR",
@@ -70,7 +77,7 @@ export function buildRegionalAcademyListJsonLd(
         })),
         ...nearbyStations.map((station) => ({
           "@type": "Place",
-          name: `${station} 애견미용학원`,
+          name: `${station} ${serviceTitle}`,
           address: {
             "@type": "PostalAddress",
             addressCountry: "KR",
@@ -85,14 +92,14 @@ export function buildRegionalAcademyListJsonLd(
           hasPart: [
             ...nearbyAreas.map((area, i) => ({
               "@type": "WebPage",
-              name: `${area} 애견미용학원`,
-              description: `${page.label} 인근 ${area} 애견미용학원 검색·비교 안내`,
+              name: `${area} ${serviceTitle}`,
+              description: `${page.label} 인근 ${area} ${serviceTitle} 검색·비교 안내`,
               position: i + 1,
             })),
             ...nearbyStations.map((station, i) => ({
               "@type": "WebPage",
-              name: `${station} 애견미용학원`,
-              description: `${page.label} 인근 ${station} 지하철역 애견미용학원 검색·비교 안내`,
+              name: `${station} ${serviceTitle}`,
+              description: `${page.label} 인근 ${station} 지하철역 ${serviceTitle} 검색·비교 안내`,
               position: nearbyAreas.length + i + 1,
             })),
           ],
@@ -102,6 +109,9 @@ export function buildRegionalAcademyListJsonLd(
 }
 
 export function buildRegionalAcademyBreadcrumbJsonLd(page: RegionalLandingPage) {
+  const category = resolvePageCategory(page);
+  const config = getRegionalServiceConfig(category);
+  const serviceTitle = config.title;
   const url = absoluteUrl(regionalLandingPath(page));
 
   return {
@@ -117,13 +127,13 @@ export function buildRegionalAcademyBreadcrumbJsonLd(page: RegionalLandingPage) 
       {
         "@type": "ListItem",
         position: 2,
-        name: "애견미용학원",
-        item: absoluteUrl("/services/academy"),
+        name: serviceTitle,
+        item: absoluteUrl(config.basePath),
       },
       {
         "@type": "ListItem",
         position: 3,
-        name: `${page.label} 애견미용학원`,
+        name: `${page.label} ${serviceTitle}`,
         item: url,
       },
     ],

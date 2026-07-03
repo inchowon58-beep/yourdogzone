@@ -4,10 +4,15 @@ import { formatStationName } from "@/lib/constants/region-nearby-stations";
 type Props = {
   currentLabel: string;
   stations: string[];
+  keywordSuffix?: string;
 };
 
 /** 인근 지하철역 — SEO 키워드 노출 (링크·R2 조회 없음) */
-export function NearbyStationSeoSection({ currentLabel, stations }: Props) {
+export function NearbyStationSeoSection({
+  currentLabel,
+  stations,
+  keywordSuffix = "애견미용학원",
+}: Props) {
   if (stations.length === 0) return null;
 
   const items = stations.map((s) => formatStationName(s));
@@ -22,10 +27,10 @@ export function NearbyStationSeoSection({ currentLabel, stations }: Props) {
         id="nearby-stations-heading"
         className="mt-1 text-lg font-bold text-foreground sm:text-xl"
       >
-        {currentLabel} 인근 지하철역 애견미용학원 검색
+        {currentLabel} 인근 지하철역 {keywordSuffix} 검색
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">
-        {currentLabel}에서 애견미용학원을 찾을 때 통학 거리·환승을 고려해
+        {currentLabel}에서 {keywordSuffix}을 찾을 때 통학 거리·환승을 고려해
         함께 검색하는 인근 지하철역입니다.
       </p>
 
@@ -36,7 +41,7 @@ export function NearbyStationSeoSection({ currentLabel, stations }: Props) {
               <Train className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
               <span>
                 <span className="block text-sm font-semibold text-foreground">
-                  {station} 애견미용학원
+                  {station} {keywordSuffix}
                 </span>
                 <span className="mt-0.5 block text-xs text-muted">
                   {currentLabel} 인근 · {station}
@@ -48,8 +53,8 @@ export function NearbyStationSeoSection({ currentLabel, stations }: Props) {
       </ul>
 
       <p className="sr-only">
-        {currentLabel} 애견미용학원 인근 지하철역:{" "}
-        {items.map((s) => `${s} 애견미용학원`).join(", ")}
+        {currentLabel} {keywordSuffix} 인근 지하철역:{" "}
+        {items.map((s) => `${s} ${keywordSuffix}`).join(", ")}
       </p>
     </section>
   );

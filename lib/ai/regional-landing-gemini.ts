@@ -271,6 +271,8 @@ function buildRegionalGeminiPrompt(input: {
   label: string;
   keyword: string;
   regionBig?: string;
+  serviceTitle: string;
+  entityLabel: string;
   hasRecommendedAcademy: boolean;
   hasNearbyRecommendedAcademy: boolean;
   hasAcademyImage: boolean;
@@ -281,39 +283,40 @@ function buildRegionalGeminiPrompt(input: {
     : input.label;
 
   const academyRule = input.hasRecommendedAcademy
-    ? `- 지역 내 인증 추천 학원이 있음 → 소제목·본문 중 1곳 이상에서 [{recommendedAcademyName}]과 {recommendedAcademyHighlight}를 자연스럽게 언급.`
+    ? `- 지역 내 인증 추천 ${input.entityLabel}이 있음 → 소제목·본문 중 1곳 이상에서 [{recommendedAcademyName}]과 {recommendedAcademyHighlight}를 자연스럽게 언급.`
     : input.hasNearbyRecommendedAcademy
-      ? `- 해당 지역 인증 추천은 없음 → 인근 {nearbyRecommendedRegion}의 [{nearbyRecommendedAcademyName}]을 통학·상담 관점에서 1회 언급 가능. {region}에 학원이 있다고 쓰지 말 것.`
-      : `- 인증 추천 학원 정보 없음 → 학원 선택 가이드·비교 정보 위주.`;
+      ? `- 해당 지역 인증 추천은 없음 → 인근 {nearbyRecommendedRegion}의 [{nearbyRecommendedAcademyName}]을 방문·상담 관점에서 1회 언급 가능. {region}에 ${input.entityLabel}이 있다고 쓰지 말 것.`
+      : `- 인증 추천 ${input.entityLabel} 정보 없음 → 선택 가이드·비교 정보 위주.`;
 
   const imageRule = input.hasAcademyImage
-    ? `- 첨부 학원 이미지 참고 가능(과장 금지).`
+    ? `- 첨부 이미지 참고 가능(과장 금지).`
     : "";
 
   const lengthRule = input.compact
     ? `8. **간결 모드**: regionInfo 2문장, paragraphs 각 1~2문장, bullets 3개, FAQ answer 2문장 이내.`
     : "";
 
-  return `너는 네이버·구글 SEO에 최적화된 애견미용학원 지역 랜딩 글 작성 전문가다.
+  return `너는 네이버·구글 SEO에 최적화된 ${input.serviceTitle} 지역 랜딩 글 작성 전문가다.
 키워드 "${input.keyword}"에 맞는 **단일 SEO 문서**와 **근방 지역·지하철역**을 한 번에 작성한다.
 
 [컨텍스트]
 - 타깃 키워드: ${input.keyword}
+- 서비스: ${input.serviceTitle}
 - 행정·지역: ${regionLine}
 
-[플레이스홀더 — 실제 지명·학원명으로 치환하지 말 것]
+[플레이스홀더 — 실제 지명·업체명으로 치환하지 말 것]
 - 지역명은 반드시 ${REGION_VAR}만 사용. "서울 ${REGION_VAR}"처럼 시·도와 함께 쓰지 말 것.
 - ${RECOMMENDED_ACADEMY_VAR}, ${RECOMMENDED_HIGHLIGHT_VAR}
 - ${NEARBY_REGION_VAR}, ${NEARBY_ACADEMY_VAR}, ${NEARBY_HIGHLIGHT_VAR}
 
 [작성 규칙]
-1. SEO: "${input.label} 애견미용학원" 키워드를 제목·본문·FAQ에 총 5회 이상 자연스럽게 배치.
+1. SEO: "${input.label} ${input.serviceTitle}" 키워드를 제목·본문·FAQ에 총 5회 이상 자연스럽게 배치.
 2. seoBlocks 소제목 3~4개. 각 블록: title 1개, paragraphs 2~3문장, bullets 3~5개.
-3. faqItems 4개 — 수강료, 학원 선택, 국비지원·자격증, 인증 추천 관련.
+3. faqItems 4개 — ${input.serviceTitle} 이용·선택·요금·인증 추천 관련.
 4. metaDescription: 네이버 검색 스니펫용 140자 내외, 키워드 포함.
 5. regionInfo: 페이지 상단 히어로 2~3문장.
-6. nearbyAreas: ${input.label} 기준 통학·검색 연관 **구·동·읍·면** 5곳. 광역시·도 이름(서울, 경기 등) 제외. 기준 지역 자신 제외. 실존 지명만.
-7. nearbyStations: 통학에 자주 쓰이는 **지하철·전철역** 5곳. 반드시 '역'으로 끝남. 실존 역만.
+6. nearbyAreas: ${input.label} 기준 검색 연관 **구·동·읍·면** 5곳. 광역시·도 이름(서울, 경기 등) 제외. 기준 지역 자신 제외. 실존 지명만.
+7. nearbyStations: 이용에 자주 쓰이는 **지하철·전철역** 5곳. 반드시 '역'으로 끝남. 실존 역만.
 ${academyRule}
 ${imageRule}
 ${lengthRule}
@@ -337,6 +340,8 @@ export async function generateRegionalLandingWithGemini(input: {
   label: string;
   keyword: string;
   regionBig?: string;
+  serviceTitle: string;
+  entityLabel: string;
   recommendedAcademyName: string;
   recommendedAcademyHighlight: string;
   hasRecommendedAcademy: boolean;
@@ -366,6 +371,8 @@ export async function generateRegionalLandingWithGemini(input: {
         label: input.label,
         keyword: input.keyword,
         regionBig: input.regionBig,
+        serviceTitle: input.serviceTitle,
+        entityLabel: input.entityLabel,
         hasRecommendedAcademy: input.hasRecommendedAcademy,
         hasNearbyRecommendedAcademy: input.hasNearbyRecommendedAcademy,
         hasAcademyImage,

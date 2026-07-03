@@ -15,6 +15,10 @@ type Props = {
   blocks: RegionalSeoBlock[];
   intro: string;
   featuredAcademy?: FeaturedAcademy | null;
+  serviceTitle?: string;
+  servicePath?: string;
+  entityLabel?: string;
+  guideSectionTitle?: string;
 };
 
 export function RegionalAcademySeoSection({
@@ -22,6 +26,10 @@ export function RegionalAcademySeoSection({
   blocks,
   intro,
   featuredAcademy,
+  serviceTitle = "애견미용학원",
+  servicePath = "/services/academy",
+  entityLabel = "학원",
+  guideSectionTitle = "수강 전 꼭 알아둘 정보",
 }: Props) {
   return (
     <section
@@ -29,13 +37,13 @@ export function RegionalAcademySeoSection({
       aria-labelledby="regional-seo-heading"
     >
       <p className="mb-2 text-sm font-semibold text-primary">
-        {label} 애견미용학원 가이드
+        {label} {serviceTitle} 가이드
       </p>
       <h2
         id="regional-seo-heading"
         className="text-xl font-bold tracking-tight text-foreground sm:text-2xl"
       >
-        {label} 애견미용학원 — 수강 전 꼭 알아둘 정보
+        {label} {serviceTitle} — {guideSectionTitle}
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{intro}</p>
 
@@ -43,11 +51,11 @@ export function RegionalAcademySeoSection({
         <div className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5">
           <p className="text-sm font-semibold text-foreground">
             {featuredAcademy.isNearby
-              ? `인근 ${featuredAcademy.regionLabel ?? "지역"} 인증 추천 학원`
-              : `${label} 인증 추천 학원`}
+              ? `인근 ${featuredAcademy.regionLabel ?? "지역"} 인증 추천 ${entityLabel}`
+              : `${label} 인증 추천 ${entityLabel}`}
             {" · "}
             <Link
-              href={`/services/academy/${featuredAcademy.slug}`}
+              href={`${servicePath}/${featuredAcademy.slug}`}
               className="text-primary hover:underline"
             >
               {featuredAcademy.name}

@@ -9,6 +9,10 @@ import { pageNeedsNearbyGeoFill } from "@/lib/academy/resolve-nearby-areas";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import type { RegionalSeoContext } from "@/lib/academy/regional-seo-vars";
 import { upsertRegionalLanding } from "@/lib/academy/regional-store";
+import {
+  getRegionalServiceConfig,
+  resolvePageCategory,
+} from "@/lib/seo/regional-service-config";
 
 export function needsRegionalNearbyGeo(page: RegionalLandingPage): boolean {
   return pageNeedsNearbyGeoFill(page);
@@ -18,12 +22,24 @@ export function needsRegionalSeoContent(page: RegionalLandingPage): boolean {
   return !page.seoBlocks?.length;
 }
 
+function buildCategoryNearbyMap(
+  allLandings: RegionalLandingPage[],
+  category: ReturnType<typeof resolvePageCategory>
+): Map<string, RegionalLandingPage> {
+  return new Map(
+    allLandings
+      .filter((p) => resolvePageCategory(p) === category)
+      .map((p) => [p.label, p])
+  );
+}
+
 /** 근방 GEO만 Gemini로 채움 (SEO는 이미 있는 기존 페이지용) */
 export async function fillRegionalNearbyGeo(
   page: RegionalLandingPage
 ): Promise<RegionalLandingPage> {
   if (!needsRegionalNearbyGeo(page)) return page;
 
+  const category = resolvePageCategory(page);
   const geo = await generateRegionalNearbyGeoWithGemini({
     label: page.label,
     keyword: page.keyword,
@@ -32,9 +48,9 @@ export async function fillRegionalNearbyGeo(
   if (!geo.ok) return page;
 
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
-  const byLabel = new Map(allLandings.map((p) => [p.label, p]));
+  const byLabel = buildCategoryNearbyMap(allLandings, category);
   const nearbySlugs = geo.data.nearbyAreas
-    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
+    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area, category))
     .slice(0, 5);
 
   const updated = {
@@ -57,10 +73,15 @@ export async function fillRegionalSeoContent(
 ): Promise<RegionalLandingPage> {
   if (!needsRegionalSeoContent(page)) return page;
 
+  const category = resolvePageCategory(page);
+  const serviceConfig = getRegionalServiceConfig(category);
+
   const gemini = await generateRegionalLandingWithGemini({
     label: page.label,
     keyword: page.keyword,
     regionBig: page.regionBig ?? inferRegionBig(page.label),
+    serviceTitle: serviceConfig.title,
+    entityLabel: serviceConfig.entityLabel,
     recommendedAcademyName: ctx.recommendedAcademyName,
     recommendedAcademyHighlight: ctx.recommendedAcademyHighlight,
     hasRecommendedAcademy: ctx.hasRecommendedAcademy,
@@ -73,9 +94,9 @@ export async function fillRegionalSeoContent(
   if (!gemini.ok) return page;
 
   const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
-  const byLabel = new Map(allLandings.map((p) => [p.label, p]));
+  const byLabel = buildCategoryNearbyMap(allLandings, category);
   const nearbySlugs = gemini.data.nearbyAreas
-    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area))
+    .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area, category))
     .slice(0, 5);
 
   const updated = {

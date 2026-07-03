@@ -14,6 +14,11 @@ import {
   EyeOff,
 } from "lucide-react";
 import type { RegionalLandingAdminSummary } from "@/lib/academy/regional-admin-list";
+import {
+  getRegionalServiceConfig,
+  REGIONAL_SERVICE_CATEGORIES,
+  type RegionalServiceCategory,
+} from "@/lib/seo/regional-service-config";
 
 const PAGE_SIZE = 10;
 
@@ -25,15 +30,24 @@ export function RegionalLandingAdminPanel() {
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [batchKeywords, setBatchKeywords] = useState("");
+  const [category, setCategory] = useState<RegionalServiceCategory>("academy");
+  const [filterCategory, setFilterCategory] = useState<RegionalServiceCategory | "">(
+    ""
+  );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const categoryConfig = getRegionalServiceConfig(category);
 
   const load = useCallback(async (page: number) => {
     setLoading(true);
     setError("");
     try {
+      const categoryQuery = filterCategory
+        ? `&category=${encodeURIComponent(filterCategory)}`
+        : "";
       const res = await fetch(
-        `/api/admin/regional-landings?page=${page}&limit=${PAGE_SIZE}`
+        `/api/admin/regional-landings?page=${page}&limit=${PAGE_SIZE}${categoryQuery}`
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "불러오기 실패");
@@ -46,11 +60,15 @@ export function RegionalLandingAdminPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterCategory]);
 
   useEffect(() => {
     void load(listPage);
   }, [listPage, load]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [filterCategory]);
 
   async function generateOne() {
     const kw = keyword.trim();
@@ -61,12 +79,15 @@ export function RegionalLandingAdminPanel() {
       const res = await fetch("/api/admin/regional-landings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate", keyword: kw }),
+        body: JSON.stringify({ action: "generate", keyword: kw, category }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
+      const path = getRegionalServiceConfig(
+        data.page.category ?? category
+      ).basePath;
       setMessage(
-        `✓ 생성됨: ${data.page.label} → /region/${data.page.slug}` +
+        `✓ 생성됨: ${data.page.label} → ${path}/region/${data.page.slug}` +
           (data.geminiUsed ? " (Gemini)" : "") +
           (data.geminiError ? ` | Gemini 스킵: ${data.geminiError}` : "")
       );
@@ -87,7 +108,11 @@ export function RegionalLandingAdminPanel() {
       const res = await fetch("/api/admin/regional-landings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate_batch", keyword: text }),
+        body: JSON.stringify({
+          action: "generate_batch",
+          keyword: text,
+          category,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "일괄 생성 실패");
@@ -110,16 +135,17 @@ export function RegionalLandingAdminPanel() {
       body: JSON.stringify({
         action: "toggle_publish",
         slug: summary.slug,
+        category: summary.category,
         isPublished: !summary.isPublished,
       }),
     });
     if (res.ok) void load(listPage);
   }
 
-  async function remove(slug: string) {
+  async function remove(summary: RegionalLandingAdminSummary) {
     if (!confirm("이 지역 페이지를 삭제할까요?")) return;
     const res = await fetch(
-      `/api/admin/regional-landings?slug=${encodeURIComponent(slug)}`,
+      `/api/admin/regional-landings?slug=${encodeURIComponent(summary.slug)}&category=${encodeURIComponent(summary.category)}`,
       { method: "DELETE" }
     );
     if (res.ok) {
@@ -147,11 +173,11 @@ export function RegionalLandingAdminPanel() {
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold">
             <Globe className="h-5 w-5 text-primary" />
-            지역 애견미용학원 SEO 페이지
+            지역 SEO 페이지
           </h2>
           <p className="mt-1 text-sm text-muted">
-            키워드 입력 시 영문 URL로 페이지가 자동 생성됩니다. 최신 등록순 ·
-            페이지당 {PAGE_SIZE}건
+            카테고리 선택 후 키워드 입력 시 영문 URL로 페이지가 자동 생성됩니다.
+            최신 등록순 · 페이지당 {PAGE_SIZE}건
           </p>
         </div>
         <button
@@ -164,6 +190,21 @@ export function RegionalLandingAdminPanel() {
         </button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium text-muted">발행 카테고리</label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as RegionalServiceCategory)}
+          className="rounded-lg border px-3 py-2 text-sm"
+        >
+          {REGIONAL_SERVICE_CATEGORIES.map((id) => (
+            <option key={id} value={id}>
+              {getRegionalServiceConfig(id).title}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-6 grid gap-4 md:grid-cols-2">
         <div className="rounded-xl bg-gray-50 p-4">
           <p className="mb-2 text-sm font-semibold">키워드 1건 생성</p>
@@ -171,7 +212,7 @@ export function RegionalLandingAdminPanel() {
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="예: 평택 애견미용학원"
+              placeholder={`예: 평택 ${categoryConfig.defaultKeywordSuffix}`}
               className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
               onKeyDown={(e) => e.key === "Enter" && void generateOne()}
             />
@@ -190,7 +231,7 @@ export function RegionalLandingAdminPanel() {
           <textarea
             value={batchKeywords}
             onChange={(e) => setBatchKeywords(e.target.value)}
-            placeholder={"안산 애견미용학원\n부천 애견미용학원"}
+            placeholder={`안산 ${categoryConfig.defaultKeywordSuffix}\n부천 ${categoryConfig.defaultKeywordSuffix}`}
             rows={3}
             className="mb-2 w-full rounded-lg border px-3 py-2 text-sm"
           />
@@ -202,6 +243,24 @@ export function RegionalLandingAdminPanel() {
             일괄 생성
           </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium text-muted">목록 필터</label>
+        <select
+          value={filterCategory}
+          onChange={(e) =>
+            setFilterCategory(e.target.value as RegionalServiceCategory | "")
+          }
+          className="rounded-lg border px-3 py-2 text-sm"
+        >
+          <option value="">전체 카테고리</option>
+          {REGIONAL_SERVICE_CATEGORIES.map((id) => (
+            <option key={id} value={id}>
+              {getRegionalServiceConfig(id).title}
+            </option>
+          ))}
+        </select>
       </div>
 
       {message && <p className="mb-3 text-sm text-emerald-700">{message}</p>}
@@ -218,10 +277,11 @@ export function RegionalLandingAdminPanel() {
         <p className="text-sm text-muted">불러오는 중…</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[800px] text-left text-sm">
             <thead>
               <tr className="border-b text-muted">
                 <th className="py-2 pr-4">등록일</th>
+                <th className="py-2 pr-4">카테고리</th>
                 <th className="py-2 pr-4">지역</th>
                 <th className="py-2 pr-4">키워드</th>
                 <th className="py-2 pr-4">영문 URL</th>
@@ -232,9 +292,12 @@ export function RegionalLandingAdminPanel() {
             </thead>
             <tbody>
               {pages.map((p) => (
-                <tr key={p.slug} className="border-b border-gray-50">
+                <tr key={`${p.category}-${p.slug}`} className="border-b border-gray-50">
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
                     {formatDate(p.createdAt)}
+                  </td>
+                  <td className="py-3 pr-4 text-muted whitespace-nowrap">
+                    {p.categoryTitle}
                   </td>
                   <td className="py-3 pr-4 font-medium">{p.label}</td>
                   <td className="py-3 pr-4 text-muted">{p.keyword}</td>
@@ -258,7 +321,7 @@ export function RegionalLandingAdminPanel() {
                   <td className="py-3">
                     <div className="flex flex-wrap gap-2">
                       <Link
-                        href={`/services/academy/region/${p.slug}`}
+                        href={p.path}
                         target="_blank"
                         className="inline-flex items-center gap-1 text-primary hover:underline"
                       >
@@ -279,7 +342,7 @@ export function RegionalLandingAdminPanel() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void remove(p.slug)}
+                        onClick={() => void remove(p)}
                         className="inline-flex items-center gap-1 text-red-600 hover:underline"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -293,7 +356,8 @@ export function RegionalLandingAdminPanel() {
           </table>
           {pages.length === 0 && (
             <p className="py-8 text-center text-sm text-muted">
-              등록된 지역 페이지가 없습니다. 키워드를 입력해 생성하세요.
+              등록된 지역 페이지가 없습니다. 카테고리를 선택하고 키워드를 입력해
+              생성하세요.
             </p>
           )}
         </div>

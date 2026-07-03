@@ -5,6 +5,8 @@ import type {
 } from "@/lib/types/regional-landing";
 import type { RegionalSeoBlock } from "@/lib/academy/regional-seo-content";
 import { getAcademyThumbnail } from "@/lib/academy/images";
+import type { RegionalServiceConfig } from "@/lib/seo/regional-service-config";
+import { getRegionalServiceConfig } from "@/lib/seo/regional-service-config";
 
 /** Gemini·템플릿에 그대로 넣는 플레이스홀더 (렌더 시 실시간 치환) */
 export const REGION_VAR = "{region}";
@@ -28,11 +30,20 @@ export type RegionalSeoContext = {
   ogImageUrl: string | null;
 };
 
-const DEFAULT_ACADEMY_NAME = "인증 추천 애견미용학원";
 const DEFAULT_HIGHLIGHT =
   "실습견 매칭·위생 관리·1:1 맞춤 피드백 등 교육 품질 기준";
 
-const DEFAULT_NEARBY_NAME = "인근 인증 추천 애견미용학원";
+function defaultEntityName(config: RegionalServiceConfig): string {
+  return `인증 추천 ${config.entityLabel}`;
+}
+
+function defaultNearbyName(config: RegionalServiceConfig): string {
+  return `인근 인증 추천 ${config.entityLabel}`;
+}
+
+function defaultLocalRecommendedLabel(config: RegionalServiceConfig): string {
+  return `해당 지역 인증 추천 ${config.entityLabel}`;
+}
 
 export function pickRecommendedAcademy(
   premiumAcademies: Academy[]
@@ -55,8 +66,11 @@ function academyHighlight(academy: Academy | null): string {
 
 const DEFAULT_LOCAL_RECOMMENDED_LABEL = "해당 지역 인증 추천 애견미용학원";
 
-/** 본문 변수 치환 — 지역 추천 없을 때 인근 학원명을 recommended 슬롯에 넣지 않음 */
-export function resolveBindableAcademyNames(ctx: RegionalSeoContext): {
+/** 본문 변수 치환 — 지역 추천 없을 때 인근 업체명을 recommended 슬롯에 넣지 않음 */
+export function resolveBindableAcademyNames(
+  ctx: RegionalSeoContext,
+  config: RegionalServiceConfig = getRegionalServiceConfig("academy")
+): {
   recommended: string;
   nearby: string;
   highlight: string;
@@ -64,9 +78,9 @@ export function resolveBindableAcademyNames(ctx: RegionalSeoContext): {
 } {
   const recommended = ctx.hasRecommendedAcademy
     ? ctx.recommendedAcademyName
-    : DEFAULT_LOCAL_RECOMMENDED_LABEL;
+    : defaultLocalRecommendedLabel(config);
 
-  const nearby = ctx.nearbyRecommendedAcademyName || DEFAULT_NEARBY_NAME;
+  const nearby = ctx.nearbyRecommendedAcademyName || defaultNearbyName(config);
 
   const highlight = ctx.hasRecommendedAcademy
     ? ctx.recommendedAcademyHighlight
@@ -89,7 +103,8 @@ export function pickRegionalSeoImageAcademy(
 export function buildRegionalSeoContext(
   regionLabel: string,
   recommended: Academy | null,
-  nearbyRecommended: Academy | null = null
+  nearbyRecommended: Academy | null = null,
+  serviceConfig: RegionalServiceConfig = getRegionalServiceConfig("academy")
 ): RegionalSeoContext {
   const hasRecommendedAcademy = Boolean(recommended);
   const nearby = !hasRecommendedAcademy ? nearbyRecommended : null;
@@ -97,7 +112,7 @@ export function buildRegionalSeoContext(
 
   return {
     region: regionLabel,
-    recommendedAcademyName: recommended?.name ?? DEFAULT_ACADEMY_NAME,
+    recommendedAcademyName: recommended?.name ?? defaultEntityName(serviceConfig),
     recommendedAcademyHighlight: academyHighlight(recommended),
     recommendedAcademySlug: recommended?.slug,
     hasRecommendedAcademy,
@@ -111,10 +126,11 @@ export function buildRegionalSeoContext(
 
 export function bindRegionalSeoText(
   text: string,
-  ctx: RegionalSeoContext
+  ctx: RegionalSeoContext,
+  serviceConfig?: RegionalServiceConfig
 ): string {
   const { recommended, nearby, highlight, nearbyHighlight } =
-    resolveBindableAcademyNames(ctx);
+    resolveBindableAcademyNames(ctx, serviceConfig);
 
   let bound = text
     .replaceAll(REGION_VAR, ctx.region)
@@ -125,7 +141,7 @@ export function bindRegionalSeoText(
     .replaceAll(NEARBY_HIGHLIGHT_VAR, nearbyHighlight)
     .replaceAll(`[${RECOMMENDED_ACADEMY_VAR}]`, recommended)
     .replaceAll(`[${NEARBY_ACADEMY_VAR}]`, nearby)
-    .replaceAll(`[${DEFAULT_ACADEMY_NAME}]`, recommended)
+    .replaceAll(`[인증 추천 애견미용학원]`, recommended)
     .replace(/\[\{recommendedAcademyName\}\]/g, recommended)
     .replace(/\[\{nearbyRecommendedAcademyName\}\]/g, nearby)
     .replace(/\[\{nearbyAcademyName\}\]/g, nearby);
@@ -160,22 +176,26 @@ export function bindRegionalSeoText(
 
 export function bindRegionalSeoBlocks(
   blocks: RegionalSeoBlockStored[],
-  ctx: RegionalSeoContext
+  ctx: RegionalSeoContext,
+  serviceConfig?: RegionalServiceConfig
 ): RegionalSeoBlock[] {
   return blocks.map((block) => ({
-    title: bindRegionalSeoText(block.title, ctx),
-    paragraphs: block.paragraphs.map((p) => bindRegionalSeoText(p, ctx)),
-    bullets: block.bullets.map((b) => bindRegionalSeoText(b, ctx)),
+    title: bindRegionalSeoText(block.title, ctx, serviceConfig),
+    paragraphs: block.paragraphs.map((p) =>
+      bindRegionalSeoText(p, ctx, serviceConfig)
+    ),
+    bullets: block.bullets.map((b) => bindRegionalSeoText(b, ctx, serviceConfig)),
   }));
 }
 
 export function bindRegionalFaqItems(
   items: RegionalFaqItemStored[],
-  ctx: RegionalSeoContext
+  ctx: RegionalSeoContext,
+  serviceConfig?: RegionalServiceConfig
 ): RegionalFaqItemStored[] {
   return items.map((item) => ({
-    question: bindRegionalSeoText(item.question, ctx),
-    answer: bindRegionalSeoText(item.answer, ctx),
+    question: bindRegionalSeoText(item.question, ctx, serviceConfig),
+    answer: bindRegionalSeoText(item.answer, ctx, serviceConfig),
   }));
 }
 

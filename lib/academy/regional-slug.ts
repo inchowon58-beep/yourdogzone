@@ -1,3 +1,6 @@
+import type { RegionalServiceCategory } from "@/lib/seo/regional-service-config";
+import { getRegionalServiceConfig } from "@/lib/seo/regional-service-config";
+
 /** 한글 지역명 → 영문 슬러그 (URL용) */
 const ROMANIZE: Record<string, string> = {
   서울: "seoul",
@@ -58,12 +61,13 @@ const ROMANIZE: Record<string, string> = {
   제주: "jeju",
 };
 
-const KEYWORD_NOISE =
-  /애견미용학원|애견미용|반려견\s*미용|미용학원|미용\s*학원|반려견|강아지|학원/g;
-
-/** 키워드에서 지역 라벨 추출 (예: "안산 애견미용학원" → "안산") */
-export function parseLabelFromKeyword(keyword: string): string {
-  let text = keyword.trim().replace(KEYWORD_NOISE, " ");
+/** 키워드에서 지역 라벨 추출 */
+export function parseLabelFromKeyword(
+  keyword: string,
+  category: RegionalServiceCategory = "academy"
+): string {
+  const noise = getRegionalServiceConfig(category).keywordNoise;
+  let text = keyword.trim().replace(noise, " ");
   text = text.replace(/\s+/g, " ").trim();
   if (!text) return keyword.trim().split(/\s+/)[0] ?? "";
   return text.split(/\s+/)[0] ?? text;
@@ -80,10 +84,14 @@ export function romanizeLabel(label: string): string {
   return `region-${Buffer.from(key, "utf8").toString("hex").slice(0, 12)}`;
 }
 
-/** 영문 슬러그 생성: ansan-dog-grooming-academy */
-export function buildRegionalSlug(label: string): string {
+/** 영문 슬러그 생성 (카테고리별 suffix) */
+export function buildRegionalSlug(
+  label: string,
+  category: RegionalServiceCategory = "academy"
+): string {
   const base = romanizeLabel(label);
-  return `${base}-dog-grooming-academy`;
+  const suffix = getRegionalServiceConfig(category).slugSuffix;
+  return `${base}-${suffix}`;
 }
 
 export function isEnglishRegionalSlug(slug: string): boolean {
