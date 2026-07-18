@@ -213,7 +213,7 @@ export function RegionalLandingAdminPanel() {
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder={`예: 평택 ${categoryConfig.defaultKeywordSuffix}`}
+              placeholder={`예: 평택 ${categoryConfig.defaultKeywordSuffix} / 평택강아지파양`}
               className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
               onKeyDown={(e) => e.key === "Enter" && void generateOne()}
             />
@@ -232,7 +232,7 @@ export function RegionalLandingAdminPanel() {
           <textarea
             value={batchKeywords}
             onChange={(e) => setBatchKeywords(e.target.value)}
-            placeholder={`안산 ${categoryConfig.defaultKeywordSuffix}\n부천 ${categoryConfig.defaultKeywordSuffix}`}
+            placeholder={`안산 ${categoryConfig.defaultKeywordSuffix}\n부천강아지파양`}
             rows={3}
             className="mb-2 w-full rounded-lg border px-3 py-2 text-sm"
           />

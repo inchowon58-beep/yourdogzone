@@ -178,7 +178,6 @@ export async function POST(request: Request) {
   }
 
   const category = resolvePageCategory(page);
-  const config = getRegionalServiceConfig(category);
 
   const result = await upsertRegionalLanding({
     ...page,
@@ -188,8 +187,7 @@ export async function POST(request: Request) {
     nearbyStations: (page.nearbyStations ?? getNearbyStations(page.label, 5)).slice(0, 5),
     keyword:
       page.keyword ||
-      normalizeRegionalKeyword("", page.label, category) ||
-      `${page.label} ${config.defaultKeywordSuffix}`,
+      normalizeRegionalKeyword("", page.label, category),
     isPublished: page.isPublished ?? true,
   });
   if ("error" in result) {

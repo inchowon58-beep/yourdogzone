@@ -25,10 +25,11 @@ export function buildRegionalLandingMetadata(
   const { region } = seoCtx;
   const path = regionalLandingPath(page);
   const serviceTitle = config.title;
+  const pageKeyword = page.keyword?.trim() || `${region} ${serviceTitle}`;
 
   const title = seoCtx.hasRecommendedAcademy
-    ? `${region} ${serviceTitle} · ${seoCtx.recommendedAcademyName}`
-    : `${region} ${serviceTitle} 추천 · ${region} 지역 ${config.singular} 정보`;
+    ? `${pageKeyword} · ${seoCtx.recommendedAcademyName}`
+    : `${pageKeyword} 추천 · ${region} 지역 ${config.singular} 정보`;
 
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
@@ -46,6 +47,7 @@ export function buildRegionalLandingMetadata(
     .join(" ");
 
   const keywords = [
+    pageKeyword,
     ...buildRegionalLandingKeywords(region, category),
     ...nearbyAreas.flatMap((area) => [
       `${area} ${serviceTitle}`,
@@ -67,10 +69,10 @@ export function buildRegionalLandingMetadata(
   ];
 
   const imageAlt = seoCtx.hasRecommendedAcademy
-    ? `${seoCtx.recommendedAcademyName} ${region} ${serviceTitle}`
+    ? `${seoCtx.recommendedAcademyName} ${pageKeyword}`
     : seoCtx.hasNearbyRecommendedAcademy
       ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 ${config.entityLabel}`
-      : `${region} ${serviceTitle} 정보`;
+      : `${pageKeyword} 정보`;
 
   return buildPageMetadata({
     title,

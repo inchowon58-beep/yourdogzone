@@ -6,9 +6,11 @@ import { useState } from "react";
 import { Menu, PawPrint, X } from "lucide-react";
 
 const NAV_LINKS = [
+  { href: "/health", label: "질병백과" },
+  { href: "/tools/feeding", label: "급여량" },
+  { href: "/tools/food", label: "먹어도되나요" },
   { href: "/services/academy", label: "애견미용학원" },
   { href: "/dognose", label: "견종소개" },
-  { href: "/qna", label: "Q&A" },
 ];
 
 export function Header() {

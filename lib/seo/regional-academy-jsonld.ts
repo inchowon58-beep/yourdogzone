@@ -18,6 +18,7 @@ export function buildRegionalAcademyListJsonLd(
   const category = resolvePageCategory(page);
   const config = getRegionalServiceConfig(category);
   const serviceTitle = config.title;
+  const pageKeyword = page.keyword?.trim() || `${page.label} ${serviceTitle}`;
   const url = absoluteUrl(regionalLandingPath(page));
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
@@ -26,10 +27,10 @@ export function buildRegionalAcademyListJsonLd(
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${page.label} ${serviceTitle}`,
+    name: pageKeyword,
     image: brandedOg,
     description: [
-      `${page.label} 지역 ${serviceTitle} 목록, ${config.premiumLabel}, 이용 안내.`,
+      `${pageKeyword} 목록, ${config.premiumLabel}, 이용 안내.`,
       nearbyAreas.length > 0
         ? `근방 지역: ${nearbyAreas.map((a) => `${a} ${serviceTitle}`).join(", ")}.`
         : null,
@@ -42,6 +43,7 @@ export function buildRegionalAcademyListJsonLd(
     url,
     inLanguage: "ko-KR",
     keywords: [
+      pageKeyword,
       `${page.label} ${serviceTitle}`,
       ...nearbyAreas.map((a) => `${a} ${serviceTitle}`),
       ...nearbyStations.map((s) => `${s} ${serviceTitle}`),
@@ -54,7 +56,7 @@ export function buildRegionalAcademyListJsonLd(
     numberOfItems: entityCount,
     about: {
       "@type": "Thing",
-      name: `${page.label} ${serviceTitle}`,
+      name: pageKeyword,
       areaServed: [
         {
           "@type": "Place",
@@ -112,6 +114,7 @@ export function buildRegionalAcademyBreadcrumbJsonLd(page: RegionalLandingPage) 
   const category = resolvePageCategory(page);
   const config = getRegionalServiceConfig(category);
   const serviceTitle = config.title;
+  const pageKeyword = page.keyword?.trim() || `${page.label} ${serviceTitle}`;
   const url = absoluteUrl(regionalLandingPath(page));
 
   return {
@@ -133,7 +136,7 @@ export function buildRegionalAcademyBreadcrumbJsonLd(page: RegionalLandingPage) 
       {
         "@type": "ListItem",
         position: 3,
-        name: `${page.label} ${serviceTitle}`,
+        name: pageKeyword,
         item: url,
       },
     ],

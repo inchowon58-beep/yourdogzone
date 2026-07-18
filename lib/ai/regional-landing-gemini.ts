@@ -310,11 +310,11 @@ function buildRegionalGeminiPrompt(input: {
 - ${NEARBY_REGION_VAR}, ${NEARBY_ACADEMY_VAR}, ${NEARBY_HIGHLIGHT_VAR}
 
 [작성 규칙]
-1. SEO: "${input.label} ${input.serviceTitle}" 키워드를 제목·본문·FAQ에 총 5회 이상 자연스럽게 배치.
-2. seoBlocks 소제목 3~4개. 각 블록: title 1개, paragraphs 2~3문장, bullets 3~5개.
-3. faqItems 4개 — ${input.serviceTitle} 이용·선택·요금·인증 추천 관련.
-4. metaDescription: 네이버 검색 스니펫용 140자 내외, 키워드 포함.
-5. regionInfo: 페이지 상단 히어로 2~3문장.
+1. SEO: 타깃 키워드 "${input.keyword}"를 제목·본문·FAQ에 총 5회 이상 자연스럽게 배치. 카테고리명(${input.serviceTitle})으로 임의 치환하지 말 것.
+2. seoBlocks 소제목 3~4개. 각 블록: title 1개, paragraphs 2~3문장, bullets 3~5개. 소제목·본문도 "${input.keyword}" 의도를 유지.
+3. faqItems 4개 — "${input.keyword}"·${input.serviceTitle} 이용·선택·요금·인증 추천 관련.
+4. metaDescription: 네이버 검색 스니펫용 140자 내외, 타깃 키워드 "${input.keyword}" 포함.
+5. regionInfo: 페이지 상단 히어로 2~3문장. 타깃 키워드 의도 유지.
 6. nearbyAreas: ${input.label} 기준 검색 연관 **구·동·읍·면** 5곳. 광역시·도 이름(서울, 경기 등) 제외. 기준 지역 자신 제외. 실존 지명만.
 7. nearbyStations: 이용에 자주 쓰이는 **지하철·전철역** 5곳. 반드시 '역'으로 끝남. 실존 역만.
 ${academyRule}

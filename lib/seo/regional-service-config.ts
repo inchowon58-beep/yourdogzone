@@ -73,9 +73,9 @@ const LISTING_SLUG_SUFFIX: Record<ListingCategory, string> = {
 
 const LISTING_KEYWORD_NOISE: Record<ListingCategory, RegExp> = {
   adoption:
-    /강아지분양|강아지\s*분양|견종\s*분양|입양|분양|반려견|강아지|업체/g,
+    /강아지분양|강아지\s*분양|견종\s*분양|강아지입양|입양|분양|반려견|강아지|업체/g,
   shelter:
-    /강아지보호소|강아지\s*보호소|유기견|구조견|보호소|반려견|강아지/g,
+    /강아지보호소|강아지\s*보호소|강아지파양|유기견보호소|유기동물|입양센터|보호센터|유기견|구조견|보호소|파양|반려견|강아지/g,
   funeral:
     /강아지장례식장|강아지\s*장례식장|강아지장례|반려견\s*장례|펫\s*장례|장례식장|장례|반려견|강아지/g,
   breeder:
@@ -151,15 +151,35 @@ export function buildRegionalLandingKeywords(
   ];
 }
 
+/**
+ * 지역 SEO 발행 키워드.
+ * 입력한 변형 키워드를 그대로 쓰고, 비어 있을 때만 카테고리 기본 접미사로 보정한다.
+ */
 export function normalizeRegionalKeyword(
   keyword: string,
   label: string,
   category: RegionalServiceCategory
 ): string {
   const trimmed = keyword.trim();
+  if (trimmed) return trimmed;
   const suffix = getRegionalServiceConfig(category).defaultKeywordSuffix;
-  if (trimmed.includes(suffix) || trimmed.includes(suffix.replace(/\s/g, ""))) {
-    return trimmed;
+  return `${label} ${suffix}`.trim();
+}
+
+/** 키워드에서 지역 라벨을 뺀 테마 부분 (예: 대전강아지파양 → 강아지파양) */
+export function extractRegionalKeywordTheme(
+  keyword: string,
+  label: string,
+  category: RegionalServiceCategory
+): string {
+  const trimmed = keyword.trim();
+  if (!trimmed) {
+    return getRegionalServiceConfig(category).defaultKeywordSuffix;
   }
-  return `${label} ${suffix}`;
+  const escaped = label.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!escaped) return trimmed;
+  const withoutLabel = trimmed
+    .replace(new RegExp(`^${escaped}\\s*`), "")
+    .trim();
+  return withoutLabel || trimmed;
 }

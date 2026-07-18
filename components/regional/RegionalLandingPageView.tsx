@@ -26,6 +26,7 @@ import {
 } from "@/lib/seo/regional-academy-jsonld";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 import {
+  extractRegionalKeywordTheme,
   getRegionalServiceConfig,
   resolvePageCategory,
 } from "@/lib/seo/regional-service-config";
@@ -85,6 +86,14 @@ export function RegionalLandingPageView({ bundle }: Props) {
       }
     : null;
 
+  const pageKeyword =
+    page.keyword?.trim() || `${label} ${config.title}`;
+  const keywordTheme = extractRegionalKeywordTheme(
+    pageKeyword,
+    label,
+    category
+  );
+
   const listTitle = isNearbyFallback
     ? `${nearbySourceLabel ?? "인근"} ${config.title} (${label} 인근)`
     : `${label} ${config.title} 목록`;
@@ -113,7 +122,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
           {label} 지역
         </p>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-          {label} {config.title}
+          {pageKeyword}
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
       </section>
@@ -187,13 +196,13 @@ export function RegionalLandingPageView({ bundle }: Props) {
       <NearbyDistrictSeoSection
         currentLabel={label}
         areas={nearbyAreas}
-        keywordSuffix={config.title}
+        keywordSuffix={keywordTheme}
       />
 
       <NearbyStationSeoSection
         currentLabel={label}
         stations={nearbyStations}
-        keywordSuffix={config.title}
+        keywordSuffix={keywordTheme}
       />
 
       {pageCtx.all.length === 0 && (

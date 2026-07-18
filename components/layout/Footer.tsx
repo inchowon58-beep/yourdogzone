@@ -1,6 +1,11 @@
 import Link from "next/link";
 
 const FOOTER_LINKS = [
+  { label: "증상·질병 백과", href: "/health" },
+  { label: "급여량 계산기", href: "/tools/feeding" },
+  { label: "사람 나이 계산기", href: "/tools/human-age" },
+  { label: "멍BTI", href: "/tools/mbti" },
+  { label: "먹어도 되나요", href: "/tools/food" },
   { label: "애견미용학원", href: "/services/academy" },
   { label: "강아지분양", href: "/services/adoption" },
   { label: "강아지보호소", href: "/services/shelter" },

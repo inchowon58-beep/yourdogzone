@@ -12,7 +12,7 @@ export function SearchBar() {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
-    router.push(`/dynamic-landing/${encodeURIComponent(trimmed)}`);
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }
 
   return (
@@ -23,7 +23,7 @@ export function SearchBar() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="원하는 키워드를 입력하세요"
+          placeholder="증상·질병·먹이·서비스를 검색하세요"
           className="h-12 w-full rounded-2xl bg-white pl-11 pr-[4.75rem] text-sm text-foreground shadow-[var(--card-shadow)] outline-none transition-shadow placeholder:text-gray-400 focus:shadow-[var(--card-shadow-hover)] focus:ring-2 focus:ring-primary/20 sm:h-14 sm:pl-14 sm:pr-28 sm:text-base"
         />
         <button

@@ -1,5 +1,6 @@
 import { SearchBar } from "@/components/home/SearchBar";
 import { ServiceGrid } from "@/components/home/ServiceGrid";
+import { ToolsGrid } from "@/components/home/ToolsGrid";
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
@@ -7,17 +8,19 @@ export const metadata: Metadata = {
   ...buildPageMetadata({
     title: "유아독존 | 반려견과 함께하는 모든 정보",
     description:
-      "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.",
+      "증상·질병 백과, 급여량 계산기, 사람 나이, 멍BTI, 먹어도 되나요부터 애견미용학원·분양·병원까지 — 반려 생활의 모든 것을 한곳에서.",
     path: "/",
     ogSubtitle: "반려견 생활 정보",
     keywords: [
       "유아독존",
       "반려견",
       "강아지",
+      "반려동물 질병",
+      "급여량 계산기",
+      "멍BTI",
+      "강아지 먹으면 안 되는 음식",
       "애견미용학원",
-      "강아지분양",
       "동물병원",
-      "견종소개",
     ],
   }),
   title: {
@@ -47,6 +50,7 @@ export default function Home() {
           </div>
         </div>
 
+        <ToolsGrid />
         <ServiceGrid />
       </section>
     </main>
