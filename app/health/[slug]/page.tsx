@@ -44,7 +44,7 @@ export default async function HealthDetailPage({ params }: Props) {
   const related = relatedGuides(guide);
 
   return (
-    <main className="w-full min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="w-full min-w-0 px-4 py-8 sm:px-6 sm:py-12">
       <Link
         href="/health"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

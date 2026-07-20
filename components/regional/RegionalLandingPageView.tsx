@@ -99,7 +99,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
     : `${label} ${config.title} 목록`;
 
   return (
-    <main className="w-full min-w-0 max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-14">
+    <main className="w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:py-14">
       <JsonLd
         data={[
           buildRegionalAcademyListJsonLd(page, pageCtx.all.length),

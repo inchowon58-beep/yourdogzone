@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SiteWideLayout } from "@/components/layout/SiteWideLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   getSiteUrl,
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     "반려견",
     "강아지",
     "애견미용학원",
-    "강아지분양",
+    "애견샵",
     "동물병원",
     "견종소개",
     "유아독존",
@@ -56,6 +57,7 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   icons: getSiteIconsMetadata(),
+  manifest: "/manifest.webmanifest",
   verification: {
     other: {
       "naver-site-verification": "4b76245dea128c61246f068d9449786517ecd73d",
@@ -81,8 +83,8 @@ export default function RootLayout({
       <body className="flex min-h-full w-full flex-col overflow-x-hidden antialiased">
         <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />
-        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col items-center overflow-x-hidden">
-          {children}
+        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden">
+          <SiteWideLayout>{children}</SiteWideLayout>
         </div>
         <Footer />
       </body>

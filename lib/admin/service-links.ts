@@ -31,6 +31,21 @@ export const SERVICE_ADMIN_LINKS = [
 export const MAIN_ADMIN_SECTIONS = [
   ...SERVICE_ADMIN_LINKS,
   {
+    id: "care-intake",
+    title: "안심입소 신청",
+    publicHref: "/care-matching",
+  },
+  {
+    id: "care-shelter-partners",
+    title: "보호소 파트너",
+    publicHref: "/care-matching/partner",
+  },
+  {
+    id: "side-banners",
+    title: "홈 좌우 배너",
+    publicHref: "/",
+  },
+  {
     id: "regional",
     title: "지역 SEO 페이지",
     publicHref: "/services/academy",

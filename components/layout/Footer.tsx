@@ -7,7 +7,7 @@ const FOOTER_LINKS = [
   { label: "멍BTI", href: "/tools/mbti" },
   { label: "먹어도 되나요", href: "/tools/food" },
   { label: "애견미용학원", href: "/services/academy" },
-  { label: "강아지분양", href: "/services/adoption" },
+  { label: "애견샵", href: "/services/adoption" },
   { label: "강아지보호소", href: "/services/shelter" },
   { label: "동물병원", href: "/services/hospital" },
   { label: "견종소개", href: "/dognose" },
@@ -19,7 +19,7 @@ export function Footer() {
 
   return (
     <footer className="mt-auto w-full min-w-0 border-t border-gray-100 bg-white">
-      <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+      <div className="mx-auto w-full min-w-0 max-w-[92rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-6">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <div>
             <p className="text-base font-bold text-foreground">유아독존</p>

@@ -60,7 +60,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
   return (
     <main
-      className={`w-full min-w-0 max-w-4xl px-4 py-8 sm:px-6 sm:py-10 ${listing.is_premium ? "pb-4" : "pb-14"}`}
+      className={`w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 ${listing.is_premium ? "pb-4" : "pb-14"}`}
     >
       <Link
         href={basePath}

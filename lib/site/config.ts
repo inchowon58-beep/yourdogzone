@@ -1,6 +1,6 @@
 export const SITE_NAME = "유아독존";
 export const SITE_DESCRIPTION =
-  "애견미용학원, 강아지분양, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.";
+  "애견미용학원, 애견샵, 보호소, 장례식장, 브리더, 견종소개, 동물병원, Q&A까지 — 반려견 생활의 모든 것을 한곳에서.";
 
 const DEFAULT_PRODUCTION_URL = "https://www.yourdogzone.co.kr";
 

@@ -21,7 +21,7 @@ export function OfficialAdvisoryBoardSection() {
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-6xl">
+      <div className="relative mx-auto w-full">
         <p className="text-center text-xs font-semibold tracking-[0.18em] text-[#b8860b] uppercase md:text-left">
           {ADVISORY_BOARD_EYEBROW}
         </p>

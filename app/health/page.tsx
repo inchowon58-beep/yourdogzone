@@ -23,7 +23,7 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function HealthPage() {
   return (
-    <main className="w-full min-w-0 max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="w-full min-w-0 px-4 py-8 sm:px-6 sm:py-12">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"
@@ -38,7 +38,7 @@ export default function HealthPage() {
       <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
         증상·질병 백과
       </h1>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+      <p className="mt-3 text-sm leading-relaxed text-muted">
         우리 아이에게 흔한 증상과 질환을, 신호부터 집에서 할 일·병원 신호·예방까지
         한 흐름으로 정리했어요. 현재{" "}
         <strong className="text-foreground">{HEALTH_GUIDES.length}개</strong> 가이드가

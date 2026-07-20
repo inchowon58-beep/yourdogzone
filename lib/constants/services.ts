@@ -30,8 +30,8 @@ export const SERVICES: ServiceItem[] = [
   },
   {
     id: "adoption",
-    title: "강아지분양",
-    description: "윤리적 분양 매칭",
+    title: "애견샵",
+    description: "애견샵·분양 정보 매칭",
     href: "/services/adoption",
     icon: Heart,
     color: "bg-rose-50 text-rose-600",

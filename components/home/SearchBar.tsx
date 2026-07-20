@@ -16,15 +16,15 @@ export function SearchBar() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full min-w-0 max-w-2xl">
+    <form onSubmit={handleSubmit} className="w-full min-w-0 max-w-3xl">
       <div className="group relative flex items-center">
-        <Search className="absolute left-4 h-5 w-5 text-muted transition-colors group-focus-within:text-primary sm:left-5" />
+        <Search className="absolute left-4 h-5 w-5 text-muted transition-colors group-focus-within:text-primary sm:left-5 sm:h-6 sm:w-6" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="증상·질병·먹이·서비스를 검색하세요"
-          className="h-12 w-full rounded-2xl bg-white pl-11 pr-[4.75rem] text-sm text-foreground shadow-[var(--card-shadow)] outline-none transition-shadow placeholder:text-gray-400 focus:shadow-[var(--card-shadow-hover)] focus:ring-2 focus:ring-primary/20 sm:h-14 sm:pl-14 sm:pr-28 sm:text-base"
+          className="h-12 w-full rounded-2xl bg-white pl-11 pr-[4.75rem] text-base text-foreground shadow-[var(--card-shadow)] outline-none transition-shadow placeholder:text-gray-400 focus:shadow-[var(--card-shadow-hover)] focus:ring-2 focus:ring-primary/20 sm:h-14 sm:pl-14 sm:pr-28 sm:text-lg"
         />
         <button
           type="submit"

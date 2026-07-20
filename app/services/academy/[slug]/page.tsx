@@ -64,7 +64,7 @@ export default async function AcademyDetailPage({ params }: PageProps) {
 
   return (
     <main
-      className={`w-full min-w-0 max-w-4xl px-4 py-8 sm:px-6 sm:py-10 ${isPremium ? "pb-4" : "pb-14"}`}
+      className={`w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 ${isPremium ? "pb-4" : "pb-14"}`}
     >
       <JsonLd
         data={[

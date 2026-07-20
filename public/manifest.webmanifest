@@ -1,0 +1,17 @@
+{
+  "name": "유아독존 안심입소",
+  "short_name": "안심입소",
+  "description": "사설보호소 안심입소 매칭 · 보호소 파트너 알림",
+  "start_url": "/care-matching/partner",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ export default async function AdvisoryMembersPage() {
   const members = await getAllAdvisoryMembers();
 
   return (
-    <main className="w-full min-w-0 max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+    <main className="w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10">
       <Link
         href="/services/academy"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

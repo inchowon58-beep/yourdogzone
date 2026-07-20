@@ -10,7 +10,7 @@ export function PremiumCtaBar({ academy }: { academy: Academy }) {
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-indigo-100 bg-white/95 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md sm:px-4 sm:py-3">
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto w-full max-w-[92rem]">
           <div className="mb-2 min-w-0 sm:mb-0 sm:hidden">
             <p className="truncate text-sm font-bold text-foreground">
               {academy.name}

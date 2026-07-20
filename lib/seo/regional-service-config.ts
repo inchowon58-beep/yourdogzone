@@ -73,7 +73,7 @@ const LISTING_SLUG_SUFFIX: Record<ListingCategory, string> = {
 
 const LISTING_KEYWORD_NOISE: Record<ListingCategory, RegExp> = {
   adoption:
-    /강아지분양|강아지\s*분양|견종\s*분양|강아지입양|입양|분양|반려견|강아지|업체/g,
+    /애견샵|애견\s*샵|강아지분양|강아지\s*분양|견종\s*분양|강아지입양|입양|분양|반려견|강아지|업체/g,
   shelter:
     /강아지보호소|강아지\s*보호소|강아지파양|유기견보호소|유기동물|입양센터|보호센터|유기견|구조견|보호소|파양|반려견|강아지/g,
   funeral:

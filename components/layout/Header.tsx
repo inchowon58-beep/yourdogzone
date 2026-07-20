@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, PawPrint, X } from "lucide-react";
+import {
+  HeaderAuth,
+  MobileHeaderAuth,
+} from "@/components/auth/HeaderAuth";
 
 const NAV_LINKS = [
   { href: "/health", label: "질병백과" },
@@ -19,7 +23,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full min-w-0 border-b border-gray-100/80 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full min-w-0 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
+      <div className="mx-auto flex h-14 w-full min-w-0 max-w-[92rem] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-6">
         <Link
           href="/"
           className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80"
@@ -44,6 +48,8 @@ export function Header() {
             </Link>
           ))}
         </nav>
+
+        <HeaderAuth />
 
         <button
           type="button"
@@ -77,6 +83,7 @@ export function Header() {
                 </li>
               );
             })}
+            <MobileHeaderAuth onNavigate={() => setOpen(false)} />
           </ul>
         </nav>
       )}

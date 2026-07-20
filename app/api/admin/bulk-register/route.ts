@@ -54,7 +54,7 @@ export async function GET() {
     storage: isSupabaseConfigured() ? "supabase" : "r2-json",
     categories: {
       academy: "애견미용학원 (기본, category 생략 시)",
-      adoption: "강아지분양",
+      adoption: "애견샵",
       shelter: "강아지보호소",
       funeral: "강아지장례식장",
       breeder: "브리더정보",
