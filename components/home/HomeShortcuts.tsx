@@ -184,7 +184,7 @@ function ShortcutDesktopRow({
   itemWidth: string;
 }) {
   return (
-    <ul className="hidden flex-nowrap items-start justify-center gap-x-4 sm:flex md:gap-x-5">
+    <ul className="flex flex-nowrap items-start justify-center gap-x-4 md:gap-x-5">
       {items.map((item) => (
         <li key={item.id} className={`shrink-0 ${itemWidth}`}>
           <ShortcutItem item={item} />
@@ -195,20 +195,22 @@ function ShortcutDesktopRow({
 }
 
 export function HomeShortcuts() {
+  const mobileItems = [...CARE_SHORTCUTS, ...SERVICE_SHORTCUTS];
+
   return (
     <nav
       aria-label="주요 서비스"
       className="mx-auto flex w-full max-w-none flex-col gap-6 px-1 sm:gap-7"
     >
-      <div>
-        <ShortcutMobileRow items={CARE_SHORTCUTS} />
+      {/* 모바일: 상·하 구분 없이 연속 4열 */}
+      <ShortcutMobileRow items={mobileItems} />
+
+      {/* PC: 기존처럼 위 5 · 아래 8 */}
+      <div className="hidden flex-col gap-7 sm:flex">
         <ShortcutDesktopRow
           items={CARE_SHORTCUTS}
           itemWidth="w-[5.75rem]"
         />
-      </div>
-      <div>
-        <ShortcutMobileRow items={SERVICE_SHORTCUTS} />
         <ShortcutDesktopRow
           items={SERVICE_SHORTCUTS}
           itemWidth="w-[5rem]"
