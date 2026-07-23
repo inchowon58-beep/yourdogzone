@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink, MapPin, Phone, Star } from "lucide-react";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
+import { NaverSocialProof } from "@/components/listing/NaverSocialProof";
 import { listingBasePath } from "@/lib/listings/config";
 import { getGalleryImages } from "@/lib/listings/queries";
 import type { Listing } from "@/lib/types/listing";
@@ -118,6 +119,13 @@ export function AdoptionDetailPage({ listing }: { listing: Listing }) {
             </a>
           ) : null}
         </div>
+
+        <NaverSocialProof
+          rating={listing.naver_rating}
+          reviewCount={listing.naver_review_count}
+          blogReviews={listing.naver_blog_reviews}
+          placeUrl={listing.naver_place_url}
+        />
 
         {fieldSections.map((section) => (
           <section

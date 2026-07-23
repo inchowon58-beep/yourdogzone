@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
-import { listingBasePath } from "@/lib/listings/config";
 import {
-  importNaverPlaceAsAdoption,
+  importNaverPlaceAsAcademy,
   searchNaverPlaces,
 } from "@/lib/listings/naver-place-import";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
@@ -38,7 +37,10 @@ export async function POST(request: Request) {
   if (action === "search") {
     const result = await searchNaverPlaces(body.query ?? "");
     if (result.error && result.candidates.length === 0) {
-      return NextResponse.json({ error: result.error, candidates: [] }, { status: 404 });
+      return NextResponse.json(
+        { error: result.error, candidates: [] },
+        { status: 404 }
+      );
     }
     return NextResponse.json({
       candidates: result.candidates,
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "placeId가 필요합니다." }, { status: 400 });
     }
 
-    const result = await importNaverPlaceAsAdoption({
+    const result = await importNaverPlaceAsAcademy({
       placeId,
       name: body.name,
       address: body.address,
@@ -69,12 +71,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const base = listingBasePath("adoption");
-    revalidatePath(base);
-    revalidatePath(`${base}/${result.slug}`);
+    revalidatePath("/services/academy");
+    revalidatePath(`/services/academy/${result.slug}`);
     revalidatePath("/sitemap.xml");
 
-    const pageUrl = result.url ?? absoluteUrl(`${base}/${result.slug}`);
+    const pageUrl =
+      result.url ?? absoluteUrl(`/services/academy/${result.slug}`);
     const indexnow = await submitToIndexNow([pageUrl]);
 
     return NextResponse.json({

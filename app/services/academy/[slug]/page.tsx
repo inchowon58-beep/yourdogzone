@@ -11,6 +11,7 @@ import { ImageSlider } from "@/components/academy/ImageSlider";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { PremiumCtaBar } from "@/components/academy/PremiumCtaBar";
 import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
+import { NaverSocialProof } from "@/components/listing/NaverSocialProof";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   buildAcademyBreadcrumbJsonLd,
@@ -147,6 +148,13 @@ export default async function AcademyDetailPage({ params }: PageProps) {
             )}
           </dl>
         </section>
+
+        <NaverSocialProof
+          rating={academy.naver_rating}
+          reviewCount={academy.naver_review_count}
+          blogReviews={academy.naver_blog_reviews}
+          placeUrl={academy.naver_place_url}
+        />
 
         {academy.curriculum && (
           <ContentSection title={`${academy.name} 교육 과정`}>

@@ -32,6 +32,20 @@ export function AcademyAdminPanel({ embedded = false }: Props) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
+  const [naverQuery, setNaverQuery] = useState("");
+  const [naverSearching, setNaverSearching] = useState(false);
+  const [naverImporting, setNaverImporting] = useState<string | null>(null);
+  const [naverCandidates, setNaverCandidates] = useState<
+    {
+      placeId: string;
+      name: string;
+      address: string;
+      phone: string | null;
+      thumb: string | null;
+      rating?: number | null;
+      reviewCount?: number | null;
+    }[]
+  >([]);
 
   const allSelected = useMemo(
     () => academies.length > 0 && selected.size === academies.length,
@@ -207,6 +221,85 @@ export function AcademyAdminPanel({ embedded = false }: Props) {
     }
   }
 
+  async function searchNaver() {
+    const q = naverQuery.trim();
+    if (!q) return;
+    setNaverSearching(true);
+    setError("");
+    setMessage("");
+    setNaverCandidates([]);
+    try {
+      const res = await fetch("/api/academy/admin/naver", {
+        method: "POST",
+        headers: adminPanelJsonHeaders(secret, embedded),
+        body: JSON.stringify({ action: "search", query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "네이버 검색에 실패했습니다.");
+        return;
+      }
+      setNaverCandidates(data.candidates ?? []);
+      if ((data.candidates ?? []).length === 0) {
+        setError(data.message ?? "검색 결과가 없습니다.");
+      } else {
+        setMessage(`${data.candidates.length}건의 네이버 플레이스를 찾았습니다.`);
+      }
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setNaverSearching(false);
+    }
+  }
+
+  async function importNaver(candidate: {
+    placeId: string;
+    name: string;
+    address: string;
+    phone: string | null;
+    thumb: string | null;
+    rating?: number | null;
+    reviewCount?: number | null;
+  }) {
+    if (!confirm(`「${candidate.name}」을(를) 미용학원으로 등록할까요?`)) return;
+    setNaverImporting(candidate.placeId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/academy/admin/naver", {
+        method: "POST",
+        headers: adminPanelJsonHeaders(secret, embedded),
+        body: JSON.stringify({
+          action: "import",
+          placeId: candidate.placeId,
+          name: candidate.name,
+          address: candidate.address,
+          phone: candidate.phone,
+          thumb: candidate.thumb,
+          rating: candidate.rating,
+          reviewCount: candidate.reviewCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "등록에 실패했습니다.");
+        return;
+      }
+      setMessage(
+        `✓ 등록됨: ${data.name} → ${data.slug}` +
+          (data.imageCount ? ` (사진 ${data.imageCount}장)` : "")
+      );
+      setNaverCandidates((prev) =>
+        prev.filter((c) => c.placeId !== candidate.placeId)
+      );
+      await loadAcademies();
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setNaverImporting(null);
+    }
+  }
+
   if (!embedded && !secret) {
     return (
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
@@ -248,7 +341,7 @@ export function AcademyAdminPanel({ embedded = false }: Props) {
         <div>
           <h1 className="text-2xl font-bold">학원 관리</h1>
           <p className="mt-1 text-sm text-muted">
-            인증 추천 on/off · 업체 선택 후 삭제
+            네이버 플레이스 등록 · 인증 추천 · 선택 삭제
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -294,6 +387,77 @@ export function AcademyAdminPanel({ embedded = false }: Props) {
           {error}
         </p>
       )}
+
+      <section className="mb-8 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-[var(--card-shadow)]">
+        <h2 className="text-base font-bold text-foreground">
+          네이버 플레이스로 업체 등록
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          업체명으로 검색하거나 네이버지도 플레이스 URL을 붙여넣으세요. 등록 시
+          평점·블로그 리뷰(최대 5건)를 함께 저장합니다.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <input
+            value={naverQuery}
+            onChange={(e) => setNaverQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void searchNaver()}
+            placeholder="업체명 또는 https://map.naver.com/.../place/123456"
+            className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 sm:min-w-[16rem]"
+          />
+          <button
+            type="button"
+            onClick={() => void searchNaver()}
+            disabled={naverSearching || !naverQuery.trim()}
+            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {naverSearching ? "검색 중…" : "검색"}
+          </button>
+        </div>
+        {naverCandidates.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {naverCandidates.map((c) => (
+              <li
+                key={c.placeId}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-white bg-white px-3 py-3"
+              >
+                {c.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={c.thumb}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs text-muted">
+                    사진
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-foreground">{c.name}</p>
+                  <p className="truncate text-xs text-muted">{c.address}</p>
+                  {c.phone ? (
+                    <p className="text-xs text-muted">{c.phone}</p>
+                  ) : null}
+                  {c.rating != null ? (
+                    <p className="text-xs font-medium text-amber-700">
+                      ★ {c.rating}
+                      {c.reviewCount != null ? ` · 리뷰 ${c.reviewCount}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={naverImporting === c.placeId}
+                  onClick={() => void importNaver(c)}
+                  className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {naverImporting === c.placeId ? "등록 중…" : "등록하기"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
 
       {academies.length === 0 && !loading ? (
         <p className="rounded-2xl bg-white p-8 text-center text-sm text-muted shadow-[var(--card-shadow)]">

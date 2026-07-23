@@ -1,6 +1,8 @@
 """카테고리별 SEO 기본 템플릿 + 키워드별 변형 (Gemini 없음).
 
 동일 문장 반복을 줄이기 위해 키워드 해시로 문단·FAQ·표현을 섞습니다.
+보호소(shelter)는 사이트 UI(ShelterRegionalTrustGuide)가 본문을 렌더하므로
+발행 JSON에는 파양·무료분양 신뢰 FAQ·메타 중심으로 담습니다.
 """
 
 from __future__ import annotations
@@ -32,139 +34,139 @@ def _shuffle(rng: random.Random, items: list[Any]) -> list[Any]:
     return out
 
 
-# --- 강아지보호소 기본 블록 ---
-
-SHELTER_INTROS = [
-    "{region}에서 {keyword} 정보를 찾는 분을 위해, 강아지파양·입소·무료분양 상담 흐름을 정리했습니다.",
-    "{keyword}을(를) 알아보고 계시다면 {region} 인근 보호소 이용 전 꼭 확인하면 좋은 포인트를 모았습니다.",
-    "{region} {keyword} 관련 문의가 많을 때, 유기 대신 상담으로 해결할 수 있는 절차와 준비 사항을 안내합니다.",
-    "가족 사정으로 {keyword}을(를) 고민 중이라면 {region} 기준으로 아이에게 새로운 가족을 찾아주는 현실적인 절차를 확인하세요.",
+SHELTER_SITUATIONS = [
+    "군입대",
+    "이민·해외 이주",
+    "임신·출산",
+    "보호자 건강 악화",
+    "보호자 신변 이상",
+    "이혼·가족 변화",
+    "주거 환경 변화(반려동물 불가)",
+    "경제 상황의 급변",
+    "장기 입원·요양",
+    "돌봄 공백이 길어지는 경우",
 ]
 
-SHELTER_SECTION_TITLES = [
-    [
-        "{region} 보호소 상담 전 체크",
-        "입소·보호 절차 요약",
-        "새 가족 매칭 시 유의사항",
-        "자주 묻는 질문 전에 알면 좋은 점",
-    ],
-    [
-        "{region}에서 먼저 확인할 정보",
-        "파양·보호 상담 흐름",
-        "건강·케어 확인 포인트",
-        "방문 예약과 연락 팁",
-    ],
-    [
-        "{keyword} 핵심 안내",
-        "{region} 보호 환경 이해하기",
-        "비용·서류 준비",
-        "입양 연결 시 체크리스트",
-    ],
+SHELTER_REGION_INFO = [
+    "{region}에서 {keyword}을(를) 알아볼 때, 유기 대신 사설보호소 상담으로 아이에게 새 가족을 찾아주는 방법을 먼저 확인하세요.",
+    "{keyword} 상담은 비용·보호 환경·절차를 투명하게 설명하는 곳을 고르는 것이 핵심입니다. {region} 기준으로 신중히 비교하세요.",
+    "어쩔 수 없는 상황의 강아지파양은 나쁜 일이 아닙니다. {region}에서 {keyword}을(를) 고민 중이라면 유기하지 말고 상담부터 시작하세요.",
 ]
 
-SHELTER_PARAS_A = [
-    "{region} 보호소 상담은 아이 상태·나이·중성화 여부·접종 이력을 미리 정리해 두면 더 빠릅니다.",
-    "군입대, 이민, 보호자 건강 악화처럼 더 이상 함께하기 어려운 상황이라면 유기보다 보호소 상담을 먼저 고려하는 편이 좋습니다.",
-    "전화·온라인으로 1차 안내를 받은 뒤, 필요 시 방문 예약으로 이어지는 경우가 많습니다.",
-]
-
-SHELTER_PARAS_B = [
-    "강아지무료분양은 유기견을 뜻하는 것이 아니라, 가정에서 생활하던 아이가 사정으로 인해 새로운 가족을 찾는 경우를 말하는 경우가 많습니다.",
-    "입소 전 건강검진·기본 접종 여부를 확인하면 이후 케어 계획을 세우기 쉽습니다.",
-    "아이 성향(분리불안·사회성)을 솔직히 전달할수록 매칭 성공률이 높아집니다.",
-]
-
-SHELTER_PARAS_C = [
-    "사설보호소는 어떤 곳이든 아이들의 보호·의료·케어를 위한 입소비용이 발생할 수 있습니다.",
-    "너무 말도 안 되게 높은 금액이거나 지나치게 낮은 금액이라면 한 번쯤 의심해 보고, 비용 항목을 투명하게 설명하는 곳인지 확인하는 것이 안전합니다.",
-    "{region} 외 지역 이동이 필요하면 픽업·이동 가능 여부와 사후 상담 가능 여부를 사전에 조율하세요.",
-]
-
-SHELTER_BULLETS = [
-    ["기본 접종·중성화 기록", "최근 식습관·알러지", "성격·사회화 정도"],
-    ["방문 가능 요일·시간", "임시 보호 가능 여부", "입양 공고 진행 방식"],
-    ["입소비용 포함 항목", "예상 케어 비용 범위", "사후 상담 채널"],
+SHELTER_META = [
+    "{keyword} | 강아지파양·무료분양 전 확인할 입소비용·보호 환경·절차 안내",
+    "{region} {keyword} — 사설보호소 입소비용 주의사항과 파양 절차를 정리했습니다.",
+    "{keyword} 가이드. 유기견보호소와 다른 점, 무료분양 의미, 신뢰할 상담 포인트를 확인하세요.",
 ]
 
 SHELTER_FAQS = [
     (
-        "{keyword} 상담은 어떻게 시작하나요?",
-        "{region} 인근 보호소에 전화·온라인으로 아이 정보를 전달하면 입소·보호 가능 여부를 안내받을 수 있습니다.",
+        "{region} 강아지파양 상담은 어떻게 시작하나요?",
+        "아이 상태·나이·중성화·접종 이력을 정리한 뒤 {region} 인근 사설보호소에 전화·온라인으로 문의하면 입소·보호 가능 여부를 안내받을 수 있습니다.",
         "{keyword} 문의는 어디서 하나요?",
-        "보호소 상담 창구(전화/웹)로 {region} 기준 가능 여부를 먼저 확인하는 것이 좋습니다.",
+        "보호소 상담 창구(전화/웹)로 {region} 기준 가능 여부와 입소비용 항목을 먼저 확인하는 것이 좋습니다.",
     ),
     (
-        "강아지무료분양은 유기견과 같은 의미인가요?",
-        "아닙니다. 가정에서 생활하던 아이가 사정으로 인해 새로운 가족을 찾는 경우를 뜻하는 경우가 많습니다.",
+        "강아지무료분양은 유기견·유기묘를 말하나요?",
+        "아닙니다. 가정에서 생활하던 아이들이 사정으로 파양되어 새로운 가족을 찾는 경우를 뜻하는 경우가 많습니다.",
         "무료분양은 어떤 의미인가요?",
-        "유기된 아이가 아니라 보호자의 사정으로 파양되어 새 가족을 찾는 파양견 안내인 경우가 많습니다.",
+        "유기된 아이가 아니라 보호자 사정으로 파양되어 새 가정을 찾는 파양견 안내인 경우가 많습니다.",
     ),
     (
-        "입소비용은 왜 확인해야 하나요?",
-        "사설보호소는 보호·의료·케어 비용이 발생할 수 있어 항목별 안내를 투명하게 받는 것이 중요합니다.",
-        "비용 안내를 받을 수 있나요?",
-        "시설·아이 상태에 따라 달라지므로, 너무 높거나 낮은 금액은 한 번 더 확인하고 세부 항목을 요청하세요.",
+        "사설보호소는 왜 입소비용이 발생하나요?",
+        "사설보호소는 보호·의료·케어 운영비가 들어가므로 입소 시 비용이 발생합니다. 너무 비싸거나 지나치게 저렴하면 항목과 보호 환경을 한 번 더 확인하세요.",
+        "입소비용이 너무 비싸거나 싸면 어떻게 해야 하나요?",
+        "터무니없이 높거나 지나치게 낮은 견적은 한 번쯤 신중히 생각하고, 포함 항목·보호 환경을 투명하게 설명하는지 확인하세요.",
     ),
     (
-        "어떤 상황에서 보호소 상담이 필요할까요?",
-        "군입대, 이민, 보호자 신변 이상처럼 더 이상 함께 생활하기 어려운 경우라면 유기 대신 보호소 상담을 먼저 고려하는 것이 좋습니다.",
-        "새 가족을 찾는 데 시간이 얼마나 필요하나요?",
-        "아이 상태와 입양 가정 매칭에 따라 달라지므로, 진행 상황을 주기적으로 확인하세요.",
+        "시 유기견보호소에도 개인 사정으로 파양할 수 있나요?",
+        "시·군 유기견보호소는 개인 사정의 파양보다 실제 유기·미아 동물을 보호하는 경우가 많고, 일정 기간 후 안락사가 이뤄질 수 있습니다. 주인이 있는 아이의 파양은 사실상 어렵다고 보는 편이 맞습니다.",
+        "유기견보호소와 사설보호소 차이는?",
+        "유기견보호소는 유기·미아 중심이며 안락사 가능성이 있습니다. 개인 사정 파양은 사설보호소 상담이 현실적인 경우가 많습니다.",
+    ),
+    (
+        "어쩔 수 없는 파양은 나쁜 일인가요?",
+        "군입대·이민·임신·보호자 신변 이상처럼 함께하기 어려운 상황에서의 파양은, 유기하지 않고 새 가정을 찾아주는 바람직한 선택일 수 있습니다.",
+        "어떤 상황에서 상담이 필요할까요?",
+        "{situations}처럼 더 이상 함께하기 어려운 경우라면 유기 대신 보호소 상담을 먼저 고려하세요.",
+    ),
+    (
+        "강아지파양 절차는 어떻게 되나요?",
+        "상담 → 아이 상태 체크 → 보호소 입소 → 새로운 가족 찾기의 흐름이 일반적입니다. 급하게 결정하기보다 비용·환경을 확인한 뒤 진행하세요.",
+        "입소 전 무엇을 확인해야 하나요?",
+        "비용 포함 항목, 보호 환경·위생, 상담 응대 신뢰도를 확인한 뒤 선택하세요. 최근 뉴스처럼 안 좋은 곳도 있을 수 있어 신중해야 합니다.",
     ),
 ]
-
-SHELTER_REGION_INFO = [
-    "{region}은(는) 강아지파양·무료분양 문의가 꾸준한 지역으로, {keyword} 관련 상담 시 인근 시설 여유를 함께 확인하면 좋습니다.",
-    "{region} 일대에서 {keyword}을(를) 찾을 때는 교통·방문 가능 시간을 미리 맞춰 두면 상담이 원활합니다.",
-    "{keyword} 수요가 있는 {region}에서는 보호 공간 상황에 따라 대기나 연계가 필요할 수 있습니다.",
-]
-
-SHELTER_META = [
-    "{keyword} 안내 - {region} 강아지파양·무료분양 상담 전 확인할 보호소 이용 정보를 확인하세요.",
-    "{region} {keyword} | 파양·입소·무료분양 전 확인하면 좋은 절차와 체크리스트.",
-    "{keyword} - {region} 인근 보호소 이용 전 준비사항과 상담 팁을 정리했습니다.",
-]
-
-
-def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]:
-    titles = _pick(rng, SHELTER_SECTION_TITLES)
-    titles = [t.format(region=region, keyword=keyword) for t in titles]
-    para_sets = [
-        [p.format(region=region, keyword=keyword) for p in SHELTER_PARAS_A],
-        [p.format(region=region, keyword=keyword) for p in SHELTER_PARAS_B],
-        [p.format(region=region, keyword=keyword) for p in SHELTER_PARAS_C],
-        [
-            _pick(rng, SHELTER_INTROS).format(region=region, keyword=keyword),
-            _pick(rng, SHELTER_REGION_INFO).format(region=region, keyword=keyword),
-        ],
-    ]
-    bullets = _shuffle(rng, SHELTER_BULLETS)
-    blocks = []
-    for i, title in enumerate(titles[:4]):
-        paragraphs = _shuffle(rng, para_sets[i % len(para_sets)])[:2]
-        blocks.append(
-            {
-                "title": title,
-                "paragraphs": paragraphs,
-                "bullets": bullets[i % len(bullets)],
-            }
-        )
-    return blocks
 
 
 def _shelter_faqs(rng: random.Random, region: str, keyword: str) -> list[dict]:
+    situations = ", ".join(_shuffle(rng, list(SHELTER_SITUATIONS))[:4])
     faqs = []
-    for group in _shuffle(rng, SHELTER_FAQS)[:3]:
+    for group in _shuffle(rng, SHELTER_FAQS)[:5]:
         use_alt = rng.random() < 0.5
         q = group[2] if use_alt else group[0]
         a = group[3] if use_alt else group[1]
         faqs.append(
             {
-                "question": q.format(region=region, keyword=keyword),
-                "answer": a.format(region=region, keyword=keyword),
+                "question": q.format(
+                    region=region, keyword=keyword, situations=situations
+                ),
+                "answer": a.format(
+                    region=region, keyword=keyword, situations=situations
+                ),
             }
         )
     return faqs
+
+
+def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]:
+    """사이트 UI가 본문을 렌더하므로, JSON에는 요약 블록만 보관."""
+    situations = _shuffle(rng, list(SHELTER_SITUATIONS))[:4]
+    return [
+        {
+            "title": f"{keyword} · 이런 상황이라면 상담하세요",
+            "paragraphs": [
+                f"{region}에서 {keyword}을(를) 고민 중이라면 유기하지 말고, 사설보호소 상담으로 아이에게 새 가족을 찾아주는 방향을 먼저 검토하세요.",
+                "어쩔 수 없는 상황에서의 강아지파양은 나쁜 일이 아니라 오히려 바람직한 선택일 수 있습니다.",
+            ],
+            "bullets": situations,
+        },
+        {
+            "title": "사설보호소 입소비용 · 꼭 유의하세요",
+            "paragraphs": [
+                "강아지파양 입소는 최근 뉴스에서도 보도된 것처럼 안 좋은 곳이 있을 수 있어 신중히 알아본 뒤 선택해야 합니다.",
+                "입소비용이 터무니없이 비싸거나 지나치게 저렴하다면 한 번쯤 신중히 생각하고, 포함 항목과 보호 환경을 확인하세요.",
+            ],
+            "bullets": [
+                "모든 사설보호소는 입소 시 비용이 발생할 수 있음",
+                "비용 포함 항목 투명성",
+                "보호 환경·상담 신뢰도",
+            ],
+        },
+        {
+            "title": "강아지무료분양 · 유기견이 아닙니다",
+            "paragraphs": [
+                "강아지무료분양은 유기견·유기묘가 아니라, 가정에서 생활하던 아이들이 파양을 통해 새 가족을 찾는 경우를 뜻하는 경우가 많습니다.",
+            ],
+            "bullets": [
+                "가정견의 새 가족 찾기",
+                "아이 성향·건강 정보 공유",
+                "급하지 않은 매칭",
+            ],
+        },
+        {
+            "title": "시 유기견보호소와 다른 점",
+            "paragraphs": [
+                "시·군 유기견보호소는 개인 사정 파양보다 실제 유기·미아 동물을 보호하는 경우가 많고, 일정 기간 후 안락사가 이뤄질 수 있습니다.",
+                "주인이 있는 아이의 파양은 사실상 어렵다고 보는 편이 맞으며, 개인 사정 입소는 사설보호소 상담이 현실적입니다.",
+            ],
+            "bullets": [
+                "상담 → 상태 체크 → 입소 → 새 가족 찾기",
+                "유기 대신 새 가정",
+                "투명한 비용·환경 확인",
+            ],
+        },
+    ]
 
 
 def build_page(
@@ -194,11 +196,10 @@ def build_page(
             region=label, keyword=page_keyword
         )
         nearby_intro = (
-            f"{label} 인근 지역 보호소·연계 시설도 함께 참고하면 "
-            f"{page_keyword} 상담에 도움이 됩니다."
+            f"{label} 인근에서도 {page_keyword} 상담 시 "
+            f"입소비용·보호 환경을 비교해 보시면 도움이 됩니다."
         )
     else:
-        # 타 카테고리: 보호소와 동일 골격 + 카테고리명만 치환 (최소 지원)
         title_word = meta["title"]
         seo_blocks = [
             {
@@ -213,9 +214,6 @@ def build_page(
                 "title": f"{label}에서 확인하면 좋은 점",
                 "paragraphs": [
                     f"{title_word}마다 서비스 범위가 달라 비교가 필요합니다.",
-                    _pick(rng, SHELTER_PARAS_B).format(
-                        region=label, keyword=page_keyword
-                    ),
                 ],
                 "bullets": ["서비스 범위", "비용 안내", "후기·인증"],
             },

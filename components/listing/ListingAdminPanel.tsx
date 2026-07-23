@@ -70,13 +70,15 @@ export function ListingAdminPanel({
       thumb: string | null;
       category: string | null;
       naverPlaceUrl: string;
+      rating?: number | null;
+      reviewCount?: number | null;
     }[]
   >([]);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSaving, setEditSaving] = useState(false);
 
-  const isAdoption = category === "adoption";
-  const naverApi = `/api/listings/adoption/admin/naver`;
+  const naverApi = `/api/listings/${category}/admin/naver`;
+  const naverEnabled = true;
 
   const allSelected = useMemo(
     () => listings.length > 0 && selected.size === listings.length,
@@ -263,8 +265,10 @@ export function ListingAdminPanel({
     address: string;
     phone: string | null;
     thumb: string | null;
+    rating?: number | null;
+    reviewCount?: number | null;
   }) {
-    if (!confirm(`「${candidate.name}」을(를) 강아지분양에 등록할까요?`)) return;
+    if (!confirm(`「${candidate.name}」을(를) ${config.singular}로 등록할까요?`)) return;
     setNaverImporting(candidate.placeId);
     setError("");
     setMessage("");
@@ -279,6 +283,8 @@ export function ListingAdminPanel({
           address: candidate.address,
           phone: candidate.phone,
           thumb: candidate.thumb,
+          rating: candidate.rating,
+          reviewCount: candidate.reviewCount,
         }),
       });
       const data = await res.json();
@@ -426,7 +432,7 @@ export function ListingAdminPanel({
         <div>
           <h1 className="text-2xl font-bold">{config.title} 관리</h1>
           <p className="mt-1 text-sm text-muted">
-            {isAdoption
+            {naverEnabled
               ? "네이버 플레이스 등록 · 정보 수정 · 인증 추천 · 선택 삭제"
               : "정보 수정 · 인증 추천 on/off · 선택 삭제"}
           </p>
@@ -473,14 +479,15 @@ export function ListingAdminPanel({
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
       )}
 
-      {isAdoption ? (
+      {naverEnabled ? (
         <section className="mb-8 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-[var(--card-shadow)]">
           <h2 className="text-base font-bold text-foreground">
             네이버 플레이스로 업체 등록
           </h2>
           <p className="mt-1 text-sm text-muted">
             업체명으로 검색하거나, 네이버지도 플레이스 URL(place/숫자)을
-            붙여넣은 뒤 등록하세요.
+            붙여넣은 뒤 등록하세요. 등록 시 평점·블로그 리뷰(최대 5건)를 함께
+            저장합니다.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <input
@@ -524,6 +531,12 @@ export function ListingAdminPanel({
                     <p className="truncate text-xs text-muted">{c.address}</p>
                     {c.phone ? (
                       <p className="text-xs text-muted">{c.phone}</p>
+                    ) : null}
+                    {c.rating != null ? (
+                      <p className="text-xs font-medium text-amber-700">
+                        ★ {c.rating}
+                        {c.reviewCount != null ? ` · 리뷰 ${c.reviewCount}` : ""}
+                      </p>
                     ) : null}
                   </div>
                   <button

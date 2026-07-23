@@ -4,6 +4,7 @@ import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
+import { ShelterRegionalTrustGuide } from "@/components/regional/ShelterRegionalTrustGuide";
 import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
 import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
@@ -70,7 +71,8 @@ export function RegionalLandingPageView({ bundle }: Props) {
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
-  const seoBlocks = resolveBoundSeoBlocks(page, seoCtx);
+  const seoBlocks =
+    category === "shelter" ? [] : resolveBoundSeoBlocks(page, seoCtx);
   const faqItems = resolveBoundFaqItems(page, seoCtx);
   const listAnchor = "#entity-list";
   const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
@@ -150,18 +152,28 @@ export function RegionalLandingPageView({ bundle }: Props) {
         />
       ) : null}
 
-      <RegionalAcademySeoSection
-        label={label}
-        pageKeyword={pageKeyword}
-        blocks={seoBlocks}
-        intro={resolveBoundSeoSectionIntro(label, seoCtx, category)}
-        featuredAcademy={featuredAcademy}
-        coverImageUrl={page.imageUrl}
-        serviceTitle={config.title}
-        servicePath={config.basePath}
-        entityLabel={config.entityLabel}
-        guideSectionTitle={config.guideSectionTitle}
-      />
+      {category === "shelter" ? (
+        <ShelterRegionalTrustGuide
+          label={label}
+          pageKeyword={pageKeyword}
+          seedKey={page.slug}
+          faqItems={faqItems}
+          coverImageUrl={page.imageUrl}
+        />
+      ) : (
+        <RegionalAcademySeoSection
+          label={label}
+          pageKeyword={pageKeyword}
+          blocks={seoBlocks}
+          intro={resolveBoundSeoSectionIntro(label, seoCtx, category)}
+          featuredAcademy={featuredAcademy}
+          coverImageUrl={page.imageUrl}
+          serviceTitle={config.title}
+          servicePath={config.basePath}
+          entityLabel={config.entityLabel}
+          guideSectionTitle={config.guideSectionTitle}
+        />
+      )}
 
       {category === "academy" ? (
         <>

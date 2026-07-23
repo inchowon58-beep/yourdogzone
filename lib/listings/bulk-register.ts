@@ -8,7 +8,7 @@ import {
   completeR2Uploads,
   mirrorExternalImagesToR2,
 } from "@/lib/upload/r2-mirror";
-import type { ListingCategory } from "@/lib/types/listing";
+import type { ListingCategory, NaverBlogReview } from "@/lib/types/listing";
 
 export type BulkListingInput = {
   name: string;
@@ -27,6 +27,9 @@ export type BulkListingInput = {
   gallery_images?: string[];
   is_premium?: boolean;
   naver_place_url?: string | null;
+  naver_rating?: number | null;
+  naver_review_count?: number | null;
+  naver_blog_reviews?: NaverBlogReview[] | null;
   seo_title_suffix?: string | null;
 };
 
@@ -134,6 +137,9 @@ export async function bulkRegisterListing(
     extra_info_2,
     kakao_url: input.kakao_url?.trim() || null,
     naver_place_url: input.naver_place_url?.trim() || null,
+    naver_rating: input.naver_rating ?? null,
+    naver_review_count: input.naver_review_count ?? null,
+    naver_blog_reviews: input.naver_blog_reviews?.slice(0, 5) ?? null,
     logo_image,
     gallery_images,
     seo_title_suffix: input.seo_title_suffix?.trim() || null,

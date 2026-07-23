@@ -1,20 +1,34 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
-import { listingBasePath } from "@/lib/listings/config";
 import {
-  importNaverPlaceAsAdoption,
+  isListingCategory,
+  listingBasePath,
+} from "@/lib/listings/config";
+import {
+  importNaverPlaceAsListing,
   searchNaverPlaces,
 } from "@/lib/listings/naver-place-import";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
 import { absoluteUrl } from "@/lib/site/config";
+import type { ListingCategory } from "@/lib/types/listing";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
+type RouteProps = {
+  params: Promise<{ category: string }>;
+};
+
+export async function POST(request: Request, { params }: RouteProps) {
   const denied = await enforceAdminAccess(request);
   if (denied) return denied;
+
+  const { category: raw } = await params;
+  if (!isListingCategory(raw)) {
+    return NextResponse.json({ error: "지원하지 않는 카테고리입니다." }, { status: 400 });
+  }
+  const category = raw as ListingCategory;
 
   let body: {
     action?: string;
@@ -38,7 +52,10 @@ export async function POST(request: Request) {
   if (action === "search") {
     const result = await searchNaverPlaces(body.query ?? "");
     if (result.error && result.candidates.length === 0) {
-      return NextResponse.json({ error: result.error, candidates: [] }, { status: 404 });
+      return NextResponse.json(
+        { error: result.error, candidates: [] },
+        { status: 404 }
+      );
     }
     return NextResponse.json({
       candidates: result.candidates,
@@ -52,7 +69,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "placeId가 필요합니다." }, { status: 400 });
     }
 
-    const result = await importNaverPlaceAsAdoption({
+    const result = await importNaverPlaceAsListing(category, {
       placeId,
       name: body.name,
       address: body.address,
@@ -69,7 +86,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const base = listingBasePath("adoption");
+    const base = listingBasePath(category);
     revalidatePath(base);
     revalidatePath(`${base}/${result.slug}`);
     revalidatePath("/sitemap.xml");

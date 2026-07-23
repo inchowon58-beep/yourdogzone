@@ -5,6 +5,13 @@ export type ListingCategory =
   | "breeder"
   | "hospital";
 
+/** 등록 시 1회 수집 · 상세에서는 저장된 값만 표시 (런타임 스크래핑 없음) */
+export type NaverBlogReview = {
+  title: string;
+  body: string;
+  url?: string | null;
+};
+
 export type Listing = {
   id: number;
   slug: string;
@@ -20,6 +27,12 @@ export type Listing = {
   kakao_url: string | null;
   /** 네이버 플레이스/지도 URL (있으면 상세에서 바로가기) */
   naver_place_url?: string | null;
+  /** 네이버 방문자리뷰 평점 (1~5) */
+  naver_rating?: number | null;
+  /** 네이버 방문자리뷰 수 */
+  naver_review_count?: number | null;
+  /** 네이버 블로그 리뷰 미리보기 (최대 5) */
+  naver_blog_reviews?: NaverBlogReview[] | null;
   seo_title_suffix?: string | null;
   is_premium: boolean;
   created_at: string;

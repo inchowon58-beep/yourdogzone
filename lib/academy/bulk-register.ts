@@ -10,6 +10,7 @@ import {
   mirrorExternalImagesToR2,
   resolveExternalImageUrl,
 } from "@/lib/upload/r2-mirror";
+import type { NaverBlogReview } from "@/lib/types/listing";
 
 export type BulkAcademyInput = {
   name: string;
@@ -27,6 +28,9 @@ export type BulkAcademyInput = {
   academy_images?: string[];
   is_premium?: boolean;
   naver_place_url?: string | null;
+  naver_rating?: number | null;
+  naver_review_count?: number | null;
+  naver_blog_reviews?: NaverBlogReview[] | null;
   seo_title_suffix?: string | null;
 };
 
@@ -157,6 +161,10 @@ export async function bulkRegisterAcademy(
     tuition_info,
     kakao_url: input.kakao_url?.trim() || null,
     seo_title_suffix: input.seo_title_suffix?.trim() || null,
+    naver_place_url: input.naver_place_url?.trim() || null,
+    naver_rating: input.naver_rating ?? null,
+    naver_review_count: input.naver_review_count ?? null,
+    naver_blog_reviews: input.naver_blog_reviews?.slice(0, 5) ?? null,
     logo_image,
     academy_images,
     is_premium: input.is_premium ?? false,

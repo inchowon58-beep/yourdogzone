@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, Phone, Star } from "lucide-react";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
+import { NaverSocialProof } from "@/components/listing/NaverSocialProof";
 import {
   LISTING_CATEGORIES,
   getListingConfig,
@@ -72,6 +73,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const images = getGalleryImages(listing, 3);
   const regionLabel = `${listing.region_big} ${listing.region_small}`;
   const mapQuery = encodeURIComponent(listing.address);
+  const mapUrl = listing.naver_place_url?.startsWith("http")
+    ? listing.naver_place_url
+    : `https://map.naver.com/v5/search/${mapQuery}`;
   const fieldSections = config.fields
     .map((field) => ({
       title: field.label,
@@ -133,6 +137,34 @@ export default async function ListingDetailPage({ params }: PageProps) {
             )}
           </dl>
         </section>
+
+        <div className="mb-8 flex flex-wrap gap-3">
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 sm:flex-none sm:min-w-[12rem]"
+          >
+            <ExternalLink className="h-4 w-4" />
+            네이버지도 바로가기
+          </a>
+          {listing.phone ? (
+            <a
+              href={`tel:${listing.phone.replace(/[^\d+]/g, "")}`}
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white sm:flex-none sm:min-w-[10rem]"
+            >
+              <Phone className="h-4 w-4" />
+              전화하기
+            </a>
+          ) : null}
+        </div>
+
+        <NaverSocialProof
+          rating={listing.naver_rating}
+          reviewCount={listing.naver_review_count}
+          blogReviews={listing.naver_blog_reviews}
+          placeUrl={listing.naver_place_url}
+        />
 
         {fieldSections.map((section) => (
           <ContentSection key={section.title} title={section.title}>

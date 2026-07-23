@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Ban,
@@ -137,7 +139,44 @@ export const SERVICE_SHORTCUTS: HomeShortcut[] = [
   },
 ];
 
-function ShortcutRow({
+function ShortcutItem({ item }: { item: HomeShortcut }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      className="group flex flex-col items-center gap-1.5 text-center outline-none sm:gap-2"
+    >
+      <span
+        className={`flex h-14 w-14 items-center justify-center rounded-[1.15rem] ${item.tile} shadow-sm transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-primary/30 sm:h-16 sm:w-16 sm:rounded-[1.25rem]`}
+      >
+        <Icon
+          className={`h-7 w-7 sm:h-8 sm:w-8 ${item.iconClass}`}
+          strokeWidth={2}
+          aria-hidden
+        />
+      </span>
+      <span className="w-full px-0.5 text-[11px] font-semibold leading-snug tracking-tight text-foreground sm:text-sm">
+        {item.label}
+      </span>
+    </Link>
+  );
+}
+
+/** 모바일: 한 줄 4개, 남는 1~3개는 가운데 정렬 */
+function ShortcutMobileRow({ items }: { items: HomeShortcut[] }) {
+  return (
+    <ul className="flex flex-wrap justify-center gap-y-4 sm:hidden">
+      {items.map((item) => (
+        <li key={item.id} className="flex w-1/4 justify-center px-0.5">
+          <ShortcutItem item={item} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** PC: 기존처럼 한 줄에 전부 (위 5 · 아래 8) */
+function ShortcutDesktopRow({
   items,
   itemWidth,
 }: {
@@ -145,31 +184,12 @@ function ShortcutRow({
   itemWidth: string;
 }) {
   return (
-    <ul className="flex flex-nowrap items-start justify-center gap-x-2.5 overflow-x-auto pb-1 sm:gap-x-4 md:gap-x-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <li key={item.id} className={`shrink-0 ${itemWidth}`}>
-            <Link
-              href={item.href}
-              className="group flex flex-col items-center gap-2 text-center outline-none"
-            >
-              <span
-                className={`flex h-14 w-14 items-center justify-center rounded-[1.15rem] ${item.tile} shadow-sm transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-primary/30 sm:h-16 sm:w-16 sm:rounded-[1.25rem]`}
-              >
-                <Icon
-                  className={`h-7 w-7 sm:h-8 sm:w-8 ${item.iconClass}`}
-                  strokeWidth={2}
-                  aria-hidden
-                />
-              </span>
-              <span className="px-0.5 text-xs font-semibold leading-snug tracking-tight text-foreground sm:text-sm">
-                {item.label}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
+    <ul className="hidden flex-nowrap items-start justify-center gap-x-4 sm:flex md:gap-x-5">
+      {items.map((item) => (
+        <li key={item.id} className={`shrink-0 ${itemWidth}`}>
+          <ShortcutItem item={item} />
+        </li>
+      ))}
     </ul>
   );
 }
@@ -180,14 +200,20 @@ export function HomeShortcuts() {
       aria-label="주요 서비스"
       className="mx-auto flex w-full max-w-none flex-col gap-6 px-1 sm:gap-7"
     >
-      <ShortcutRow
-        items={CARE_SHORTCUTS}
-        itemWidth="w-[4.85rem] sm:w-[5.75rem]"
-      />
-      <ShortcutRow
-        items={SERVICE_SHORTCUTS}
-        itemWidth="w-[4.25rem] sm:w-[5rem]"
-      />
+      <div>
+        <ShortcutMobileRow items={CARE_SHORTCUTS} />
+        <ShortcutDesktopRow
+          items={CARE_SHORTCUTS}
+          itemWidth="w-[5.75rem]"
+        />
+      </div>
+      <div>
+        <ShortcutMobileRow items={SERVICE_SHORTCUTS} />
+        <ShortcutDesktopRow
+          items={SERVICE_SHORTCUTS}
+          itemWidth="w-[5rem]"
+        />
+      </div>
     </nav>
   );
 }

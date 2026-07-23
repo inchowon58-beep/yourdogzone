@@ -111,7 +111,36 @@ export async function insertAcademy(
     .select()
     .single();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    // 마이그레이션 전 DB에도 등록은 되게 — 네이버 부가필드만 제외 재시도
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes("naver_") ||
+      msg.includes("column") ||
+      msg.includes("schema cache")
+    ) {
+      const {
+        naver_place_url: _u,
+        naver_rating: _r,
+        naver_review_count: _c,
+        naver_blog_reviews: _b,
+        ...base
+      } = payload;
+      const retry = await supabase.from("academy_list").insert(base).select().single();
+      if (retry.error) return { data: null, error: retry.error.message };
+      return {
+        data: {
+          ...(retry.data as Academy),
+          naver_place_url: payload.naver_place_url ?? null,
+          naver_rating: payload.naver_rating ?? null,
+          naver_review_count: payload.naver_review_count ?? null,
+          naver_blog_reviews: payload.naver_blog_reviews ?? null,
+        },
+        error: null,
+      };
+    }
+    return { data: null, error: error.message };
+  }
   return { data: data as Academy, error: null };
 }
 
