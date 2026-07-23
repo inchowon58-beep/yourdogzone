@@ -34,13 +34,13 @@ export const LISTING_CATEGORY_CONFIG: Record<
 > = {
   adoption: {
     id: "adoption",
-    title: "애견샵",
-    singular: "애견샵",
-    description: "전국 애견샵·분양 업체 정보 검색",
-    listTitle: "전국 애견샵",
-    premiumLabel: "인증 추천 애견샵",
-    defaultTitleSuffix: "애견샵",
-    naverSearchHint: "애견샵",
+    title: "강아지분양",
+    singular: "분양업체",
+    description: "전국 강아지분양 업체 정보를 지역·키워드로 검색하세요",
+    listTitle: "전국 강아지분양",
+    premiumLabel: "추천 분양업체",
+    defaultTitleSuffix: "강아지분양",
+    naverSearchHint: "강아지분양",
     fields: [
       {
         key: "service_info",
@@ -61,7 +61,7 @@ export const LISTING_CATEGORY_CONFIG: Record<
         step: 2,
       },
     ],
-    seoKeywords: ["애견샵", "강아지분양", "강아지 입양"],
+    seoKeywords: ["강아지분양", "강아지 분양", "애견분양", "반려견분양"],
   },
   shelter: {
     id: "shelter",

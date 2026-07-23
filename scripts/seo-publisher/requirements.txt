@@ -1,0 +1,5 @@
+python-dotenv>=1.0.0
+requests>=2.31.0
+# 웹문서 등록 사용 시 VM웹문서자동등록 폴더의 requirements도 설치
+# undetected-chromedriver>=3.5.5
+# selenium>=4.15.0

@@ -151,6 +151,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
         blocks={seoBlocks}
         intro={resolveBoundSeoSectionIntro(label, seoCtx)}
         featuredAcademy={featuredAcademy}
+        coverImageUrl={page.imageUrl}
         serviceTitle={config.title}
         servicePath={config.basePath}
         entityLabel={config.entityLabel}

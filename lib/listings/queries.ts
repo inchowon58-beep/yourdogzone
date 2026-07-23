@@ -8,9 +8,11 @@ import {
   normalizeListingSlug,
 } from "@/lib/listings/r2-read";
 import {
+  prepareListingFieldsUpdate,
   prepareListingPremiumUpdate,
   prepareListingR2Deletes,
   prepareListingR2Insert,
+  type ListingFieldPatch,
   type R2UploadTask,
 } from "@/lib/listings/r2-store";
 
@@ -81,6 +83,22 @@ export async function setListingPremium(
   const prepared = await prepareListingPremiumUpdate(category, slug, isPremium);
   if (prepared.error || !prepared.record) {
     return { data: null, error: prepared.error ?? "변경에 실패했습니다." };
+  }
+  return {
+    data: prepared.record,
+    error: null,
+    uploads: prepared.uploads,
+  };
+}
+
+export async function updateListingFields(
+  category: ListingCategory,
+  slug: string,
+  patch: ListingFieldPatch
+): Promise<SetPremiumResult> {
+  const prepared = await prepareListingFieldsUpdate(category, slug, patch);
+  if (prepared.error || !prepared.record) {
+    return { data: null, error: prepared.error ?? "수정에 실패했습니다." };
   }
   return {
     data: prepared.record,

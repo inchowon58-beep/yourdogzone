@@ -133,6 +133,7 @@ export async function bulkRegisterListing(
     extra_info,
     extra_info_2,
     kakao_url: input.kakao_url?.trim() || null,
+    naver_place_url: input.naver_place_url?.trim() || null,
     logo_image,
     gallery_images,
     seo_title_suffix: input.seo_title_suffix?.trim() || null,

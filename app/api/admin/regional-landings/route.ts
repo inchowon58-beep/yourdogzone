@@ -94,12 +94,96 @@ export async function POST(request: Request) {
     slug?: string;
     isPublished?: boolean;
     page?: RegionalLandingInsert;
+    pages?: RegionalLandingInsert[];
     submit_indexnow?: boolean;
   };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
+  }
+
+  if (body.action === "upsert_batch") {
+    const rawPages = Array.isArray(body.pages) ? body.pages : [];
+    if (rawPages.length === 0) {
+      return NextResponse.json(
+        { error: "pages 배열이 필요합니다." },
+        { status: 400 }
+      );
+    }
+    if (rawPages.length > 40) {
+      return NextResponse.json(
+        { error: "한 요청에 최대 40페이지까지 가능합니다." },
+        { status: 400 }
+      );
+    }
+
+    const created: { slug: string; url: string; category: RegionalServiceCategory }[] =
+      [];
+    const errors: string[] = [];
+    const categories = new Set<RegionalServiceCategory>();
+
+    for (const raw of rawPages) {
+      if (!raw?.slug || !raw?.label) {
+        errors.push("slug/label 누락");
+        continue;
+      }
+      const category = resolvePageCategory(raw);
+      try {
+        const result = await upsertRegionalLanding({
+          ...raw,
+          category,
+          nearbySlugs: (raw.nearbySlugs ?? []).slice(0, 5),
+          nearbyAreas: (
+            raw.nearbyAreas ?? getNearbyDistricts(raw.label, 5)
+          ).slice(0, 5),
+          nearbyStations: (
+            raw.nearbyStations ?? getNearbyStations(raw.label, 5)
+          ).slice(0, 5),
+          keyword:
+            raw.keyword ||
+            normalizeRegionalKeyword("", raw.label, category),
+          isPublished: raw.isPublished ?? true,
+        });
+        if ("error" in result) {
+          errors.push(`${raw.slug}: ${result.error}`);
+          continue;
+        }
+        categories.add(category);
+        created.push({
+          slug: result.page.slug,
+          url: pageAbsoluteUrl(category, result.page.slug),
+          category,
+        });
+      } catch (e) {
+        errors.push(
+          `${raw.slug}: ${e instanceof Error ? e.message : "저장 실패"}`
+        );
+      }
+    }
+
+    for (const cat of categories) {
+      revalidateRegional(cat);
+    }
+    for (const item of created) {
+      revalidatePath(
+        regionalLandingPathForCategory(item.category, item.slug)
+      );
+    }
+
+    let indexnow: Awaited<ReturnType<typeof submitToIndexNow>> | null = null;
+    if (body.submit_indexnow && created.length > 0) {
+      indexnow = await submitToIndexNow(created.map((c) => c.url));
+    }
+
+    return NextResponse.json({
+      ok: true,
+      count: created.length,
+      pages: created,
+      urls: created.map((c) => c.url),
+      errors,
+      indexnow,
+    });
   }
 
   if (body.action === "toggle_publish") {

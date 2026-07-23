@@ -18,6 +18,7 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 import type { ListingCategory } from "@/lib/types/listing";
+import { AdoptionListPage } from "@/components/adoption/AdoptionListPage";
 
 type PageProps = {
   params: Promise<{ service: string }>;
@@ -46,6 +47,18 @@ export default async function ListingServicePage({ params, searchParams }: PageP
   const basePath = listingBasePath(category);
   const { region = "전체", q, page: pageParam } = await searchParams;
   const all = await getListings(category, { region, query: q });
+
+  if (category === "adoption") {
+    return (
+      <AdoptionListPage
+        listings={all}
+        region={region}
+        query={q}
+        pageParam={pageParam}
+      />
+    );
+  }
+
   const premium = all.filter((item) => item.is_premium);
   const regular = all.filter((item) => !item.is_premium);
   const listPage = paginate(regular, parsePageParam(pageParam));

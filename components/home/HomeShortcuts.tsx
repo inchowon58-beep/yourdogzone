@@ -81,7 +81,7 @@ export const SERVICE_SHORTCUTS: HomeShortcut[] = [
   },
   {
     id: "adoption",
-    label: "애견샵",
+    label: "강아지분양",
     href: "/services/adoption",
     icon: Heart,
     tile: "bg-rose-100",

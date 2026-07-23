@@ -7,7 +7,7 @@ const FOOTER_LINKS = [
   { label: "멍BTI", href: "/tools/mbti" },
   { label: "먹어도 되나요", href: "/tools/food" },
   { label: "애견미용학원", href: "/services/academy" },
-  { label: "애견샵", href: "/services/adoption" },
+  { label: "강아지분양", href: "/services/adoption" },
   { label: "강아지보호소", href: "/services/shelter" },
   { label: "동물병원", href: "/services/hospital" },
   { label: "견종소개", href: "/dognose" },

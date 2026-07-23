@@ -19,6 +19,7 @@ import {
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 import type { ListingCategory } from "@/lib/types/listing";
+import { AdoptionDetailPage } from "@/components/adoption/AdoptionDetailPage";
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -63,6 +64,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const basePath = listingBasePath(category);
   const listing = await getListingBySlug(category, slug);
   if (!listing) notFound();
+
+  if (category === "adoption") {
+    return <AdoptionDetailPage listing={listing} />;
+  }
 
   const images = getGalleryImages(listing, 3);
   const regionLabel = `${listing.region_big} ${listing.region_small}`;

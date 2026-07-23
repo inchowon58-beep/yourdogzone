@@ -45,6 +45,8 @@ export type RegionalLandingPage = {
   faqItemsNearby?: RegionalFaqItemStored[];
   /** Gemini 생성 메타 설명 (OG·네이버 스니펫) */
   metaDescription?: string;
+  /** SEO 발행 시 지정한 대표 이미지 (CDN 랜덤 등) */
+  imageUrl?: string;
   /** @deprecated */
   metaDescriptionNearby?: string;
   /** @deprecated */

@@ -7,9 +7,11 @@ import { Search } from "lucide-react";
 export function AcademySearchBar({
   defaultQuery = "",
   servicePath = "/services/academy",
+  placeholder = "학원명, 지역, 주소로 검색",
 }: {
   defaultQuery?: string;
   servicePath?: string;
+  placeholder?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,7 +38,7 @@ export function AcademySearchBar({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="학원명, 지역, 주소로 검색"
+          placeholder={placeholder}
           className="h-12 w-full rounded-2xl bg-white pl-11 pr-[4.75rem] text-sm shadow-[var(--card-shadow)] outline-none transition-shadow placeholder:text-gray-400 focus:shadow-[var(--card-shadow-hover)] focus:ring-2 focus:ring-primary/20 sm:h-14 sm:pl-14 sm:pr-28 sm:text-base"
         />
         <button

@@ -79,6 +79,7 @@ export function buildRegionalLandingMetadata(
     description,
     path,
     keywords,
+    images: page.imageUrl ? [page.imageUrl] : undefined,
     ogSubtitle: config.ogSubtitle,
     imageAlt,
   });

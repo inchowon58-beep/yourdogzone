@@ -15,6 +15,8 @@ type Props = {
   blocks: RegionalSeoBlock[];
   intro: string;
   featuredAcademy?: FeaturedAcademy | null;
+  /** SEO 발행 대표 이미지 (CDN) */
+  coverImageUrl?: string | null;
   serviceTitle?: string;
   servicePath?: string;
   entityLabel?: string;
@@ -26,6 +28,7 @@ export function RegionalAcademySeoSection({
   blocks,
   intro,
   featuredAcademy,
+  coverImageUrl,
   serviceTitle = "애견미용학원",
   servicePath = "/services/academy",
   entityLabel = "학원",
@@ -46,6 +49,16 @@ export function RegionalAcademySeoSection({
         {label} {serviceTitle} — {guideSectionTitle}
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{intro}</p>
+
+      {coverImageUrl ? (
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-100">
+          <AcademyThumbnail
+            src={coverImageUrl}
+            alt={`${label} ${serviceTitle} 안내 이미지`}
+            className="aspect-[16/9] w-full"
+          />
+        </div>
+      ) : null}
 
       {featuredAcademy && featuredAcademy.images.length > 0 && (
         <div className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5">

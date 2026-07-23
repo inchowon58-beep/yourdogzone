@@ -18,6 +18,8 @@ export type Listing = {
   phone: string | null;
   address: string;
   kakao_url: string | null;
+  /** 네이버 플레이스/지도 URL (있으면 상세에서 바로가기) */
+  naver_place_url?: string | null;
   seo_title_suffix?: string | null;
   is_premium: boolean;
   created_at: string;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { KeyRound, RefreshCw, Star, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, RefreshCw, Star, Trash2, X } from "lucide-react";
 import { getListingConfig, listingBasePath } from "@/lib/listings/config";
 import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
 import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
@@ -15,6 +15,23 @@ type ListingRow = {
   region_small: string;
   is_premium: boolean;
   created_at: string;
+  phone?: string | null;
+  address?: string;
+  logo_image?: string | null;
+};
+
+type EditForm = {
+  slug: string;
+  name: string;
+  address: string;
+  phone: string;
+  title_copy: string;
+  region_big: string;
+  region_small: string;
+  logo_image: string;
+  gallery_images: string;
+  service_info: string;
+  naver_place_url: string;
 };
 
 function storageKey(category: ListingCategory) {
@@ -41,6 +58,25 @@ export function ListingAdminPanel({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [togglingSlug, setTogglingSlug] = useState<string | null>(null);
+  const [naverQuery, setNaverQuery] = useState("");
+  const [naverSearching, setNaverSearching] = useState(false);
+  const [naverImporting, setNaverImporting] = useState<string | null>(null);
+  const [naverCandidates, setNaverCandidates] = useState<
+    {
+      placeId: string;
+      name: string;
+      address: string;
+      phone: string | null;
+      thumb: string | null;
+      category: string | null;
+      naverPlaceUrl: string;
+    }[]
+  >([]);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const isAdoption = category === "adoption";
+  const naverApi = `/api/listings/adoption/admin/naver`;
 
   const allSelected = useMemo(
     () => listings.length > 0 && selected.size === listings.length,
@@ -190,6 +226,171 @@ export function ListingAdminPanel({
     }
   }
 
+  async function searchNaver() {
+    const q = naverQuery.trim();
+    if (!q) return;
+    setNaverSearching(true);
+    setError("");
+    setMessage("");
+    setNaverCandidates([]);
+    try {
+      const res = await fetch(naverApi, {
+        method: "POST",
+        headers: adminPanelJsonHeaders(secret, embedded),
+        body: JSON.stringify({ action: "search", query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "네이버 검색에 실패했습니다.");
+        return;
+      }
+      setNaverCandidates(data.candidates ?? []);
+      if ((data.candidates ?? []).length === 0) {
+        setError(data.message ?? "검색 결과가 없습니다.");
+      } else {
+        setMessage(`${data.candidates.length}건의 네이버 플레이스를 찾았습니다.`);
+      }
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setNaverSearching(false);
+    }
+  }
+
+  async function importNaver(candidate: {
+    placeId: string;
+    name: string;
+    address: string;
+    phone: string | null;
+    thumb: string | null;
+  }) {
+    if (!confirm(`「${candidate.name}」을(를) 강아지분양에 등록할까요?`)) return;
+    setNaverImporting(candidate.placeId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(naverApi, {
+        method: "POST",
+        headers: adminPanelJsonHeaders(secret, embedded),
+        body: JSON.stringify({
+          action: "import",
+          placeId: candidate.placeId,
+          name: candidate.name,
+          address: candidate.address,
+          phone: candidate.phone,
+          thumb: candidate.thumb,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "등록에 실패했습니다.");
+        return;
+      }
+      setMessage(
+        `✓ 등록됨: ${data.name} → ${data.slug}` +
+          (data.imageCount ? ` (사진 ${data.imageCount}장)` : "")
+      );
+      setNaverCandidates((prev) =>
+        prev.filter((c) => c.placeId !== candidate.placeId)
+      );
+      await loadListings();
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setNaverImporting(null);
+    }
+  }
+
+  async function openEdit(row: ListingRow) {
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`${apiBase}?slug=${encodeURIComponent(row.slug)}`, {
+        headers: adminPanelHeaders(secret, embedded),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.listing) {
+        setError(data.error ?? "상세를 불러오지 못했습니다.");
+        return;
+      }
+      const L = data.listing;
+      setEditForm({
+        slug: L.slug,
+        name: L.name ?? "",
+        address: L.address ?? "",
+        phone: L.phone ?? "",
+        title_copy: L.title_copy ?? "",
+        region_big: L.region_big ?? "",
+        region_small: L.region_small ?? "",
+        logo_image: L.logo_image ?? "",
+        gallery_images: Array.isArray(L.gallery_images)
+          ? L.gallery_images.join("\n")
+          : "",
+        service_info: L.service_info ?? "",
+        naver_place_url: L.naver_place_url ?? "",
+      });
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    }
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editForm) return;
+    setEditSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const gallery = editForm.gallery_images
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const res = await fetch(apiBase, {
+        method: "PATCH",
+        headers: adminPanelJsonHeaders(secret, embedded),
+        body: JSON.stringify({
+          action: "update",
+          slug: editForm.slug,
+          name: editForm.name,
+          address: editForm.address,
+          phone: editForm.phone || null,
+          title_copy: editForm.title_copy || null,
+          region_big: editForm.region_big,
+          region_small: editForm.region_small,
+          logo_image: editForm.logo_image || null,
+          gallery_images: gallery.length ? gallery : null,
+          service_info: editForm.service_info || null,
+          naver_place_url: editForm.naver_place_url || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "수정에 실패했습니다.");
+        return;
+      }
+      if (Array.isArray(data.uploads)) {
+        for (const upload of data.uploads) {
+          const putResult = await uploadToPresignedUrl(
+            upload.uploadUrl,
+            upload.body,
+            upload.contentType
+          );
+          if (!putResult.ok) {
+            setError(putResult.error);
+            return;
+          }
+        }
+      }
+      setMessage(`${editForm.name} 정보를 저장했습니다.`);
+      setEditForm(null);
+      await loadListings();
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   if (!embedded && !secret) {
     return (
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-[var(--card-shadow)]">
@@ -224,7 +425,11 @@ export function ListingAdminPanel({
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{config.title} 관리</h1>
-          <p className="mt-1 text-sm text-muted">인증 추천 on/off · 선택 삭제</p>
+          <p className="mt-1 text-sm text-muted">
+            {isAdoption
+              ? "네이버 플레이스 등록 · 정보 수정 · 인증 추천 · 선택 삭제"
+              : "정보 수정 · 인증 추천 on/off · 선택 삭제"}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {selected.size > 0 && (
@@ -268,6 +473,74 @@ export function ListingAdminPanel({
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
       )}
 
+      {isAdoption ? (
+        <section className="mb-8 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-[var(--card-shadow)]">
+          <h2 className="text-base font-bold text-foreground">
+            네이버 플레이스로 업체 등록
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            업체명으로 검색하거나, 네이버지도 플레이스 URL(place/숫자)을
+            붙여넣은 뒤 등록하세요.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <input
+              value={naverQuery}
+              onChange={(e) => setNaverQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void searchNaver()}
+              placeholder="업체명 또는 https://map.naver.com/.../place/123456"
+              className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 sm:min-w-[16rem]"
+            />
+            <button
+              type="button"
+              onClick={() => void searchNaver()}
+              disabled={naverSearching || !naverQuery.trim()}
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {naverSearching ? "검색 중…" : "검색"}
+            </button>
+          </div>
+
+          {naverCandidates.length > 0 ? (
+            <ul className="mt-4 space-y-2">
+              {naverCandidates.map((c) => (
+                <li
+                  key={c.placeId}
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-white bg-white px-3 py-3"
+                >
+                  {c.thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={c.thumb}
+                      alt=""
+                      className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs text-muted">
+                      사진
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-foreground">{c.name}</p>
+                    <p className="truncate text-xs text-muted">{c.address}</p>
+                    {c.phone ? (
+                      <p className="text-xs text-muted">{c.phone}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={naverImporting === c.placeId}
+                    onClick={() => void importNaver(c)}
+                    className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {naverImporting === c.placeId ? "등록 중…" : "등록하기"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
       {listings.length === 0 && !loading ? (
         <p className="rounded-2xl bg-white p-8 text-center text-sm text-muted shadow-[var(--card-shadow)]">
           등록된 {config.singular}이 없습니다.
@@ -289,6 +562,7 @@ export function ListingAdminPanel({
                 <th className="px-5 py-3 font-medium">이름</th>
                 <th className="hidden px-5 py-3 font-medium sm:table-cell">지역</th>
                 <th className="px-5 py-3 font-medium">인증 추천</th>
+                <th className="px-5 py-3 font-medium">수정</th>
                 <th className="hidden px-5 py-3 font-medium md:table-cell">slug</th>
               </tr>
             </thead>
@@ -326,6 +600,16 @@ export function ListingAdminPanel({
                       {row.is_premium ? "추천 ON" : "추천 OFF"}
                     </button>
                   </td>
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => void openEdit(row)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-gray-50"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      수정
+                    </button>
+                  </td>
                   <td className="hidden px-5 py-4 text-xs text-muted md:table-cell">
                     <Link href={`${basePath}/${row.slug}`} className="hover:text-primary">
                       {row.slug}
@@ -337,6 +621,110 @@ export function ListingAdminPanel({
           </table>
         </div>
       )}
+
+      {editForm ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <form
+            onSubmit={(e) => void saveEdit(e)}
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">업체 정보 수정</h2>
+              <button
+                type="button"
+                onClick={() => setEditForm(null)}
+                className="rounded-lg p-1.5 text-muted hover:bg-gray-100"
+                aria-label="닫기"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              {(
+                [
+                  ["name", "업체명", false],
+                  ["address", "주소", false],
+                  ["phone", "전화", false],
+                  ["title_copy", "한 줄 소개", false],
+                  ["region_big", "시/도", false],
+                  ["region_small", "시/군/구", false],
+                  ["logo_image", "대표 사진 URL", false],
+                  ["naver_place_url", "네이버 지도 URL", false],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="block">
+                  <span className="mb-1 block text-xs font-medium text-muted">
+                    {label}
+                  </span>
+                  <input
+                    value={editForm[key]}
+                    onChange={(e) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, [key]: e.target.value } : prev
+                      )
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                  />
+                </label>
+              ))}
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">
+                  갤러리 사진 URL (한 줄에 하나)
+                </span>
+                <textarea
+                  value={editForm.gallery_images}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev ? { ...prev, gallery_images: e.target.value } : prev
+                    )
+                  }
+                  rows={3}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">
+                  분양 안내 문구
+                </span>
+                <textarea
+                  value={editForm.service_info}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev ? { ...prev, service_info: e.target.value } : prev
+                    )
+                  }
+                  rows={4}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              {editForm.logo_image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={editForm.logo_image}
+                  alt="미리보기"
+                  className="h-28 w-full rounded-xl object-cover"
+                />
+              ) : null}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditForm(null)}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={editSaving}
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {editSaving ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

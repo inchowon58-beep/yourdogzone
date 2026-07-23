@@ -4,8 +4,10 @@ import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { isListingCategory, listingBasePath } from "@/lib/listings/config";
 import {
   deleteListings,
+  getListingBySlug,
   getListings,
   setListingPremium,
+  updateListingFields,
 } from "@/lib/listings/queries";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
 import type { ListingCategory } from "@/lib/types/listing";
@@ -13,10 +15,6 @@ import type { ListingCategory } from "@/lib/types/listing";
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ category: string }> };
-
-function unauthorized() {
-  return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
-}
 
 async function parseCategory(context: RouteContext): Promise<ListingCategory | NextResponse> {
   const { category: raw } = await context.params;
@@ -33,6 +31,17 @@ export async function GET(request: Request, context: RouteContext) {
   const denied = await enforceAdminAccess(request);
   if (denied) return denied;
 
+  const { searchParams } = new URL(request.url);
+  const slug = searchParams.get("slug")?.trim();
+
+  if (slug) {
+    const listing = await getListingBySlug(category, slug);
+    if (!listing) {
+      return NextResponse.json({ error: "업체를 찾을 수 없습니다." }, { status: 404 });
+    }
+    return NextResponse.json({ listing });
+  }
+
   const listings = await getListings(category, { noCache: true });
   return NextResponse.json({
     category,
@@ -43,6 +52,9 @@ export async function GET(request: Request, context: RouteContext) {
       region_small: item.region_small,
       is_premium: item.is_premium,
       created_at: item.created_at,
+      phone: item.phone,
+      address: item.address,
+      logo_image: item.logo_image,
     })),
   });
 }
@@ -57,22 +69,58 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const body = await request.json();
     const slug = body.slug as string | undefined;
-    const isPremium = body.is_premium as boolean | undefined;
 
     if (!slug?.trim()) {
       return NextResponse.json({ error: "slug가 필요합니다." }, { status: 400 });
     }
-    if (typeof isPremium !== "boolean") {
-      return NextResponse.json(
-        { error: "is_premium (true/false)이 필요합니다." },
-        { status: 400 }
-      );
+
+    // 기존: 추천 on/off
+    if (typeof body.is_premium === "boolean" && body.action !== "update") {
+      const result = await setListingPremium(category, slug.trim(), body.is_premium);
+      if (result.error || !result.data) {
+        return NextResponse.json(
+          { error: result.error ?? "변경에 실패했습니다." },
+          { status: 400 }
+        );
+      }
+
+      if (result.uploads?.length) {
+        await completeR2Uploads(result.uploads);
+      }
+
+      const base = listingBasePath(category);
+      revalidatePath(`${base}/${result.data.slug}`);
+      revalidatePath(base);
+      revalidatePath("/sitemap.xml");
+
+      return NextResponse.json({
+        ok: true,
+        slug: result.data.slug,
+        is_premium: result.data.is_premium,
+        storage: "r2",
+      });
     }
 
-    const result = await setListingPremium(category, slug.trim(), isPremium);
+    // 정보 수정
+    const result = await updateListingFields(category, slug.trim(), {
+      name: body.name,
+      address: body.address,
+      phone: body.phone,
+      title_copy: body.title_copy,
+      region_big: body.region_big,
+      region_small: body.region_small,
+      logo_image: body.logo_image,
+      gallery_images: body.gallery_images,
+      service_info: body.service_info,
+      extra_info: body.extra_info,
+      extra_info_2: body.extra_info_2,
+      naver_place_url: body.naver_place_url,
+      kakao_url: body.kakao_url,
+    });
+
     if (result.error || !result.data) {
       return NextResponse.json(
-        { error: result.error ?? "변경에 실패했습니다." },
+        { error: result.error ?? "수정에 실패했습니다." },
         { status: 400 }
       );
     }
@@ -88,8 +136,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({
       ok: true,
-      slug: result.data.slug,
-      is_premium: result.data.is_premium,
+      listing: result.data,
       storage: "r2",
     });
   } catch {
@@ -122,8 +169,8 @@ export async function DELETE(request: Request, context: RouteContext) {
     }
 
     const base = listingBasePath(category);
-    for (const slug of result.deleted) {
-      revalidatePath(`${base}/${slug}`);
+    for (const s of result.deleted) {
+      revalidatePath(`${base}/${s}`);
     }
     revalidatePath(base);
     revalidatePath("/sitemap.xml");
