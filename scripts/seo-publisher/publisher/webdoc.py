@@ -67,6 +67,17 @@ def run_webdoc_submit(
     log(f"웹문서 등록 시작: {len(batch)}건 (사이트: {site})")
 
     sys.path.insert(0, str(webdoc_dir.resolve()))
+    # exe 환경에서도 VM 폴더의 보조 모듈(naver_captcha 등)을 찾을 수 있게
+    try:
+        import requests  # noqa: F401
+    except ImportError as e:
+        raise RuntimeError(
+            "requests 패키지가 없습니다. "
+            "scripts\\seo-publisher 에서 pip install -r requirements.txt 후 "
+            "exe를 다시 빌드하거나, python으로 app_gui.py 를 실행하세요.\n"
+            f"상세: {e}"
+        ) from e
+
     try:
         from naver_searchadvisor import (  # type: ignore
             LoginTypingOptions,
@@ -76,7 +87,8 @@ def run_webdoc_submit(
     except ImportError as e:
         raise RuntimeError(
             f"VM웹문서자동등록 모듈을 불러오지 못했습니다: {e}\n"
-            f"해당 폴더에서 pip install -r requirements.txt 후 다시 시도하세요."
+            f"1) {webdoc_dir}\\requirements.txt 설치\n"
+            f"2) SEO 프로그램 requirements.txt 설치 후 exe 재빌드"
         ) from e
 
     typing = LoginTypingOptions(

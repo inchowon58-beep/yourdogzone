@@ -125,14 +125,14 @@ class SeoPublisherApp(tk.Tk):
         ttk.Label(i0, text="이미지 폴더 URL", width=16).pack(side=tk.LEFT)
         self.image_cdn_var = tk.StringVar(
             value=cfg.image_cdn
-            or str(saved.get("image_cdn") or "https://image.cattery.co.kr/dogboho")
+            or str(saved.get("image_cdn") or "")
         )
         ttk.Entry(i0, textvariable=self.image_cdn_var).pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 8)
         )
         ttk.Label(i0, text="최대번호").pack(side=tk.LEFT)
         self.image_max_var = tk.StringVar(
-            value=str(cfg.image_max or saved.get("image_max") or "79")
+            value=str(cfg.image_max or saved.get("image_max") or "")
         )
         ttk.Entry(i0, textvariable=self.image_max_var, width=6).pack(
             side=tk.LEFT, padx=(4, 0)
@@ -149,7 +149,7 @@ class SeoPublisherApp(tk.Tk):
         )
         ttk.Label(
             i1,
-            text="예: 폴더 + 79 → 01.webp~79.webp 중 페이지별 랜덤 1장",
+            text="비워두면 이미지 없이 글만 발행 / 예: 폴더 + 79 → 01.webp~79.webp 랜덤",
             foreground="#666",
         ).pack(side=tk.LEFT)
 

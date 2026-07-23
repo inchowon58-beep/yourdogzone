@@ -199,53 +199,138 @@ export function bindRegionalFaqItems(
   }));
 }
 
-/** Gemini 미생성 시 단일 SEO 템플릿 (소제목 3~4개) */
-export function buildPlaceholderSeoBlocks(): RegionalSeoBlockStored[] {
+/** Gemini 미생성 시 카테고리별 SEO 템플릿 (소제목 3~4개) */
+export function buildPlaceholderSeoBlocks(
+  category: import("@/lib/seo/regional-service-config").RegionalServiceCategory = "academy"
+): RegionalSeoBlockStored[] {
+  const config = getRegionalServiceConfig(category);
+  const title = config.title;
+  const entity = config.entityLabel;
+
+  if (category === "academy") {
+    return [
+      {
+        title: `{region} ${title}, 어떤 기준으로 고를까요?`,
+        paragraphs: [
+          `{region}에서 애견미용 자격증·취업·창업을 준비한다면 수강료·국비지원·실습 환경·합격률을 함께 비교하는 것이 좋습니다.`,
+        ],
+        bullets: [
+          `수강료·국비지원(내일배움카드) 적용 여부`,
+          `실습견 배정·실습 환경`,
+          `자격증 과정·취업 연계`,
+        ],
+      },
+      {
+        title: `{region} ${title} 수강료·국비지원 안내`,
+        paragraphs: [
+          `{region} ${title} 수강료는 과정·등급에 따라 차이가 큽니다. 방문 상담 시 국비지원 가능 여부를 확인하세요.`,
+        ],
+        bullets: [
+          `입문·자격증·창업 과정별 비용 비교`,
+          `분할 납부·재수강 할인 여부`,
+          `교재·도구 포함 범위 확인`,
+        ],
+      },
+      {
+        title: `{region} 인증 추천 ${title}`,
+        paragraphs: [
+          `{region} 지역에서 인증 추천으로 등록된 [{recommendedAcademyName}]은 {recommendedAcademyHighlight} 측면에서 참고할 만합니다.`,
+          `인근 {nearbyRecommendedRegion}의 [{nearbyRecommendedAcademyName}] 정보도 함께 비교해 보세요.`,
+        ],
+        bullets: [
+          `인증 추천 ${entity} 상단에서 상세 확인`,
+          `{region} ${title} 키워드 맞춤 정보`,
+          `방문 상담·견학 권장`,
+        ],
+      },
+      {
+        title: `{region} ${title} 실습·자격증 체크리스트`,
+        paragraphs: [
+          `{region} ${title}을 선택할 때는 실습견 배정·위생·휴식 관리를 직접 확인하는 것이 중요합니다.`,
+        ],
+        bullets: [
+          `실습견 수·배정 방식`,
+          `자격증 시험 대비 커리큘럼`,
+          `졸업 후 취업·창업 지원`,
+        ],
+      },
+    ];
+  }
+
+  if (category === "shelter") {
+    return [
+      {
+        title: `{region} 강아지파양 상담 전 꼭 확인할 점`,
+        paragraphs: [
+          `{region}에서 강아지파양을 고민한다면 유기보다 먼저 보호소 상담을 통해 아이에게 새로운 가족을 찾아주는 방향을 검토하는 것이 좋습니다.`,
+          `군입대, 이민, 보호자 건강 악화, 가족 돌봄 공백처럼 더 이상 함께할 수 없는 상황이라면 아이 상태와 생활 이력을 정리해 상담을 시작하세요.`,
+        ],
+        bullets: [
+          `기본 접종·중성화 기록`,
+          `성격·사회화 정도`,
+          `방문 가능 요일·시간`,
+        ],
+      },
+      {
+        title: `강아지무료분양 안내`,
+        paragraphs: [
+          `강아지무료분양은 유기견·유기묘를 뜻하는 것이 아니라, 가정에서 생활하던 아이가 사정으로 인해 새로운 가족을 찾는 경우를 의미하는 경우가 많습니다.`,
+          `아이 성향과 건강 상태를 솔직하게 공유할수록 더 잘 맞는 가정을 찾는 데 도움이 됩니다.`,
+        ],
+        bullets: [
+          `아이의 생활 습관과 식이`,
+          `분리불안·사회성 여부`,
+          `새 가족에게 꼭 알려야 할 특이사항`,
+        ],
+      },
+      {
+        title: `사설보호소 비용 안내를 볼 때 주의할 점`,
+        paragraphs: [
+          `사설보호소는 어떤 곳이든 아이들의 보호·의료·케어를 위한 입소비용이 발생할 수 있습니다.`,
+          `다만 너무 말도 안 되게 높은 금액이거나 지나치게 낮은 금액이라면 한 번쯤 의심해 보고, 무엇이 포함된 비용인지 항목별로 확인하는 것이 안전합니다.`,
+        ],
+        bullets: [
+          `입소비용 포함 항목`,
+          `의료·사료·위탁 범위`,
+          `사후 상담과 진행 방식`,
+        ],
+      },
+      {
+        title: `믿을 수 있는 보호소를 고르는 기준`,
+        paragraphs: [
+          `뉴스로 보도된 사례처럼 믿기 어려운 운영을 하는 곳도 있을 수 있으니, 보호 환경과 비용 구조를 투명하게 설명하는지 꼭 살펴보세요.`,
+          `{region} 인근 시설마다 보호 공간·산책·급여·입양 연결 방식이 다르므로 방문 또는 상담 단계에서 가독성 있게 정리된 설명을 제공하는 곳인지 확인하는 것도 중요합니다.`,
+        ],
+        bullets: [
+          `운영 방식 설명의 투명성`,
+          `보호 환경·위생 상태`,
+          `상담 응대와 연락 신뢰도`,
+        ],
+      },
+    ];
+  }
+
   return [
     {
-      title: `{region} 애견미용학원, 어떤 기준으로 고를까요?`,
+      title: `{region} ${title} 안내`,
       paragraphs: [
-        `{region}에서 애견미용 자격증·취업·창업을 준비한다면 수강료·국비지원·실습 환경·합격률을 함께 비교하는 것이 좋습니다.`,
+        `{region} ${title} 정보를 찾는 분을 위해 핵심 안내를 정리했습니다.`,
       ],
-      bullets: [
-        `수강료·국비지원(내일배움카드) 적용 여부`,
-        `실습견 배정·실습 환경`,
-        `자격증 과정·취업 연계`,
-      ],
+      bullets: [`상담 가능 시간`, `위치·주차`, `준비 서류`],
     },
     {
-      title: `{region} 애견미용학원 수강료·국비지원 안내`,
+      title: `{region}에서 확인하면 좋은 점`,
       paragraphs: [
-        `{region} 애견미용학원 수강료는 과정·등급에 따라 차이가 큽니다. 방문 상담 시 국비지원 가능 여부를 확인하세요.`,
+        `${title}마다 서비스 범위가 달라 비교가 필요합니다.`,
       ],
-      bullets: [
-        `입문·자격증·창업 과정별 비용 비교`,
-        `분할 납부·재수강 할인 여부`,
-        `교재·도구 포함 범위 확인`,
-      ],
+      bullets: [`서비스 범위`, `비용 안내`, `후기·인증`],
     },
     {
-      title: `{region} 인증 추천 애견미용학원`,
+      title: `이용 전 체크리스트`,
       paragraphs: [
-        `{region} 지역에서 인증 추천으로 등록된 [{recommendedAcademyName}]은 {recommendedAcademyHighlight} 측면에서 참고할 만합니다.`,
-        `인근 {nearbyRecommendedRegion}의 [{nearbyRecommendedAcademyName}] 정보도 함께 비교해 보세요.`,
+        `원하는 일정·예산·연락 방법을 구체적으로 전달하면 상담이 수월합니다.`,
       ],
-      bullets: [
-        `인증 추천 학원 상단에서 상세 확인`,
-        `{region} 애견미용학원 키워드 맞춤 정보`,
-        `방문 상담·견학 권장`,
-      ],
-    },
-    {
-      title: `{region} 애견미용학원 실습·자격증 체크리스트`,
-      paragraphs: [
-        `{region} 애견미용학원을 선택할 때는 실습견 배정·위생·휴식 관리를 직접 확인하는 것이 중요합니다.`,
-      ],
-      bullets: [
-        `실습견 수·배정 방식`,
-        `자격증 시험 대비 커리큘럼`,
-        `졸업 후 취업·창업 지원`,
-      ],
+      bullets: [`원하는 일정`, `예산 범위`, `연락 방법`],
     },
   ];
 }

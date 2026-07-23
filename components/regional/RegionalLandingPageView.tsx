@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus } from "lucide-react";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
@@ -85,6 +85,10 @@ export function RegionalLandingPageView({ bundle }: Props) {
         isNearby: !recommended,
       }
     : null;
+  const shelterCtaPhone =
+    category === "shelter" && featuredSource?.phone
+      ? featuredSource.phone.replace(/-/g, "")
+      : null;
 
   const pageKeyword =
     page.keyword?.trim() || `${label} ${config.title}`;
@@ -148,8 +152,9 @@ export function RegionalLandingPageView({ bundle }: Props) {
 
       <RegionalAcademySeoSection
         label={label}
+        pageKeyword={pageKeyword}
         blocks={seoBlocks}
-        intro={resolveBoundSeoSectionIntro(label, seoCtx)}
+        intro={resolveBoundSeoSectionIntro(label, seoCtx, category)}
         featuredAcademy={featuredAcademy}
         coverImageUrl={page.imageUrl}
         serviceTitle={config.title}
@@ -221,6 +226,31 @@ export function RegionalLandingPageView({ bundle }: Props) {
           {label} {config.entityLabel} 정보 등록하기
         </Link>
       </div>
+
+      {category === "shelter" && featuredSource?.phone && shelterCtaPhone ? (
+        <>
+          <div className="h-24 sm:h-20" aria-hidden />
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-emerald-100 bg-white/95 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md sm:px-4 sm:py-3">
+            <div className="mx-auto flex w-full max-w-[92rem] items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-foreground">
+                  강아지파양(입소) 무료분양 : 인증추천업체 {featuredSource.phone}
+                </p>
+                <p className="truncate text-xs text-emerald-700">
+                  {featuredSource.name}
+                </p>
+              </div>
+              <a
+                href={`tel:${shelterCtaPhone}`}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                <Phone className="h-4 w-4" />
+                전화하기
+              </a>
+            </div>
+          </div>
+        </>
+      ) : null}
     </main>
   );
 }

@@ -12,6 +12,7 @@ type FeaturedAcademy = {
 
 type Props = {
   label: string;
+  pageKeyword?: string;
   blocks: RegionalSeoBlock[];
   intro: string;
   featuredAcademy?: FeaturedAcademy | null;
@@ -25,6 +26,7 @@ type Props = {
 
 export function RegionalAcademySeoSection({
   label,
+  pageKeyword,
   blocks,
   intro,
   featuredAcademy,
@@ -34,19 +36,21 @@ export function RegionalAcademySeoSection({
   entityLabel = "학원",
   guideSectionTitle = "수강 전 꼭 알아둘 정보",
 }: Props) {
+  const displayKeyword = pageKeyword?.trim() || `${label} ${serviceTitle}`;
+
   return (
     <section
       className="mb-12 rounded-2xl border border-gray-100 bg-white p-6 shadow-[var(--card-shadow)] sm:p-8"
       aria-labelledby="regional-seo-heading"
     >
       <p className="mb-2 text-sm font-semibold text-primary">
-        {label} {serviceTitle} 가이드
+        {displayKeyword} 가이드
       </p>
       <h2
         id="regional-seo-heading"
         className="text-xl font-bold tracking-tight text-foreground sm:text-2xl"
       >
-        {label} {serviceTitle} — {guideSectionTitle}
+        {displayKeyword} — {guideSectionTitle}
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">{intro}</p>
 
