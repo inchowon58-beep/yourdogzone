@@ -5,22 +5,38 @@ import { ArrowLeft, MapPin, Phone, Star } from "lucide-react";
 import { ImageSlider } from "@/components/academy/ImageSlider";
 import { AcademyOwnerPromoBanner } from "@/components/academy/AcademyOwnerPromoBanner";
 import {
+  LISTING_CATEGORIES,
   getListingConfig,
   isListingCategory,
   listingBasePath,
   listingDetailPath,
 } from "@/lib/listings/config";
-import { getGalleryImages, getListingBySlug } from "@/lib/listings/queries";
+import {
+  getGalleryImages,
+  getListingBySlug,
+  getListingSlugs,
+} from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 import type { ListingCategory } from "@/lib/types/listing";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 export const dynamicParams = true;
 
 type PageProps = {
   params: Promise<{ service: string; slug: string }>;
 };
+
+export async function generateStaticParams() {
+  const params: { service: string; slug: string }[] = [];
+  for (const category of LISTING_CATEGORIES) {
+    const slugs = await getListingSlugs(category);
+    for (const slug of slugs) {
+      params.push({ service: category, slug });
+    }
+  }
+  return params;
+}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { service, slug } = await params;

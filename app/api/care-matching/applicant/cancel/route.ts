@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cancelCareIntakeByApplicant } from "@/lib/care-matching/queries";
+import { revalidateCareMatchingPublic } from "@/lib/care-matching/revalidate-public";
 
 export async function POST(request: Request) {
   let body: {
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  revalidateCareMatchingPublic({ freeAdoptionId: result.data.id });
 
   const { portal_password_hash: _, ...application } = result.data;
   return NextResponse.json({

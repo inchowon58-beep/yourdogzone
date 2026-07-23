@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { SiteWideLayout } from "@/components/layout/SiteWideLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
   getSiteUrl,
@@ -83,8 +82,8 @@ export default function RootLayout({
       <body className="flex min-h-full w-full flex-col overflow-x-hidden antialiased">
         <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />
-        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden">
-          <SiteWideLayout>{children}</SiteWideLayout>
+        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col items-center overflow-x-hidden px-3 sm:px-4 lg:px-6">
+          <div className="w-full min-w-0 max-w-[92rem]">{children}</div>
         </div>
         <Footer />
       </body>

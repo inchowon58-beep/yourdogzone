@@ -138,5 +138,5 @@ export async function prepareBreedR2Deletes(
 }
 
 export async function loadBreedsForAdmin(): Promise<Breed[]> {
-  return loadAllBreedsFromR2();
+  return loadAllBreedsFromR2({ noCache: true });
 }

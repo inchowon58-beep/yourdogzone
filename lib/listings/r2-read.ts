@@ -74,16 +74,15 @@ export async function fetchListingFromR2(
 }
 
 export async function loadLatestListingList(
-  category: ListingCategory
+  category: ListingCategory,
+  options?: { noCache?: boolean }
 ): Promise<Listing[]> {
-  const indexList = await fetchListingsFromR2(category, { noCache: true });
+  const indexList = await fetchListingsFromR2(category, options);
   if (indexList.length === 0) return [];
 
   const merged = await Promise.all(
     indexList.map(async (summary) => {
-      const latest = await fetchListingFromR2(category, summary.slug, {
-        noCache: true,
-      });
+      const latest = await fetchListingFromR2(category, summary.slug, options);
       return latest ?? summary;
     })
   );

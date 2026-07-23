@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { CareIntakeApplyButton } from "@/components/care-matching/CareIntakeApplyButton";
 import { CareMatchingOpenList } from "@/components/care-matching/CareMatchingOpenList";
+import { listOpenCareIntakes } from "@/lib/care-matching/queries";
 
 const FLOW = [
   {
@@ -51,7 +52,13 @@ const INTAKE_OPTIONS = [
   },
 ] as const;
 
-export function CareMatchingSection() {
+export async function CareMatchingSection() {
+  const openList = await listOpenCareIntakes({
+    page: 1,
+    pageSize: 5,
+    useCache: true,
+  });
+
   return (
     <section
       aria-labelledby="care-matching-heading"
@@ -258,7 +265,11 @@ export function CareMatchingSection() {
               보호소 파트너 가입 →
             </Link>
           </div>
-          <CareMatchingOpenList limit={5} />
+          <CareMatchingOpenList
+            limit={5}
+            initialItems={openList.items}
+            initialTotal={openList.total}
+          />
         </div>
       </div>
     </section>

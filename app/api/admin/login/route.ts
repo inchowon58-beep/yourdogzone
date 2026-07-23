@@ -4,6 +4,7 @@ import {
   MAIN_ADMIN_COOKIE,
   verifyMainAdminLogin,
 } from "@/lib/admin/main-auth-core";
+import { setAuthHintOnLogin } from "@/lib/auth/auth-hint-server";
 
 export async function POST(request: Request) {
   let body: { username?: string; password?: string };
@@ -32,5 +33,6 @@ export async function POST(request: Request) {
     path: "/",
     maxAge: 7 * 24 * 60 * 60,
   });
+  setAuthHintOnLogin(res, "admin", request);
   return res;
 }

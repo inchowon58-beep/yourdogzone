@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Clock, Lock, Users } from "lucide-react";
+import { hasAuthHintCookie } from "@/lib/auth/header-auth-client";
 import type { CareIntakePublicItem } from "@/lib/types/care-intake";
 import { formatManwon, formatRemaining, manwonToWon } from "@/lib/care-matching/matching-logic-client";
 
@@ -14,26 +15,38 @@ type Viewer = {
   partner: { shelter_name: string } | null;
 };
 
+const GUEST_VIEWER: Viewer = {
+  isAdmin: false,
+  isPartner: false,
+  canViewPhotos: false,
+  canBid: false,
+  partner: null,
+};
+
 type Props = {
   limit?: number;
   page?: number;
   showViewAll?: boolean;
+  /** 서버 공개 스냅샷 — auth hint 없으면 API 생략 */
+  initialItems?: CareIntakePublicItem[];
+  initialTotal?: number;
+  onTotalChange?: (total: number) => void;
 };
 
 export function CareMatchingOpenList({
   limit = 5,
   page = 1,
   showViewAll = true,
+  initialItems,
+  initialTotal,
+  onTotalChange,
 }: Props) {
-  const [items, setItems] = useState<CareIntakePublicItem[]>([]);
-  const [viewer, setViewer] = useState<Viewer>({
-    isAdmin: false,
-    isPartner: false,
-    canViewPhotos: false,
-    canBid: false,
-    partner: null,
-  });
-  const [loading, setLoading] = useState(true);
+  const hasInitial = initialItems !== undefined;
+  const [items, setItems] = useState<CareIntakePublicItem[]>(
+    initialItems ?? []
+  );
+  const [viewer, setViewer] = useState<Viewer>(GUEST_VIEWER);
+  const [loading, setLoading] = useState(!hasInitial);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,28 +57,30 @@ export function CareMatchingOpenList({
       );
       const data = await res.json();
       setItems(data.items ?? []);
-      setViewer(
-        data.viewer ?? {
-          isAdmin: false,
-          isPartner: false,
-          canViewPhotos: false,
-          canBid: false,
-          partner: null,
-        }
-      );
+      setViewer(data.viewer ?? GUEST_VIEWER);
+      if (typeof data.total === "number") {
+        onTotalChange?.(data.total);
+      }
     } catch {
-      setItems([]);
+      if (!hasInitial) setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [limit, page]);
+  }, [limit, page, hasInitial, onTotalChange]);
 
   useEffect(() => {
-    void load();
+    if (hasAuthHintCookie() || !hasInitial) {
+      void load();
+    } else {
+      setLoading(false);
+      if (typeof initialTotal === "number") {
+        onTotalChange?.(initialTotal);
+      }
+    }
     const onAuthChange = () => void load();
     window.addEventListener("auth-changed", onAuthChange);
     return () => window.removeEventListener("auth-changed", onAuthChange);
-  }, [load]);
+  }, [load, hasInitial, initialTotal, onTotalChange]);
 
   if (loading) {
     return (

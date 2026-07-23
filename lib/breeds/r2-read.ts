@@ -67,13 +67,15 @@ export async function fetchBreedFromR2(
   return list.find((b) => normalizeBreedSlug(b.slug) === normalized) ?? null;
 }
 
-export async function loadAllBreedsFromR2(): Promise<Breed[]> {
-  const indexList = await fetchBreedsIndexFromR2({ noCache: true });
+export async function loadAllBreedsFromR2(options?: {
+  noCache?: boolean;
+}): Promise<Breed[]> {
+  const indexList = await fetchBreedsIndexFromR2(options);
   if (indexList.length === 0) return [];
 
   const merged = await Promise.all(
     indexList.map(async (summary) => {
-      const latest = await fetchBreedFromR2(summary.slug, { noCache: true });
+      const latest = await fetchBreedFromR2(summary.slug, options);
       return latest ?? summary;
     })
   );

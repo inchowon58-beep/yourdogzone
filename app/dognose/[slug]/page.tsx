@@ -7,16 +7,21 @@ import {
   BREED_KIND_LABELS,
   breedDetailPath,
 } from "@/lib/breeds/config";
-import { getBreedBySlug } from "@/lib/breeds/queries";
+import { getBreedBySlug, getBreedSlugs } from "@/lib/breeds/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 export const dynamicParams = true;
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateStaticParams() {
+  const slugs = await getBreedSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;

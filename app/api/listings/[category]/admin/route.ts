@@ -33,7 +33,7 @@ export async function GET(request: Request, context: RouteContext) {
   const denied = await enforceAdminAccess(request);
   if (denied) return denied;
 
-  const listings = await getListings(category);
+  const listings = await getListings(category, { noCache: true });
   return NextResponse.json({
     category,
     listings: listings.map((item) => ({
@@ -78,14 +78,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     if (result.uploads?.length) {
-      return NextResponse.json({
-        ok: true,
-        slug: result.data.slug,
-        is_premium: result.data.is_premium,
-        storage: "r2",
-        uploads: result.uploads,
-      });
+      await completeR2Uploads(result.uploads);
     }
+
+    const base = listingBasePath(category);
+    revalidatePath(`${base}/${result.data.slug}`);
+    revalidatePath(base);
+    revalidatePath("/sitemap.xml");
 
     return NextResponse.json({
       ok: true,

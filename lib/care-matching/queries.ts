@@ -12,10 +12,10 @@ import {
   selectionEndsAtFrom,
 } from "@/lib/care-matching/matching-logic";
 import {
-  countBidsForApplication,
+  countBidsInList,
   getBidById,
+  listAllShelterBids,
   listBidAmountsForApplicant,
-  getBidByPartnerAndApplication,
 } from "@/lib/care-matching/bid-queries";
 import {
   listApprovedShelterPartners,
@@ -180,6 +180,12 @@ async function loadAll(options?: {
 }): Promise<CareIntakeApplication[]> {
   const raw = await loadAllRaw(options);
   return processExpiryAndSave(raw);
+}
+
+/** 공개 ISR용 — R2 fetch 캐시, 만료는 메모리만 적용(저장 없음) */
+async function loadAllForPublic(): Promise<CareIntakeApplication[]> {
+  const raw = await loadAllRaw({ noCache: false });
+  return raw.map((app) => applyMatchingExpiry(app));
 }
 
 async function saveAll(
@@ -510,6 +516,8 @@ export async function listOpenCareIntakes(options?: {
   partnerName?: string | null;
   isAdmin?: boolean;
   canViewPhotos?: boolean;
+  /** 홈·공개 SSR용: R2 fetch 캐시, 만료 저장 없음 */
+  useCache?: boolean;
 }): Promise<{
   items: CareIntakePublicItem[];
   total: number;
@@ -522,67 +530,71 @@ export async function listOpenCareIntakes(options?: {
   const partnerName = options?.partnerName ?? null;
   const isAdmin = options?.isAdmin ?? false;
   const canViewPhotos = options?.canViewPhotos ?? Boolean(partnerId || isAdmin);
+  const useCache = Boolean(options?.useCache);
 
-  const list = await loadAll({ noCache: true });
+  const list = useCache
+    ? await loadAllForPublic()
+    : await loadAll({ noCache: true });
   const visible = isAdmin
     ? list.filter((app) => app.status !== "cancelled")
     : list.filter(isOpenForPublicList);
   const total = visible.length;
   const slice = visible.slice((page - 1) * pageSize, page * pageSize);
 
-  const items: CareIntakePublicItem[] = await Promise.all(
-    slice.map(async (app) => {
-      const participant_count = await countBidsForApplication(String(app.id));
-      let my_bid_amount: number | null = null;
-      if (partnerId) {
-        const myBid = await getBidByPartnerAndApplication(
-          partnerId,
-          String(app.id)
-        );
-        my_bid_amount = myBid?.amount ?? null;
-      }
+  const allBids = await listAllShelterBids({ noCache: !useCache });
 
-      const phase =
-        app.status === "matching_select"
-          ? "matching_select"
-          : app.status === "matching"
-            ? "matching"
-            : "other";
-
-      const bid_excluded = Boolean(
-        partnerName &&
-          isShelterNameExcluded(partnerName, app.excluded_shelters)
+  const items: CareIntakePublicItem[] = slice.map((app) => {
+    const participant_count = countBidsInList(allBids, String(app.id));
+    let my_bid_amount: number | null = null;
+    if (partnerId) {
+      const myBid = allBids.find(
+        (b) =>
+          b.partner_id === partnerId &&
+          String(b.application_id) === String(app.id)
       );
-      // 보호소 파트너 세션이 있으면 관리자 동시 로그인 여부와 관계없이 입찰 가능
-      const can_bid =
-        Boolean(partnerId) &&
-        phase === "matching" &&
-        !bid_excluded &&
-        my_bid_amount == null;
+      my_bid_amount = myBid?.amount ?? null;
+    }
 
-      return {
-        id: String(app.id),
-        species: app.species,
-        breed: app.breed,
-        pet_name: isAdmin ? app.pet_name : null,
-        photo_url: app.photo_urls[0] ?? null,
-        photo_locked: !canViewPhotos,
-        participant_count,
-        remaining_ms: computeRemainingMs(app),
-        phase,
-        status: isAdmin ? app.status : undefined,
-        status_label: isAdmin
-          ? CARE_INTAKE_STATUS_LABEL[app.status]
-          : undefined,
-        my_bid_amount,
-        preferred_region: null,
-        age_text: app.age_text,
-        weight_kg: app.weight_kg,
-        bid_excluded,
-        can_bid,
-      };
-    })
-  );
+    const phase =
+      app.status === "matching_select"
+        ? "matching_select"
+        : app.status === "matching"
+          ? "matching"
+          : "other";
+
+    const bid_excluded = Boolean(
+      partnerName &&
+        isShelterNameExcluded(partnerName, app.excluded_shelters)
+    );
+    // 보호소 파트너 세션이 있으면 관리자 동시 로그인 여부와 관계없이 입찰 가능
+    const can_bid =
+      Boolean(partnerId) &&
+      phase === "matching" &&
+      !bid_excluded &&
+      my_bid_amount == null;
+
+    return {
+      id: String(app.id),
+      species: app.species,
+      breed: app.breed,
+      pet_name: isAdmin ? app.pet_name : null,
+      photo_url: app.photo_urls[0] ?? null,
+      photo_locked: !canViewPhotos,
+      participant_count,
+      remaining_ms: computeRemainingMs(app),
+      phase,
+      status: isAdmin ? app.status : undefined,
+      status_label: isAdmin
+        ? CARE_INTAKE_STATUS_LABEL[app.status]
+        : undefined,
+      my_bid_amount,
+      preferred_region: null,
+      age_text: app.age_text,
+      weight_kg: app.weight_kg,
+      bid_excluded,
+      can_bid,
+    };
+  });
 
   return { items, total, page, pageSize };
 }
@@ -756,11 +768,11 @@ export async function updateCareDeliveryStatus(
   return { data: list[idx], error: null };
 }
 
-/** 무료분양 홈·목록용 — 최근 취소분 우선 */
+/** 무료분양 홈·목록용 — 최근 취소분 우선 (공개 캐시 읽기) */
 export async function listFreeAdoptionFromCancelled(
   limit = 24
 ): Promise<CareFreeAdoptionPublic[]> {
-  const list = await loadAll({ noCache: true });
+  const list = await loadAllForPublic();
   return list
     .filter((a) => a.status === "cancelled" && a.list_on_free_adoption)
     .sort((a, b) => {

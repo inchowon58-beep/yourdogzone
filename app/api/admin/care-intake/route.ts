@@ -10,6 +10,7 @@ import {
   updateCareDeliveryStatus,
   updateCareIntakeStatus,
 } from "@/lib/care-matching/queries";
+import { revalidateCareMatchingPublic } from "@/lib/care-matching/revalidate-public";
 import type {
   CareDeliveryStatus,
   CareIntakeStatus,
@@ -77,6 +78,7 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    revalidateCareMatchingPublic();
     return NextResponse.json({ application: result.data });
   }
 
@@ -94,6 +96,7 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    revalidateCareMatchingPublic();
     return NextResponse.json({ application: result.data });
   }
 
@@ -111,6 +114,7 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+    revalidateCareMatchingPublic();
     return NextResponse.json({ application: result.data });
   }
 
@@ -125,6 +129,12 @@ export async function PATCH(request: Request) {
       { status: 500 }
     );
   }
+
+  revalidateCareMatchingPublic(
+    body.status === "cancelled"
+      ? { freeAdoptionId: result.data.id }
+      : undefined
+  );
 
   return NextResponse.json({ application: result.data });
 }

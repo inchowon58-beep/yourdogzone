@@ -8,7 +8,6 @@ import {
   needsRegionalNearbyGeo,
   needsRegionalSeoContent,
 } from "@/lib/academy/regional-seo-sync";
-import { warmRegionalPage } from "@/lib/academy/regional-page-warmup";
 import { getRegionalLandingBySlug } from "@/lib/academy/regional-store";
 
 const backfillInFlight = new Set<string>();
@@ -35,8 +34,6 @@ export async function runRegionalPageBackfill(slug: string): Promise<void> {
     } else if (needsGeo) {
       page = (await fillRegionalNearbyGeo(page)) ?? page;
     }
-
-    await warmRegionalPage(key);
   } catch (e) {
     console.error(`[regional-backfill] ${key} 실패:`, e);
   } finally {

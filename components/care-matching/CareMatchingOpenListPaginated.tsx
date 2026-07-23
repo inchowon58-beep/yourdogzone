@@ -1,31 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CareMatchingOpenList } from "@/components/care-matching/CareMatchingOpenList";
+import type { CareIntakePublicItem } from "@/lib/types/care-intake";
 
 type Props = {
   initialPage: number;
+  initialItems?: CareIntakePublicItem[];
+  initialTotal?: number;
 };
 
-export function CareMatchingOpenListPaginated({ initialPage }: Props) {
+export function CareMatchingOpenListPaginated({
+  initialPage,
+  initialItems,
+  initialTotal = 0,
+}: Props) {
   const [page, setPage] = useState(initialPage);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(initialTotal);
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const loadMeta = useCallback(async () => {
-    const res = await fetch(
-      `/api/care-matching/open?page=${page}&pageSize=${pageSize}`,
-      { cache: "no-store" }
-    );
-    const data = await res.json();
-    setTotal(data.total ?? 0);
-  }, [page]);
-
-  useEffect(() => {
-    void loadMeta();
-  }, [loadMeta]);
+  const isInitialPage = page === initialPage;
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -40,6 +35,9 @@ export function CareMatchingOpenListPaginated({ initialPage }: Props) {
         page={page}
         showViewAll={false}
         key={page}
+        initialItems={isInitialPage ? initialItems : undefined}
+        initialTotal={isInitialPage ? initialTotal : undefined}
+        onTotalChange={setTotal}
       />
 
       {totalPages > 1 && (

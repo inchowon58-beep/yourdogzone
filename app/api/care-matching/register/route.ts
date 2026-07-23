@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { insertCareIntake } from "@/lib/care-matching/queries";
+import { revalidateCareMatchingPublic } from "@/lib/care-matching/revalidate-public";
 import type { CareChipType, CareSpecies } from "@/lib/types/care-intake";
 import {
   MATCHING_HOUR_OPTIONS,
@@ -134,6 +135,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    revalidateCareMatchingPublic();
 
     return NextResponse.json({
       ok: true,

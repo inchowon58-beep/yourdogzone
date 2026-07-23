@@ -1,8 +1,10 @@
+import { cache } from "react";
 import type { Listing, ListingCategory, ListingInsert } from "@/lib/types/listing";
 import type { Academy } from "@/lib/types/academy";
 import {
   loadLatestListingList,
   fetchListingFromR2,
+  fetchListingsFromR2,
   normalizeListingSlug,
 } from "@/lib/listings/r2-read";
 import {
@@ -19,30 +21,36 @@ export type InsertListingResult =
 
 export async function getListings(
   category: ListingCategory,
-  options?: { region?: string; query?: string }
+  options?: { region?: string; query?: string; noCache?: boolean }
 ): Promise<Listing[]> {
-  const all = await loadLatestListingList(category);
+  const all = await loadLatestListingList(category, {
+    noCache: options?.noCache,
+  });
   return filterListings(all, options);
 }
 
-export async function getListingBySlug(
-  category: ListingCategory,
-  slug: string
-): Promise<Listing | null> {
-  const normalized = normalizeListingSlug(slug);
-  const direct = await fetchListingFromR2(category, normalized, { noCache: true });
-  if (direct) return direct;
+/** 공개 상세·metadata 공용 (요청당 1회, R2 fetch 캐시 사용) */
+export const getListingBySlug = cache(
+  async (
+    category: ListingCategory,
+    slug: string
+  ): Promise<Listing | null> => {
+    const normalized = normalizeListingSlug(slug);
+    const direct = await fetchListingFromR2(category, normalized);
+    if (direct) return direct;
 
-  const list = await loadLatestListingList(category);
-  return (
-    list.find((item) => normalizeListingSlug(item.slug) === normalized) ?? null
-  );
-}
+    const list = await fetchListingsFromR2(category);
+    return (
+      list.find((item) => normalizeListingSlug(item.slug) === normalized) ??
+      null
+    );
+  }
+);
 
 export async function getListingSlugs(
   category: ListingCategory
 ): Promise<string[]> {
-  const list = await loadLatestListingList(category);
+  const list = await fetchListingsFromR2(category);
   return list.map((item) => item.slug);
 }
 

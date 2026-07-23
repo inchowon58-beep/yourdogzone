@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { CareMatchingOpenListPaginated } from "@/components/care-matching/CareMatchingOpenListPaginated";
+import { listOpenCareIntakes } from "@/lib/care-matching/queries";
+
+export const revalidate = 300;
 
 type Props = {
   searchParams: Promise<{ page?: string }>;
@@ -8,6 +11,11 @@ type Props = {
 export default async function CareMatchingListPage({ searchParams }: Props) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
+  const openList = await listOpenCareIntakes({
+    page,
+    pageSize: 10,
+    useCache: true,
+  });
 
   return (
     <main className="mx-auto w-full px-4 py-10 sm:px-6">
@@ -24,7 +32,11 @@ export default async function CareMatchingListPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <CareMatchingOpenListPaginated initialPage={page} />
+      <CareMatchingOpenListPaginated
+        initialPage={page}
+        initialItems={openList.items}
+        initialTotal={openList.total}
+      />
     </main>
   );
 }

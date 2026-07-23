@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { insertShelterBid } from "@/lib/care-matching/bid-queries";
 import { getCareIntakeById } from "@/lib/care-matching/queries";
+import { revalidateCareMatchingPublic } from "@/lib/care-matching/revalidate-public";
 import { getShelterPartnerById } from "@/lib/care-matching/partner-queries";
 import { getShelterPartnerIdFromSession } from "@/lib/care-matching/shelter-auth";
 import { isShelterNameExcluded } from "@/lib/types/care-intake";
@@ -64,6 +65,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    revalidateCareMatchingPublic();
 
     return NextResponse.json({ ok: true, bid: { amount: result.data.amount } });
   } catch (e) {

@@ -3,33 +3,63 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
+import {
+  clearAuthHintCookieClient,
+  clearCachedHeaderSession,
+  hasAuthHintCookie,
+  readCachedHeaderSession,
+  writeCachedHeaderSession,
+  type HeaderAuthSession,
+} from "@/lib/auth/header-auth-client";
 
-type Session = {
-  admin: boolean;
-  partner: {
-    id: string;
-    shelter_name: string;
-    contact_name: string;
-  } | null;
-};
+const GUEST: HeaderAuthSession = { admin: false, partner: null };
+
+async function fetchSession(): Promise<HeaderAuthSession> {
+  const res = await fetch("/api/auth/session", {
+    cache: "no-store",
+    credentials: "include",
+  });
+  const data = await res.json();
+  return {
+    admin: Boolean(data.admin),
+    partner: data.partner ?? null,
+  };
+}
 
 export function HeaderAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<HeaderAuthSession>(GUEST);
+  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    if (!hasAuthHintCookie()) {
+      clearCachedHeaderSession();
+      setSession(GUEST);
+      setLoading(false);
+      return;
+    }
+
+    if (!force) {
+      const cached = readCachedHeaderSession();
+      if (cached) {
+        setSession(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch("/api/auth/session", {
-        cache: "no-store",
-        credentials: "include",
-      });
-      const data = await res.json();
-      setSession({
-        admin: Boolean(data.admin),
-        partner: data.partner ?? null,
-      });
+      const next = await fetchSession();
+      if (!next.admin && !next.partner) {
+        clearAuthHintCookieClient();
+        clearCachedHeaderSession();
+        setSession(GUEST);
+        return;
+      }
+      writeCachedHeaderSession(next);
+      setSession(next);
     } catch {
-      setSession({ admin: false, partner: null });
+      setSession(GUEST);
     } finally {
       setLoading(false);
     }
@@ -37,7 +67,10 @@ export function HeaderAuth() {
 
   useEffect(() => {
     void load();
-    const onAuthChange = () => void load();
+    const onAuthChange = () => {
+      clearCachedHeaderSession();
+      void load(true);
+    };
     window.addEventListener("auth-changed", onAuthChange);
     return () => window.removeEventListener("auth-changed", onAuthChange);
   }, [load]);
@@ -53,7 +86,9 @@ export function HeaderAuth() {
         credentials: "include",
       }),
     ]);
-    setSession({ admin: false, partner: null });
+    clearAuthHintCookieClient();
+    clearCachedHeaderSession();
+    setSession(GUEST);
     window.dispatchEvent(new Event("auth-changed"));
     window.location.href = "/";
   }
@@ -64,7 +99,7 @@ export function HeaderAuth() {
     );
   }
 
-  const loggedIn = session?.admin || session?.partner;
+  const loggedIn = session.admin || session.partner;
 
   if (!loggedIn) {
     return (
@@ -87,7 +122,7 @@ export function HeaderAuth() {
 
   return (
     <div className="hidden items-center gap-2 md:flex">
-      {session?.admin && (
+      {session.admin && (
         <Link
           href="/admin"
           className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
@@ -95,7 +130,7 @@ export function HeaderAuth() {
           관리자
         </Link>
       )}
-      {session?.partner && (
+      {session.partner && (
         <Link
           href="/care-matching/list"
           className="max-w-[9rem] truncate rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15"
@@ -104,7 +139,7 @@ export function HeaderAuth() {
           {session.partner.shelter_name}
         </Link>
       )}
-      {!session?.admin && session?.partner && (
+      {!session.admin && session.partner && (
         <Link
           href="/care-matching/list"
           className="rounded-lg px-2 py-2 text-xs font-semibold text-muted hover:text-primary"
@@ -126,23 +161,44 @@ export function HeaderAuth() {
 }
 
 export function MobileHeaderAuth({ onNavigate }: { onNavigate?: () => void }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<HeaderAuthSession>(GUEST);
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/auth/session", {
-      cache: "no-store",
-      credentials: "include",
-    });
-    const data = await res.json();
-    setSession({
-      admin: Boolean(data.admin),
-      partner: data.partner ?? null,
-    });
+  const load = useCallback(async (force = false) => {
+    if (!hasAuthHintCookie()) {
+      clearCachedHeaderSession();
+      setSession(GUEST);
+      return;
+    }
+
+    if (!force) {
+      const cached = readCachedHeaderSession();
+      if (cached) {
+        setSession(cached);
+        return;
+      }
+    }
+
+    try {
+      const next = await fetchSession();
+      if (!next.admin && !next.partner) {
+        clearAuthHintCookieClient();
+        clearCachedHeaderSession();
+        setSession(GUEST);
+        return;
+      }
+      writeCachedHeaderSession(next);
+      setSession(next);
+    } catch {
+      setSession(GUEST);
+    }
   }, []);
 
   useEffect(() => {
     void load();
-    const onAuthChange = () => void load();
+    const onAuthChange = () => {
+      clearCachedHeaderSession();
+      void load(true);
+    };
     window.addEventListener("auth-changed", onAuthChange);
     return () => window.removeEventListener("auth-changed", onAuthChange);
   }, [load]);
@@ -152,12 +208,14 @@ export function MobileHeaderAuth({ onNavigate }: { onNavigate?: () => void }) {
       fetch("/api/care-matching/partner/logout", { method: "POST" }),
       fetch("/api/admin/logout", { method: "POST" }),
     ]);
+    clearAuthHintCookieClient();
+    clearCachedHeaderSession();
     window.dispatchEvent(new Event("auth-changed"));
     onNavigate?.();
     window.location.href = "/";
   }
 
-  const loggedIn = session?.admin || session?.partner;
+  const loggedIn = session.admin || session.partner;
 
   if (!loggedIn) {
     return (
@@ -182,7 +240,7 @@ export function MobileHeaderAuth({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      {session?.admin && (
+      {session.admin && (
         <li>
           <Link
             href="/admin"
@@ -193,7 +251,7 @@ export function MobileHeaderAuth({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         </li>
       )}
-      {session?.partner && (
+      {session.partner && (
         <li>
           <Link
             href="/care-matching/list"

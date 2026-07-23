@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { SearchBar } from "@/components/home/SearchBar";
 import { HomeShortcuts } from "@/components/home/HomeShortcuts";
 import { AgapetAdoptionSection } from "@/components/home/AgapetAdoptionSection";
 import { CareMatchingSection } from "@/components/home/CareMatchingSection";
-import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+
+/** 공개 홈 ISR — 쓰기 시 revalidatePath('/') */
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   ...buildPageMetadata({

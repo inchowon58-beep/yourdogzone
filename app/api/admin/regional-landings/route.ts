@@ -4,6 +4,7 @@ import {
   MAIN_ADMIN_COOKIE,
   verifyMainAdminSessionToken,
 } from "@/lib/admin/main-auth-core";
+import { verifyAdminSecret } from "@/lib/academy/admin-auth";
 import {
   deleteRegionalLanding,
   insertRegionalLanding,
@@ -15,7 +16,6 @@ import {
 } from "@/lib/academy/regional-admin-list";
 import { generateRegionalLandingFromKeyword } from "@/lib/academy/regional-generator";
 import { runRegionalPageBackfill } from "@/lib/academy/regional-backfill";
-import { scheduleRegionalPageWarmup } from "@/lib/academy/regional-page-warmup";
 import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
@@ -28,8 +28,13 @@ import {
   type RegionalServiceCategory,
 } from "@/lib/seo/regional-service-config";
 import { regionalLandingPathForCategory } from "@/lib/academy/regional-path";
+import { absoluteUrl } from "@/lib/site/config";
+import { submitToIndexNow } from "@/lib/indexnow/submit";
 
-async function requireMainAdmin(): Promise<NextResponse | null> {
+async function requireMainAdmin(request?: Request): Promise<NextResponse | null> {
+  if (request && verifyAdminSecret(request)) {
+    return null;
+  }
   const jar = await cookies();
   const token = jar.get(MAIN_ADMIN_COOKIE)?.value;
   if (!verifyMainAdminSessionToken(token)) {
@@ -44,7 +49,6 @@ function revalidateRegional(category: RegionalServiceCategory, slug?: string) {
   revalidatePath("/sitemap.xml");
   if (slug) {
     revalidatePath(regionalLandingPathForCategory(category, slug));
-    scheduleRegionalPageWarmup(slug, category);
   }
 }
 
@@ -55,8 +59,15 @@ function parseCategory(value: unknown): RegionalServiceCategory {
   return "academy";
 }
 
+function pageAbsoluteUrl(
+  category: RegionalServiceCategory,
+  slug: string
+): string {
+  return absoluteUrl(regionalLandingPathForCategory(category, slug));
+}
+
 export async function GET(request: Request) {
-  const denied = await requireMainAdmin();
+  const denied = await requireMainAdmin(request);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -73,7 +84,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireMainAdmin();
+  const denied = await requireMainAdmin(request);
   if (denied) return denied;
 
   let body: {
@@ -83,6 +94,7 @@ export async function POST(request: Request) {
     slug?: string;
     isPublished?: boolean;
     page?: RegionalLandingInsert;
+    submit_indexnow?: boolean;
   };
   try {
     body = await request.json();
@@ -127,49 +139,24 @@ export async function POST(request: Request) {
       if (draft.geminiError) {
         void runRegionalPageBackfill(result.page.slug);
       }
+      const url = pageAbsoluteUrl(category, result.page.slug);
+      let indexnow: Awaited<ReturnType<typeof submitToIndexNow>> | null = null;
+      if (body.submit_indexnow) {
+        indexnow = await submitToIndexNow([url]);
+      }
       return NextResponse.json({
         page: result.page,
+        url,
         generated: true,
         geminiUsed: draft.geminiUsed ?? false,
         geminiError: draft.geminiError,
         isSlugVariant: draft.isSlugVariant ?? false,
+        indexnow,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "생성 실패";
       return NextResponse.json({ error: msg }, { status: 400 });
     }
-  }
-
-  if (body.action === "generate_batch") {
-    const category = parseCategory(body.category);
-    const keywords = (body.keyword ?? "")
-      .split(/\n/)
-      .map((k) => k.trim())
-      .filter(Boolean);
-    const created = [];
-    const errors: string[] = [];
-    for (const kw of keywords) {
-      try {
-        const draft = await generateRegionalLandingFromKeyword(kw, category);
-        const result = await insertRegionalLanding(draft);
-        if ("error" in result) errors.push(`${kw}: ${result.error}`);
-        else created.push(result.page);
-      } catch (e) {
-        errors.push(`${kw}: ${e instanceof Error ? e.message : "실패"}`);
-      }
-    }
-    const categories = new Set(created.map((p) => resolvePageCategory(p)));
-    for (const cat of categories) {
-      revalidateRegional(cat);
-    }
-    for (const page of created) {
-      scheduleRegionalPageWarmup(page.slug, resolvePageCategory(page));
-    }
-    return NextResponse.json({
-      pages: created,
-      errors,
-      geminiCount: created.filter((p) => p.seoBlocks?.length).length,
-    });
   }
 
   const page = body.page;
@@ -198,7 +185,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const denied = await requireMainAdmin();
+  const denied = await requireMainAdmin(request);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);

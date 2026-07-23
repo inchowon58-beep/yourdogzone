@@ -1,9 +1,11 @@
+import { cache } from "react";
 import type { Breed, BreedInsert } from "@/lib/types/breed";
 import type { BreedGroupTab } from "@/lib/breeds/config";
 import { matchesBreedTab } from "@/lib/breeds/config";
 import { getSeedBreeds } from "@/lib/breeds/data";
 import {
   fetchBreedFromR2,
+  fetchBreedsIndexFromR2,
   loadAllBreedsFromR2,
   normalizeBreedSlug,
 } from "@/lib/breeds/r2-read";
@@ -48,18 +50,23 @@ export async function getBreeds(options?: {
   return list;
 }
 
-export async function getBreedBySlug(slug: string): Promise<Breed | null> {
+/** 공개 상세·metadata 공용 (요청당 1회, R2 fetch 캐시 사용) */
+export const getBreedBySlug = cache(async (slug: string): Promise<Breed | null> => {
   const normalized = normalizeBreedSlug(slug);
-  const remote = await fetchBreedFromR2(normalized, { noCache: true });
+  const remote = await fetchBreedFromR2(normalized);
   if (remote) return remote;
 
   const seed = getSeedBreeds().find((b) => b.slug === normalized);
   return seed ?? null;
-}
+});
 
 export async function getBreedSlugs(): Promise<string[]> {
-  const breeds = await getBreeds();
-  return breeds.map((b) => b.slug);
+  const seed = getSeedBreeds();
+  const remote = await fetchBreedsIndexFromR2();
+  const map = new Map<string, true>();
+  for (const b of seed) map.set(b.slug, true);
+  for (const b of remote) map.set(b.slug, true);
+  return Array.from(map.keys());
 }
 
 export type UpsertBreedResult =
@@ -68,7 +75,7 @@ export type UpsertBreedResult =
   | { data: null; error: string; uploads?: undefined };
 
 export async function upsertBreed(payload: BreedInsert): Promise<UpsertBreedResult> {
-  const remote = await loadAllBreedsFromR2();
+  const remote = await loadAllBreedsFromR2({ noCache: true });
 
   const prepared = await prepareBreedR2Upsert(payload, remote);
   if (prepared.error || !prepared.record) {
@@ -86,7 +93,7 @@ export type DeleteBreedsResult =
   | { ok: false; error: string; deleted: string[] };
 
 export async function deleteBreeds(slugs: string[]): Promise<DeleteBreedsResult> {
-  const remote = await loadAllBreedsFromR2();
+  const remote = await loadAllBreedsFromR2({ noCache: true });
   const prepared = await prepareBreedR2Deletes(slugs, remote);
   if (prepared.error || !prepared.uploads) {
     return { ok: false, error: prepared.error ?? "삭제 실패", deleted: [] };

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { upsertBreed } from "@/lib/breeds/queries";
+import { breedDetailPath, BREED_SIZE_LABELS } from "@/lib/breeds/config";
 import { breedPageUrl } from "@/lib/breeds/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror";
 import type { BreedInsert, BreedKind, BreedSizeGroup } from "@/lib/types/breed";
-import { BREED_SIZE_LABELS } from "@/lib/breeds/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -98,18 +100,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (result.uploads?.length) {
+      await completeR2Uploads(result.uploads);
+    }
+
+    revalidatePath(breedDetailPath(result.data.slug));
+    revalidatePath("/dognose");
+    revalidatePath("/sitemap.xml");
+
     const url = breedPageUrl(result.data.slug);
     const indexResult = await submitToIndexNow([url]);
-
-    if (result.uploads?.length) {
-      return NextResponse.json({
-        slug: result.data.slug,
-        url,
-        storage: "r2",
-        uploads: result.uploads,
-        indexnow: indexResult,
-      });
-    }
 
     return NextResponse.json({
       slug: result.data.slug,

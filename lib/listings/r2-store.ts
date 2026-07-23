@@ -85,7 +85,9 @@ export async function prepareListingR2Insert(
   | { record: Listing; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const existing = await loadLatestListingList(payload.category);
+  const existing = await loadLatestListingList(payload.category, {
+    noCache: true,
+  });
   if (existing.some((item) => item.slug === payload.slug)) {
     return {
       record: null,
@@ -169,7 +171,7 @@ export async function prepareListingPremiumUpdate(
   | { record: Listing; uploads: R2UploadTask[]; error: null }
   | { record: null; uploads: null; error: string }
 > {
-  const listings = await loadLatestListingList(category);
+  const listings = await loadLatestListingList(category, { noCache: true });
   const target =
     (await fetchListingFromR2(category, slug, { noCache: true })) ??
     listings.find((item) => item.slug === slug);
@@ -218,7 +220,7 @@ export async function prepareListingR2Deletes(
     return { deleted: [], uploads: null, error: "삭제할 slug가 없습니다." };
   }
 
-  const listings = await loadLatestListingList(category);
+  const listings = await loadLatestListingList(category, { noCache: true });
   const toDelete = listings.filter((item) => slugSet.has(item.slug));
   if (toDelete.length === 0) {
     return {

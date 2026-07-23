@@ -7,6 +7,7 @@ import {
   SHELTER_PARTNER_COOKIE,
   createShelterSessionToken,
 } from "@/lib/care-matching/shelter-auth";
+import { setAuthHintOnLogin } from "@/lib/auth/auth-hint-server";
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 30 * 24 * 60 * 60,
     });
+    setAuthHintOnLogin(res, "partner", request);
     return res;
   } catch (e) {
     console.error("[care-matching/partner/login]", e);

@@ -13,7 +13,8 @@ import { breedDetailPath } from "@/lib/breeds/config";
 import { PET_FOODS } from "@/lib/tools/foods";
 import { HEALTH_GUIDES } from "@/lib/health";
 
-export const revalidate = 3600;
+/** 쓰기 시 revalidatePath로 즉시 갱신. 주기 재생성은 하루 약 2회면 충분 */
+export const revalidate = 43200;
 
 const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: absoluteUrl("/"), changeFrequency: "daily", priority: 1 },

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isListingCategory, getListingConfig } from "@/lib/listings/config";
+import { revalidatePath } from "next/cache";
+import { isListingCategory, getListingConfig, listingBasePath } from "@/lib/listings/config";
 import { insertListing } from "@/lib/listings/queries";
 import { generateListingSlug, listingPageUrl } from "@/lib/listings/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type RouteContext = { params: Promise<{ category: string }> };
@@ -77,18 +79,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    if (insertResult.uploads?.length) {
+      await completeR2Uploads(insertResult.uploads);
+    }
+
+    const base = listingBasePath(category);
+    revalidatePath(`${base}/${data.slug}`);
+    revalidatePath(base);
+    revalidatePath("/sitemap.xml");
+
     const url = listingPageUrl(category, data.slug);
     const indexResult = await submitToIndexNow([url]);
-
-    if (insertResult.uploads?.length) {
-      return NextResponse.json({
-        slug: data.slug,
-        url,
-        storage: "r2",
-        uploads: insertResult.uploads,
-        indexnow: indexResult,
-      });
-    }
 
     return NextResponse.json({
       slug: data.slug,

@@ -41,11 +41,6 @@ export const MAIN_ADMIN_SECTIONS = [
     publicHref: "/care-matching/partner",
   },
   {
-    id: "side-banners",
-    title: "홈 좌우 배너",
-    publicHref: "/",
-  },
-  {
     id: "regional",
     title: "지역 SEO 페이지",
     publicHref: "/services/academy",

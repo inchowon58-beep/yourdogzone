@@ -17,7 +17,6 @@ import { BreedAdminPanel } from "@/components/breed/BreedAdminPanel";
 import { ListingAdminPanel } from "@/components/listing/ListingAdminPanel";
 import { CareIntakeAdminPanel } from "@/components/care-matching/CareIntakeAdminPanel";
 import { CareShelterPartnerAdminPanel } from "@/components/care-matching/CareShelterPartnerAdminPanel";
-import { SideBannersAdminPanel } from "@/components/admin/SideBannersAdminPanel";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type Props = {
@@ -87,7 +86,6 @@ export function MainAdminDashboard({ username }: Props) {
     if (id === "advisory") return "위원장 프로필·순서 관리";
     if (id === "care-intake") return "신청·입금·매칭 상태";
     if (id === "care-shelter-partners") return "파트너 승인·관리";
-    if (id === "side-banners") return "홈 좌·우 배너 이미지";
     if (id in stats.listings) return listingStat(id);
     return "—";
   }
@@ -106,9 +104,6 @@ export function MainAdminDashboard({ username }: Props) {
     }
     if (active === "care-shelter-partners") {
       return <CareShelterPartnerAdminPanel />;
-    }
-    if (active === "side-banners") {
-      return <SideBannersAdminPanel />;
     }
     if (active === "academy") {
       return <AcademyAdminPanel embedded />;

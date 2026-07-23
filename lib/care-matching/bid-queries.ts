@@ -16,9 +16,15 @@ const store = createR2JsonStore<BidIndex>({
   arrayKey: "bids",
 });
 
-async function loadBids(): Promise<CareShelterBid[]> {
-  const data = await store.load(true);
+async function loadBids(noCache = true): Promise<CareShelterBid[]> {
+  const data = await store.load(noCache);
   return Array.isArray(data.bids) ? data.bids : [];
+}
+
+export async function listAllShelterBids(options?: {
+  noCache?: boolean;
+}): Promise<CareShelterBid[]> {
+  return loadBids(options?.noCache ?? true);
 }
 
 export async function listBidsForApplication(
@@ -32,6 +38,17 @@ export async function countBidsForApplication(
   applicationId: string
 ): Promise<number> {
   return (await listBidsForApplication(applicationId)).length;
+}
+
+export function countBidsInList(
+  bids: CareShelterBid[],
+  applicationId: string
+): number {
+  const id = String(applicationId);
+  return bids.reduce(
+    (n, b) => (String(b.application_id) === id ? n + 1 : n),
+    0
+  );
 }
 
 export async function getBidByPartnerAndApplication(

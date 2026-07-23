@@ -29,13 +29,13 @@ export function RegionalLandingAdminPanel() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
-  const [batchKeywords, setBatchKeywords] = useState("");
   const [category, setCategory] = useState<RegionalServiceCategory>("academy");
   const [filterCategory, setFilterCategory] = useState<RegionalServiceCategory | "">(
     ""
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   const categoryConfig = getRegionalServiceConfig(category);
 
@@ -75,6 +75,7 @@ export function RegionalLandingAdminPanel() {
     if (!kw) return;
     setMessage("");
     setError("");
+    setGenerating(true);
     try {
       const res = await fetch("/api/admin/regional-landings", {
         method: "POST",
@@ -97,35 +98,8 @@ export function RegionalLandingAdminPanel() {
       else setListPage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
-    }
-  }
-
-  async function generateBatch() {
-    const text = batchKeywords.trim();
-    if (!text) return;
-    setMessage("");
-    setError("");
-    try {
-      const res = await fetch("/api/admin/regional-landings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "generate_batch",
-          keyword: text,
-          category,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "일괄 생성 실패");
-      setMessage(
-        `✓ ${data.pages?.length ?? 0}건 생성` +
-          (data.errors?.length ? ` | 실패 ${data.errors.length}건` : "")
-      );
-      setBatchKeywords("");
-      if (listPage === 1) void load(1);
-      else setListPage(1);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "오류");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -177,8 +151,8 @@ export function RegionalLandingAdminPanel() {
             지역 SEO 페이지
           </h2>
           <p className="mt-1 text-sm text-muted">
-            카테고리 선택 후 키워드 입력 시 영문 URL로 페이지가 자동 생성됩니다.
-            최신 등록순 · 페이지당 {PAGE_SIZE}건
+            카테고리 선택 후 키워드 1건씩 생성합니다. 최신순 · 페이지당{" "}
+            {PAGE_SIZE}건
           </p>
         </div>
         <button
@@ -196,6 +170,7 @@ export function RegionalLandingAdminPanel() {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as RegionalServiceCategory)}
+          disabled={generating}
           className="rounded-lg border px-3 py-2 text-sm"
         >
           {REGIONAL_SERVICE_CATEGORIES.map((id) => (
@@ -206,42 +181,25 @@ export function RegionalLandingAdminPanel() {
         </select>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl bg-gray-50 p-4">
-          <p className="mb-2 text-sm font-semibold">키워드 1건 생성</p>
-          <div className="flex gap-2">
-            <input
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder={`예: 평택 ${categoryConfig.defaultKeywordSuffix} / 평택강아지파양`}
-              className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
-              onKeyDown={(e) => e.key === "Enter" && void generateOne()}
-            />
-            <button
-              type="button"
-              onClick={() => void generateOne()}
-              className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-            >
-              <Plus className="h-4 w-4" />
-              생성
-            </button>
-          </div>
-        </div>
-        <div className="rounded-xl bg-gray-50 p-4">
-          <p className="mb-2 text-sm font-semibold">키워드 여러 줄 일괄 생성</p>
-          <textarea
-            value={batchKeywords}
-            onChange={(e) => setBatchKeywords(e.target.value)}
-            placeholder={`안산 ${categoryConfig.defaultKeywordSuffix}\n부천강아지파양`}
-            rows={3}
-            className="mb-2 w-full rounded-lg border px-3 py-2 text-sm"
+      <div className="mb-6 rounded-xl bg-gray-50 p-4">
+        <p className="mb-2 text-sm font-semibold">키워드 1건 생성</p>
+        <div className="flex gap-2">
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder={`예: 평택 ${categoryConfig.defaultKeywordSuffix} / 평택강아지파양`}
+            className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
+            onKeyDown={(e) => e.key === "Enter" && void generateOne()}
+            disabled={generating}
           />
           <button
             type="button"
-            onClick={() => void generateBatch()}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+            onClick={() => void generateOne()}
+            disabled={generating}
+            className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            일괄 생성
+            <Plus className="h-4 w-4" />
+            {generating ? "생성 중…" : "생성"}
           </button>
         </div>
       </div>
