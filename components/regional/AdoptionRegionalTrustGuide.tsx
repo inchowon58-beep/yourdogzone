@@ -17,6 +17,7 @@ import {
   resolveAdoptionContentForm,
 } from "@/lib/seo/adoption-content-forms";
 import { CatBasicAdoptionGuide } from "@/components/regional/CatBasicAdoptionGuide";
+import { DogBasicAdoptionGuide } from "@/components/regional/DogBasicAdoptionGuide";
 import { sampleStableRandom } from "@/lib/utils/random-sample";
 
 type Faq = { question: string; answer: string };
@@ -52,6 +53,19 @@ export function AdoptionRegionalTrustGuide({
   if (form.id === "cat_basic") {
     return (
       <CatBasicAdoptionGuide
+        label={label}
+        pageKeyword={pageKeyword}
+        seedKey={seedKey}
+        faqItems={faqItems}
+        coverImageUrl={coverImageUrl}
+        recommendedName={recommendedName}
+      />
+    );
+  }
+
+  if (form.id === "dog_basic") {
+    return (
+      <DogBasicAdoptionGuide
         label={label}
         pageKeyword={pageKeyword}
         seedKey={seedKey}

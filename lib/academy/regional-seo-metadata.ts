@@ -34,8 +34,13 @@ export function buildRegionalLandingMetadata(
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
 
+  const boundDescription = resolveBoundMetaDescription(page, seoCtx);
+  const descriptionLead = boundDescription.startsWith(pageKeyword)
+    ? boundDescription
+    : `${pageKeyword}. ${boundDescription}`;
+
   const description = [
-    resolveBoundMetaDescription(page, seoCtx),
+    descriptionLead,
     nearbyAreas.length > 0
       ? `근방 ${nearbyAreas.join(", ")} ${serviceTitle} 검색·비교도 함께 안내합니다.`
       : null,
@@ -46,8 +51,27 @@ export function buildRegionalLandingMetadata(
     .filter(Boolean)
     .join(" ");
 
+  const formId = page.formId?.trim();
+  const basicFormKeywords =
+    formId === "dog_basic"
+      ? [
+          "강아지분양",
+          "분양가격",
+          `${region} 강아지분양`,
+          `${pageKeyword} 분양가격`,
+        ]
+      : formId === "cat_basic"
+        ? [
+            "고양이분양",
+            "분양가격",
+            `${region} 고양이분양`,
+            `${pageKeyword} 분양가격`,
+          ]
+        : [];
+
   const keywords = [
     pageKeyword,
+    ...basicFormKeywords,
     ...buildRegionalLandingKeywords(region, category),
     ...nearbyAreas.flatMap((area) => [
       `${area} ${serviceTitle}`,
