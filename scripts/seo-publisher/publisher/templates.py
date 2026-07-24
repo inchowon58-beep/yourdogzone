@@ -51,12 +51,36 @@ SHELTER_REGION_INFO = [
     "{region}에서 {keyword}을(를) 알아볼 때, 유기 대신 사설보호소 상담으로 아이에게 새 가족을 찾아주는 방법을 먼저 확인하세요.",
     "{keyword} 상담은 비용·보호 환경·절차를 투명하게 설명하는 곳을 고르는 것이 핵심입니다. {region} 기준으로 신중히 비교하세요.",
     "어쩔 수 없는 상황의 강아지파양은 나쁜 일이 아닙니다. {region}에서 {keyword}을(를) 고민 중이라면 유기하지 말고 상담부터 시작하세요.",
+    "{region} {keyword} 정보는 입소비용·보호 환경·상담 응대를 함께 확인한 뒤 선택하는 편이 안전합니다.",
+    "최근 뉴스에서도 보도된 것처럼 안 좋은 곳이 있을 수 있어, {region}에서 {keyword}을(를) 알아볼 때는 한 번 더 신중하세요.",
+    "{keyword}을(를) 검색 중이라면 {region} 인근 사설보호소의 입소 절차와 무료분양 의미를 먼저 정리해 보세요.",
 ]
 
 SHELTER_META = [
     "{keyword} | 강아지파양·무료분양 전 확인할 입소비용·보호 환경·절차 안내",
     "{region} {keyword} — 사설보호소 입소비용 주의사항과 파양 절차를 정리했습니다.",
     "{keyword} 가이드. 유기견보호소와 다른 점, 무료분양 의미, 신뢰할 상담 포인트를 확인하세요.",
+    "{region} 강아지파양·입소 전 확인 포인트 | {keyword}",
+    "{keyword} — 유기 대신 새 가족을 찾는 파양·무료분양 상담 안내 ({region})",
+    "{region}에서 {keyword} 알아볼 때 꼭 확인할 비용·환경·절차",
+]
+
+SHELTER_NEARBY_INTRO = [
+    "{region} 인근에서도 {keyword} 상담 시 입소비용·보호 환경을 비교해 보시면 도움이 됩니다.",
+    "{keyword}을(를) 검토 중이라면 {region} 주변 지역 안내도 함께 참고해 보세요.",
+    "같은 조건이라도 지역마다 상담 가능 여부가 다를 수 있어, {region} 인근 {keyword} 정보를 폭넓게 확인하세요.",
+]
+
+SHELTER_BLOCK_OPENERS = [
+    "{region}에서 {keyword}을(를) 고민 중이라면 유기하지 말고, 사설보호소 상담으로 아이에게 새 가족을 찾아주는 방향을 먼저 검토하세요.",
+    "{keyword} 상담은 급하게 결정하기보다 비용 항목과 보호 환경을 확인한 뒤 진행하는 것이 좋습니다. {region} 기준으로 비교해 보세요.",
+    "군입대·이민·임신·신변 이상처럼 함께하기 어려운 상황에서는, {region}에서 {keyword} 상담으로 새 가정을 찾는 편이 바람직할 수 있습니다.",
+]
+
+SHELTER_COST_PARAS = [
+    "강아지파양 입소는 최근 뉴스에서도 보도된 것처럼 안 좋은 곳이 있을 수 있어 신중히 알아본 뒤 선택해야 합니다.",
+    "입소비용이 터무니없이 비싸거나 지나치게 저렴하다면 한 번쯤 신중히 생각하고, 포함 항목과 보호 환경을 확인하세요.",
+    "사설보호소는 보호·의료·케어 운영비가 들어가므로 입소 시 비용이 발생합니다. ‘싸다/비싸다’보다 무엇을 위한 비용인지가 중요합니다.",
 ]
 
 SHELTER_FAQS = [
@@ -102,7 +126,9 @@ SHELTER_FAQS = [
 def _shelter_faqs(rng: random.Random, region: str, keyword: str) -> list[dict]:
     situations = ", ".join(_shuffle(rng, list(SHELTER_SITUATIONS))[:4])
     faqs = []
-    for group in _shuffle(rng, SHELTER_FAQS)[:5]:
+    # 4~6개로 페이지마다 FAQ 개수도 약간 다르게
+    count = 4 + rng.randrange(3)
+    for group in _shuffle(rng, SHELTER_FAQS)[:count]:
         use_alt = rng.random() < 0.5
         q = group[2] if use_alt else group[0]
         a = group[3] if use_alt else group[1]
@@ -122,37 +148,52 @@ def _shelter_faqs(rng: random.Random, region: str, keyword: str) -> list[dict]:
 def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]:
     """사이트 UI가 본문을 렌더하므로, JSON에는 요약 블록만 보관."""
     situations = _shuffle(rng, list(SHELTER_SITUATIONS))[:4]
+    opener = _pick(rng, SHELTER_BLOCK_OPENERS).format(
+        region=region, keyword=keyword
+    )
+    cost_paras = _shuffle(rng, list(SHELTER_COST_PARAS))[:2]
     return [
         {
             "title": f"{keyword} · 이런 상황이라면 상담하세요",
             "paragraphs": [
-                f"{region}에서 {keyword}을(를) 고민 중이라면 유기하지 말고, 사설보호소 상담으로 아이에게 새 가족을 찾아주는 방향을 먼저 검토하세요.",
+                opener,
                 "어쩔 수 없는 상황에서의 강아지파양은 나쁜 일이 아니라 오히려 바람직한 선택일 수 있습니다.",
             ],
             "bullets": situations,
         },
         {
             "title": "사설보호소 입소비용 · 꼭 유의하세요",
-            "paragraphs": [
-                "강아지파양 입소는 최근 뉴스에서도 보도된 것처럼 안 좋은 곳이 있을 수 있어 신중히 알아본 뒤 선택해야 합니다.",
-                "입소비용이 터무니없이 비싸거나 지나치게 저렴하다면 한 번쯤 신중히 생각하고, 포함 항목과 보호 환경을 확인하세요.",
-            ],
-            "bullets": [
-                "모든 사설보호소는 입소 시 비용이 발생할 수 있음",
-                "비용 포함 항목 투명성",
-                "보호 환경·상담 신뢰도",
-            ],
+            "paragraphs": cost_paras,
+            "bullets": _shuffle(
+                rng,
+                [
+                    "모든 사설보호소는 입소 시 비용이 발생할 수 있음",
+                    "비용 포함 항목 투명성",
+                    "보호 환경·상담 신뢰도",
+                    "지나치게 높거나 낮은 견적은 재확인",
+                ],
+            )[:3],
         },
         {
             "title": "강아지무료분양 · 유기견이 아닙니다",
             "paragraphs": [
-                "강아지무료분양은 유기견·유기묘가 아니라, 가정에서 생활하던 아이들이 파양을 통해 새 가족을 찾는 경우를 뜻하는 경우가 많습니다.",
+                _pick(
+                    rng,
+                    [
+                        "강아지무료분양은 유기견·유기묘가 아니라, 가정에서 생활하던 아이들이 파양을 통해 새 가족을 찾는 경우를 뜻하는 경우가 많습니다.",
+                        "무료분양으로 소개되는 아이들은 대개 가정견이 사정으로 파양되어 새 보호자를 기다리는 경우입니다.",
+                    ],
+                ),
             ],
-            "bullets": [
-                "가정견의 새 가족 찾기",
-                "아이 성향·건강 정보 공유",
-                "급하지 않은 매칭",
-            ],
+            "bullets": _shuffle(
+                rng,
+                [
+                    "가정견의 새 가족 찾기",
+                    "아이 성향·건강 정보 공유",
+                    "급하지 않은 매칭",
+                    "유기견보호소 안락사 이슈와 구분",
+                ],
+            )[:3],
         },
         {
             "title": "시 유기견보호소와 다른 점",
@@ -160,11 +201,15 @@ def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]
                 "시·군 유기견보호소는 개인 사정 파양보다 실제 유기·미아 동물을 보호하는 경우가 많고, 일정 기간 후 안락사가 이뤄질 수 있습니다.",
                 "주인이 있는 아이의 파양은 사실상 어렵다고 보는 편이 맞으며, 개인 사정 입소는 사설보호소 상담이 현실적입니다.",
             ],
-            "bullets": [
-                "상담 → 상태 체크 → 입소 → 새 가족 찾기",
-                "유기 대신 새 가정",
-                "투명한 비용·환경 확인",
-            ],
+            "bullets": _shuffle(
+                rng,
+                [
+                    "상담 → 상태 체크 → 입소 → 새 가족 찾기",
+                    "유기 대신 새 가정",
+                    "투명한 비용·환경 확인",
+                    "개인 사정 파양은 사설보호소 중심",
+                ],
+            )[:3],
         },
     ]
 
@@ -195,9 +240,8 @@ def build_page(
         meta_description = _pick(rng, SHELTER_META).format(
             region=label, keyword=page_keyword
         )
-        nearby_intro = (
-            f"{label} 인근에서도 {page_keyword} 상담 시 "
-            f"입소비용·보호 환경을 비교해 보시면 도움이 됩니다."
+        nearby_intro = _pick(rng, SHELTER_NEARBY_INTRO).format(
+            region=label, keyword=page_keyword
         )
     else:
         title_word = meta["title"]
@@ -254,6 +298,8 @@ def build_page(
         "seoBlocks": seo_blocks,
         "faqItems": faq_items,
         "metaDescription": meta_description,
+        # 로컬 SEO 발행만 새 신뢰 가이드 UI (사이트 웹 발행·기존 글은 v1)
+        "layoutVersion": "v2" if category == "shelter" else "v1",
         "isPublished": True,
         "createdAt": now,
         "updatedAt": now,

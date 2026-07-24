@@ -23,6 +23,26 @@ const SITUATIONS = [
   "경제 상황의 급변",
   "장기 입원·요양",
   "돌봄 공백이 길어지는 경우",
+  "직장·근무지 변동",
+  "알레르기·건강 문제",
+] as const;
+
+const HEADLINE_TAILS = [
+  "꼭 알고 선택하세요",
+  "신중히 알아본 뒤 결정하세요",
+  "비용·환경을 먼저 확인하세요",
+  "유기하지 말고 상담하세요",
+] as const;
+
+const INTRO_TEMPLATES = [
+  (label: string) =>
+    `${label}에서 강아지파양·무료분양을 알아볼 때, 업체를 믿기 전에 먼저 확인해야 할 핵심만 가독성 있게 정리했습니다.`,
+  (label: string) =>
+    `${label} 기준으로 강아지파양(입소)과 무료분양 전에 꼭 짚고 넘어가야 할 주의사항과 절차를 모았습니다.`,
+  (label: string) =>
+    `어쩔 수 없는 상황의 파양은 나쁜 일이 아닙니다. ${label}에서 상담·입소·새 가족 찾기를 차분히 안내합니다.`,
+  (label: string) =>
+    `${label} 근처에서 보호소 입소를 검토 중이라면, 비용이 너무 높거나 지나치게 낮은 곳은 한 번 더 확인해 보세요.`,
 ] as const;
 
 const FLOW = [
@@ -74,6 +94,16 @@ export function ShelterRegionalTrustGuide({
     4,
     `${seedKey}-situations`
   );
+  const headlineTail = sampleStableRandom(
+    [...HEADLINE_TAILS],
+    1,
+    `${seedKey}-headline`
+  )[0];
+  const introFn = sampleStableRandom(
+    [...INTRO_TEMPLATES],
+    1,
+    `${seedKey}-intro`
+  )[0];
 
   return (
     <section
@@ -89,11 +119,10 @@ export function ShelterRegionalTrustGuide({
           className="mt-3 text-center text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl"
         >
           강아지파양(입소),{" "}
-          <span className="text-primary">꼭 알고 선택하세요</span>
+          <span className="text-primary">{headlineTail}</span>
         </h2>
         <p className="mx-auto mt-4 max-w-3xl text-center text-base leading-relaxed text-muted sm:text-lg">
-          {label}에서 강아지파양·무료분양을 알아볼 때, 업체를 믿기 전에 먼저
-          확인해야 할 핵심만 가독성 있게 정리했습니다.
+          {introFn(label)}
         </p>
 
         {coverImageUrl ? (

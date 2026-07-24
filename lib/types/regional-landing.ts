@@ -47,6 +47,12 @@ export type RegionalLandingPage = {
   metaDescription?: string;
   /** SEO 발행 시 지정한 대표 이미지 (CDN 랜덤 등) */
   imageUrl?: string;
+  /**
+   * 보호소 SEO 레이아웃
+   * - v1(기본): 기존 seoBlocks 섹션 UI (웹 발행·기존 글)
+   * - v2: ShelterRegionalTrustGuide (로컬 SEO 도구 발행)
+   */
+  layoutVersion?: "v1" | "v2";
   /** @deprecated */
   metaDescriptionNearby?: string;
   /** @deprecated */

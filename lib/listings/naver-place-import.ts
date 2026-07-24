@@ -240,66 +240,318 @@ export async function searchNaverPlaces(
   };
 }
 
-/** 네이버 지도 예약 배너·OG 기본이미지 등 업체 사진이 아닌 URL 제외 */
+/**
+ * 업체사진(ldb-phinf)만 허용.
+ * og:image·예약 배너("놓치면 아까운 혜택" 등)는 URL에 booking/혜택이 없어도
+ * 별도 CDN/경로로 오므로 og 메타는 사용하지 않음.
+ */
 export function isLikelyPlacePhoto(url: string): boolean {
   const raw = url.trim();
   if (!raw.startsWith("http://") && !raw.startsWith("https://")) return false;
-  const lower = raw.toLowerCase();
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    // keep raw
+  }
+  const lower = `${raw} ${decoded}`.toLowerCase();
 
   if (
-    /booking|reservation|혜택|promo|banner|og_default|placeholder|map\.naver\.com\/assets|\/static\/map|\/static\/img/i.test(
+    /booking|reservation|예약|혜택|promo|banner|og_default|placeholder|captcha|map\.naver\.com\/assets|\/static\/map|\/static\/img|smartplace|naver\.me\/static/i.test(
       lower
     )
   ) {
     return false;
   }
   if (/ssl\.pstatic\.net\/static/i.test(lower)) return false;
+  // 네이버 예약/지도 기본 배너
+  if (/nid\.naver\.com|ssl\.pstatic\.net\/melon|storep-phinf/i.test(lower)) {
+    return false;
+  }
 
-  if (
-    /ldb-phinf\.pstatic\.net|search\.pstatic\.net|blogfiles\.pstatic\.net|postfiles\.pstatic\.net|phinf\.pstatic\.net/i.test(
-      lower
-    )
-  ) {
+  // 업체 업로드 원본 CDN만 우선
+  if (/ldb-phinf\.pstatic\.net/i.test(lower)) return true;
+
+  // search.pstatic 프록시인데 원본이 ldb-phinf 인 경우만
+  if (/search\.pstatic\.net/i.test(lower) && /ldb-phinf\.pstatic\.net/i.test(lower)) {
     return true;
   }
 
-  if (/pstatic\.net/i.test(lower) && !/\/static\//i.test(lower)) return true;
-
-  if (/\.(jpe?g|png|webp|gif)(\?|$)/i.test(lower)) return true;
-
   return false;
+}
+
+/** search.pstatic 프록시 → ldb-phinf 원본 URL */
+export function unwrapPlacePhotoUrl(url: string): string {
+  const raw = url.trim();
+  try {
+    const u = new URL(raw);
+    if (/search\.pstatic\.net/i.test(u.hostname)) {
+      const src = u.searchParams.get("src");
+      if (src?.startsWith("http")) return decodeURIComponent(src);
+    }
+  } catch {
+    // keep
+  }
+  const m = raw.match(/[?&]src=(https?[^&]+)/i);
+  if (m?.[1]) {
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return m[1];
+    }
+  }
+  return raw;
+}
+
+function pushBusinessPhoto(urls: string[], raw: unknown) {
+  if (typeof raw !== "string" || !raw.startsWith("http")) return;
+  const unwrapped = unwrapPlacePhotoUrl(raw);
+  if (!isLikelyPlacePhoto(unwrapped)) return;
+  if (!urls.includes(unwrapped)) urls.push(unwrapped);
 }
 
 function extractImagesFromDetail(data: unknown): string[] {
   const root = asRecord(data);
   if (!root) return [];
   const urls: string[] = [];
-  const push = (u: unknown) => {
-    if (typeof u !== "string" || !u.startsWith("http") || urls.includes(u)) return;
-    if (!isLikelyPlacePhoto(u)) return;
-    urls.push(u);
+
+  const walk = (value: unknown, depth = 0) => {
+    if (depth > 5 || urls.length >= 8) return;
+    if (typeof value === "string") {
+      pushBusinessPhoto(urls, value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, depth + 1);
+      return;
+    }
+    const rec = asRecord(value);
+    if (!rec) return;
+    // 업체사진(ibu) 우선
+    const type = pickString(rec.photoType, rec.type, rec.category, rec.viewType);
+    const isBiz =
+      !type ||
+      /ibu|business|업체|owner|official/i.test(type) ||
+      rec.isOfficial === true;
+    if (isBiz) {
+      pushBusinessPhoto(
+        urls,
+        rec.url ?? rec.originUrl ?? rec.originalUrl ?? rec.imageUrl ?? rec.thumbnail
+      );
+    }
+    for (const [k, v] of Object.entries(rec)) {
+      if (/photo|image|url|thum/i.test(k)) walk(v, depth + 1);
+    }
   };
 
-  const images = root.images ?? root.photos ?? root.photoList;
-  if (Array.isArray(images)) {
-    for (const img of images) {
-      if (typeof img === "string") push(img);
-      else {
-        const rec = asRecord(img);
-        push(rec?.url ?? rec?.originUrl ?? rec?.thumbnail);
-      }
-    }
-  }
-
+  walk(root.images ?? root.photos ?? root.photoList ?? root);
   const detail = asRecord(root.place) ?? asRecord(root.business) ?? root;
-  push(detail?.thumUrl);
-  push(detail?.imageUrl);
-  const imageUrls = detail?.imageUrls;
-  if (Array.isArray(imageUrls)) {
-    for (const u of imageUrls) push(u);
+  pushBusinessPhoto(urls, detail?.thumUrl);
+  pushBusinessPhoto(urls, detail?.imageUrl);
+  if (Array.isArray(detail?.imageUrls)) {
+    for (const u of detail.imageUrls) pushBusinessPhoto(urls, u);
   }
 
   return urls.slice(0, 6);
+}
+
+/** HTML에서 ldb-phinf 업체사진 URL만 추출 */
+function extractLdbPhotosFromHtml(html: string, limit = 6): string[] {
+  const urls: string[] = [];
+  const re =
+    /https?:\/\/ldb-phinf\.pstatic\.net\/[^\s"'\\<>]+/gi;
+  for (const match of html.matchAll(re)) {
+    let u = match[0].replace(/\\u002F/g, "/").replace(/\\/g, "");
+    u = u.replace(/[),;]+$/, "");
+    pushBusinessPhoto(urls, u);
+    if (urls.length >= limit) break;
+  }
+  // search.pstatic 프록시(원본 ldb)도
+  const proxyRe =
+    /https?:\/\/search\.pstatic\.net\/common\/\?[^"'\\\s]*ldb-phinf[^"'\\\s]*/gi;
+  for (const match of html.matchAll(proxyRe)) {
+    pushBusinessPhoto(urls, match[0].replace(/\\u002F/g, "/").replace(/\\/g, ""));
+    if (urls.length >= limit) break;
+  }
+  return urls.slice(0, limit);
+}
+
+function extractRatingsFromText(text: string): {
+  rating: number | null;
+  reviewCount: number | null;
+} {
+  const scoreMatch =
+    text.match(/"visitorReviewScore"\s*:\s*"?([\d.]+)"?/i) ||
+    text.match(/visitorReviewScore["\s:=]+([\d.]+)/i) ||
+    text.match(/"averageScore"\s*:\s*"?([\d.]+)"?/i) ||
+    text.match(/"avgRating"\s*:\s*"?([\d.]+)"?/i);
+  const countMatch =
+    text.match(/"visitorReviewCount"\s*:\s*"?(\d+)"?/i) ||
+    text.match(/visitorReviewCount["\s:=]+(\d+)/i) ||
+    text.match(/"totalReviewCount"\s*:\s*"?(\d+)"?/i);
+
+  return {
+    rating: pickNumber(scoreMatch?.[1]),
+    reviewCount: pickNumber(countMatch?.[1]),
+  };
+}
+
+function extractRatingsFromUnknown(data: unknown): {
+  rating: number | null;
+  reviewCount: number | null;
+} {
+  let rating: number | null = null;
+  let reviewCount: number | null = null;
+
+  const walk = (value: unknown, depth = 0) => {
+    if ((rating != null && reviewCount != null) || depth > 6) return;
+    const rec = asRecord(value);
+    if (rec) {
+      const scores = extractRatingFields(rec);
+      rating = rating ?? scores.rating;
+      reviewCount = reviewCount ?? scores.reviewCount;
+      for (const v of Object.values(rec)) walk(v, depth + 1);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, depth + 1);
+    }
+  };
+
+  walk(data);
+  return { rating, reviewCount };
+}
+
+/** 업체사진 탭에서만 수집 — 홈 og:image(예약 배너) 사용 금지 */
+export async function fetchNaverPlacePhotos(
+  placeId: string,
+  limit = 3
+): Promise<string[]> {
+  const id = placeId.trim();
+  if (!id) return [];
+
+  const urls: string[] = [];
+
+  const photoPages = [
+    `https://m.place.naver.com/place/${id}/photo`,
+    `https://pcmap.place.naver.com/place/${id}/photo`,
+    `https://m.place.naver.com/place/${id}/photo?filter=ibu`,
+  ];
+
+  for (const url of photoPages) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/json,*/*",
+          Referer: `https://m.place.naver.com/place/${id}`,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!res.ok) continue;
+      const text = await res.text();
+      for (const u of extractLdbPhotosFromHtml(text, limit)) {
+        pushBusinessPhoto(urls, u);
+      }
+      const apollo = text.match(
+        /window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\});/
+      );
+      if (apollo?.[1]) {
+        try {
+          for (const u of extractImagesFromDetail(JSON.parse(apollo[1]))) {
+            pushBusinessPhoto(urls, u);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (text.trim().startsWith("{")) {
+        try {
+          for (const u of extractImagesFromDetail(JSON.parse(text))) {
+            pushBusinessPhoto(urls, u);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (urls.length >= limit) break;
+    } catch {
+      // try next
+    }
+  }
+
+  // GraphQL 업체사진(ibu) 시도
+  if (urls.length < limit) {
+    const gqlBodies = [
+      {
+        operationName: "getPhotoViewerItems",
+        query: `query getPhotoViewerItems($input: PhotoViewerInput) {
+          photoViewer(input: $input) {
+            photos { url originalUrl imageUrl photoType }
+          }
+        }`,
+        variables: {
+          input: {
+            businessId: id,
+            businessType: "place",
+            category: "업체",
+            page: 1,
+            size: limit,
+          },
+        },
+      },
+      {
+        operationName: "photoList",
+        query: `query photoList($input: PhotoListInput) {
+          photoList(input: $input) {
+            photos { url originalUrl imageUrl type photoType }
+          }
+        }`,
+        variables: {
+          input: {
+            businessId: id,
+            businessType: "place",
+            page: 1,
+            display: limit,
+            photoType: "ibu",
+          },
+        },
+      },
+    ];
+    for (const endpoint of [
+      "https://pcmap-api.place.naver.com/graphql",
+      "https://pcmap-api.place.naver.com/place/graphql",
+    ]) {
+      for (const body of gqlBodies) {
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "User-Agent": UA,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Referer: `https://m.place.naver.com/place/${id}/photo`,
+            },
+            body: JSON.stringify(body),
+            cache: "no-store",
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          for (const u of extractImagesFromDetail(data)) {
+            pushBusinessPhoto(urls, u);
+          }
+          if (urls.length >= limit) break;
+        } catch {
+          // try next
+        }
+      }
+      if (urls.length >= limit) break;
+    }
+  }
+
+  return [...new Set(urls)].slice(0, limit);
 }
 
 function stripHtml(text: string): string {
@@ -363,11 +615,19 @@ function extractBlogReviewsFromUnknown(
   };
 
   const walk = (value: unknown, depth = 0) => {
-    if (out.length >= limit || depth > 6) return;
+    if (out.length >= limit || depth > 7) return;
     if (Array.isArray(value)) {
       for (const item of value) {
         const rec = asRecord(item);
-        if (rec && (rec.title || rec.blogTitle || rec.contents || rec.body)) {
+        if (
+          rec &&
+          (rec.title ||
+            rec.blogTitle ||
+            rec.contents ||
+            rec.body ||
+            rec.landingUrl ||
+            rec.blogUrl)
+        ) {
           push(rec);
         } else {
           walk(item, depth + 1);
@@ -379,13 +639,58 @@ function extractBlogReviewsFromUnknown(
     const rec = asRecord(value);
     if (!rec) return;
     for (const [k, v] of Object.entries(rec)) {
-      if (/blog/i.test(k) && (Array.isArray(v) || typeof v === "object")) {
+      if (/blog|review|ugc|article|item/i.test(k)) {
         walk(v, depth + 1);
       }
     }
   };
 
   walk(data);
+  return out.slice(0, limit);
+}
+
+function extractBlogReviewsFromHtml(html: string, limit = 5): NaverBlogReview[] {
+  const out: NaverBlogReview[] = [];
+  const seen = new Set<string>();
+
+  // blog.naver.com 링크 + 근처 제목
+  const linkRe =
+    /https?:\/\/blog\.naver\.com\/[^\s"'\\<>]+/gi;
+  const titles: string[] = [];
+  for (const m of html.matchAll(
+    /"(?:title|blogTitle|name)"\s*:\s*"([^"]{4,120})"/g
+  )) {
+    titles.push(m[1]);
+  }
+  const bodies: string[] = [];
+  for (const m of html.matchAll(
+    /"(?:contents|body|description|summary)"\s*:\s*"([^"]{8,200})"/g
+  )) {
+    bodies.push(m[1]);
+  }
+
+  let i = 0;
+  for (const match of html.matchAll(linkRe)) {
+    const url = match[0].replace(/\\u002F/g, "/").replace(/\\/g, "");
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const title = stripHtml(titles[i] || `네이버 블로그 리뷰 ${i + 1}`);
+    const body = stripHtml(bodies[i] || "").slice(0, 160);
+    out.push({ title, body: body || title, url });
+    i += 1;
+    if (out.length >= limit) break;
+  }
+
+  if (out.length === 0 && titles.length > 0) {
+    for (let j = 0; j < Math.min(limit, titles.length); j++) {
+      out.push({
+        title: stripHtml(titles[j]),
+        body: stripHtml(bodies[j] || titles[j]).slice(0, 160),
+        url: null,
+      });
+    }
+  }
+
   return out.slice(0, limit);
 }
 
@@ -445,6 +750,7 @@ export async function fetchNaverBlogReviews(
 
   const endpoints = [
     "https://pcmap-api.place.naver.com/graphql",
+    "https://pcmap-api.place.naver.com/place/graphql",
     "https://api.place.naver.com/graphql",
   ];
 
@@ -457,7 +763,7 @@ export async function fetchNaverBlogReviews(
             "User-Agent": UA,
             Accept: "application/json",
             "Content-Type": "application/json",
-            Referer: `https://m.place.naver.com/place/${id}`,
+            Referer: `https://m.place.naver.com/place/${id}/review/ugc`,
           },
           body: JSON.stringify(body),
           cache: "no-store",
@@ -473,11 +779,38 @@ export async function fetchNaverBlogReviews(
     }
   }
 
-  // HTML/JSON fallback — 한 번만
+  // article list API
   try {
-    const res = await fetch(
-      `https://pcmap.place.naver.com/place/${id}/review/ugc`,
-      {
+    const articleUrl =
+      `https://pcmap.place.naver.com/article/list?businessId=${id}&page=1&displayCount=${limit}`;
+    const res = await fetch(articleUrl, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json,text/html,*/*",
+        Referer: `https://m.place.naver.com/place/${id}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+        const reviews = extractBlogReviewsFromUnknown(JSON.parse(text), limit);
+        if (reviews.length > 0) return reviews;
+      }
+      const fromHtml = extractBlogReviewsFromHtml(text, limit);
+      if (fromHtml.length > 0) return fromHtml;
+    }
+  } catch {
+    // ignore
+  }
+
+  for (const path of [
+    `https://m.place.naver.com/place/${id}/review/ugc`,
+    `https://pcmap.place.naver.com/place/${id}/review/ugc`,
+  ]) {
+    try {
+      const res = await fetch(path, {
         headers: {
           "User-Agent": UA,
           Accept: "text/html,application/json",
@@ -485,22 +818,32 @@ export async function fetchNaverBlogReviews(
         },
         cache: "no-store",
         signal: AbortSignal.timeout(10_000),
-      }
-    );
-    if (res.ok) {
+      });
+      if (!res.ok) continue;
       const text = await res.text();
       if (text.trim().startsWith("{")) {
-        return extractBlogReviewsFromUnknown(JSON.parse(text), limit);
+        const reviews = extractBlogReviewsFromUnknown(JSON.parse(text), limit);
+        if (reviews.length > 0) return reviews;
       }
       const apollo = text.match(
         /window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\});/
       );
       if (apollo?.[1]) {
-        return extractBlogReviewsFromUnknown(JSON.parse(apollo[1]), limit);
+        try {
+          const reviews = extractBlogReviewsFromUnknown(
+            JSON.parse(apollo[1]),
+            limit
+          );
+          if (reviews.length > 0) return reviews;
+        } catch {
+          // ignore
+        }
       }
+      const fromHtml = extractBlogReviewsFromHtml(text, limit);
+      if (fromHtml.length > 0) return fromHtml;
+    } catch {
+      // try next
     }
-  } catch {
-    // ignore — 리뷰 없이도 등록 가능
   }
 
   return [];
@@ -516,6 +859,7 @@ export async function fetchNaverPlaceDetail(
   const urls = [
     `https://pcmap.place.naver.com/place/${id}/home`,
     `https://m.place.naver.com/place/${id}`,
+    `https://m.place.naver.com/place/${id}/home`,
     `https://map.naver.com/v5/api/sites/summary/${id}?lang=ko`,
     `https://map.naver.com/v5/api/sites/summary/${id}`,
   ];
@@ -524,12 +868,11 @@ export async function fetchNaverPlaceDetail(
   let address = fallback?.address ?? "";
   let phone = fallback?.phone ?? null;
   let description: string | null = null;
-  let imageUrls: string[] = [];
   let rating = fallback?.rating ?? null;
   let reviewCount = fallback?.reviewCount ?? null;
-  if (fallback?.thumb && isLikelyPlacePhoto(fallback.thumb)) {
-    imageUrls = [fallback.thumb];
-  }
+
+  // 사진은 업체사진 탭에서만 (예약 배너 방지)
+  let imageUrls = await fetchNaverPlacePhotos(id, 3);
 
   for (const url of urls) {
     try {
@@ -568,10 +911,14 @@ export async function fetchNaverPlaceDetail(
           ) || phone;
         description =
           pickString(place.description, place.microReview) || description;
-        const scores = extractRatingFields(place);
+        const scores = extractRatingsFromUnknown(data);
         rating = rating ?? scores.rating;
         reviewCount = reviewCount ?? scores.reviewCount;
-        imageUrls = [...imageUrls, ...extractImagesFromDetail(data)];
+        if (imageUrls.length < 3) {
+          for (const u of extractImagesFromDetail(data)) {
+            pushBusinessPhoto(imageUrls, u);
+          }
+        }
       } else {
         const html = await res.text();
         const titleMatch = html.match(
@@ -580,32 +927,24 @@ export async function fetchNaverPlaceDetail(
         const descMatch = html.match(
           /<meta\s+property="og:description"\s+content="([^"]+)"/i
         );
-        const imageMatch = html.match(
-          /<meta\s+property="og:image"\s+content="([^"]+)"/i
-        );
+        // og:image 는 예약 배너가 많아서 절대 사용하지 않음
         const phoneMatch = html.match(
           /0(?:50\d|1[016789]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4])[-\s]?\d{3,4}[-\s]?\d{4}/g
         );
         if (titleMatch?.[1]) name = name || titleMatch[1].split(":")[0].trim();
         if (descMatch?.[1]) description = description || descMatch[1];
-        if (imageMatch?.[1] && isLikelyPlacePhoto(imageMatch[1])) {
-          imageUrls.push(imageMatch[1]);
-        }
         if (phoneMatch?.length) {
           phone = pickBestPhone(phone, ...phoneMatch) || phone;
         }
 
-        const scoreMatch = html.match(
-          /"visitorReviewScore"\s*:\s*"?([\d.]+)"?/i
-        );
-        const countMatch = html.match(
-          /"visitorReviewCount"\s*:\s*"?(\d+)"?/i
-        );
-        if (scoreMatch?.[1] && rating == null) {
-          rating = pickNumber(scoreMatch[1]);
-        }
-        if (countMatch?.[1] && reviewCount == null) {
-          reviewCount = pickNumber(countMatch[1]);
+        const fromText = extractRatingsFromText(html);
+        rating = rating ?? fromText.rating;
+        reviewCount = reviewCount ?? fromText.reviewCount;
+
+        if (imageUrls.length < 3) {
+          for (const u of extractLdbPhotosFromHtml(html, 3)) {
+            pushBusinessPhoto(imageUrls, u);
+          }
         }
 
         const apollo = html.match(
@@ -614,6 +953,9 @@ export async function fetchNaverPlaceDetail(
         if (apollo?.[1]) {
           try {
             const state = JSON.parse(apollo[1]) as Record<string, unknown>;
+            const scores = extractRatingsFromUnknown(state);
+            rating = rating ?? scores.rating;
+            reviewCount = reviewCount ?? scores.reviewCount;
             for (const value of Object.values(state)) {
               const rec = asRecord(value);
               if (!rec) continue;
@@ -637,10 +979,11 @@ export async function fetchNaverPlaceDetail(
                     rec.tel
                   ) || phone;
               }
-              const scores = extractRatingFields(rec);
-              rating = rating ?? scores.rating;
-              reviewCount = reviewCount ?? scores.reviewCount;
-              imageUrls = [...imageUrls, ...extractImagesFromDetail(rec)];
+            }
+            if (imageUrls.length < 3) {
+              for (const u of extractImagesFromDetail(state)) {
+                pushBusinessPhoto(imageUrls, u);
+              }
             }
           } catch {
             // ignore
@@ -652,6 +995,11 @@ export async function fetchNaverPlaceDetail(
     }
   }
 
+  // 사진이 여전히 없으면 fallback thumb (업체사진 필터 통과분만)
+  if (imageUrls.length === 0 && fallback?.thumb) {
+    pushBusinessPhoto(imageUrls, fallback.thumb);
+  }
+
   phone = pickBestPhone(phone) || null;
 
   if (!name) {
@@ -661,11 +1009,8 @@ export async function fetchNaverPlaceDetail(
     };
   }
 
-  const uniqueImages = [
-    ...new Set(imageUrls.filter((u) => isLikelyPlacePhoto(u))),
-  ].slice(0, 3);
+  const uniqueImages = [...new Set(imageUrls)].slice(0, 3);
 
-  // 블로그 리뷰는 등록 시 1회만 (상세 페이지 런타임 호출 금지)
   const blogReviews = await fetchNaverBlogReviews(id, 5);
 
   return {

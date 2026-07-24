@@ -149,6 +149,8 @@ export async function generateRegionalLandingFromKeyword(
       metaDescription: gemini.data.metaDescription,
       seoBlocks: gemini.data.seoBlocks,
       faqItems: gemini.data.faqItems,
+      /** 웹 관리자 발행은 기존 레이아웃 유지 */
+      layoutVersion: "v1",
       isPublished: true,
       geminiUsed: true,
       isSlugVariant,
@@ -176,6 +178,7 @@ export async function generateRegionalLandingFromKeyword(
     nearbySlugs: buildNearbySlugs(nearbyAreas, category, byLabel),
     nearbyAreas,
     nearbyStations,
+    layoutVersion: "v1",
     isPublished: true,
     geminiUsed: false,
     geminiError: gemini.error,

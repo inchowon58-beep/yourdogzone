@@ -5,6 +5,7 @@ import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
 import { ShelterRegionalTrustGuide } from "@/components/regional/ShelterRegionalTrustGuide";
+import { RecentRegionalPostsScroll } from "@/components/regional/RecentRegionalPostsScroll";
 import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
 import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
@@ -31,19 +32,21 @@ import {
   getRegionalServiceConfig,
   resolvePageCategory,
 } from "@/lib/seo/regional-service-config";
+import { isShelterTrustLayout } from "@/lib/academy/regional-layout-version";
 
 type Props = {
   bundle: RegionalPageBundle;
 };
 
 export function RegionalLandingPageView({ bundle }: Props) {
-  const { page, pageCtx } = bundle;
+  const { page, pageCtx, relatedPages } = bundle;
   const category = resolvePageCategory(page);
   const config = getRegionalServiceConfig(category);
   const { label, regionBig, query } = page;
   const searchQuery = query ?? label;
   const regionFilter = regionBig ?? "전체";
   const seoCtx = pageCtx.seoCtx;
+  const useShelterTrust = isShelterTrustLayout(page);
 
   const {
     premium,
@@ -71,8 +74,9 @@ export function RegionalLandingPageView({ bundle }: Props) {
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
-  const seoBlocks =
-    category === "shelter" ? [] : resolveBoundSeoBlocks(page, seoCtx);
+  const seoBlocks = useShelterTrust
+    ? []
+    : resolveBoundSeoBlocks(page, seoCtx);
   const faqItems = resolveBoundFaqItems(page, seoCtx);
   const listAnchor = "#entity-list";
   const listSample = sampleStableRandom(regular, 5, `${page.slug}-list`);
@@ -152,7 +156,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
         />
       ) : null}
 
-      {category === "shelter" ? (
+      {useShelterTrust ? (
         <ShelterRegionalTrustGuide
           label={label}
           pageKeyword={pageKeyword}
@@ -222,6 +226,13 @@ export function RegionalLandingPageView({ bundle }: Props) {
         stations={nearbyStations}
         keywordSuffix={keywordTheme}
       />
+
+      {useShelterTrust ? (
+        <RecentRegionalPostsScroll
+          currentLabel={label}
+          pages={relatedPages ?? []}
+        />
+      ) : null}
 
       {pageCtx.all.length === 0 && (
         <p className="mt-6 text-center text-sm text-muted">

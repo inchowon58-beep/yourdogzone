@@ -14,6 +14,7 @@ import {
   resolvePageCategory,
   type RegionalServiceCategory,
 } from "@/lib/seo/regional-service-config";
+import { sampleStableRandom } from "@/lib/utils/random-sample";
 
 function normalizeLandingPage(page: RegionalLandingPage): RegionalLandingPage {
   return {
@@ -246,4 +247,35 @@ export async function resolveNearbyPages(
     .map((s) => bySlug.get(s))
     .filter((p): p is RegionalLandingPage => Boolean(p && p.isPublished))
     .slice(0, 5);
+}
+
+/**
+ * 동일 카테고리 최근 발행글 (최대 limit).
+ * 이미 캐시된 regional-landings index만 사용 — 추가 R2/API 호출 없음.
+ * 페이지마다 안정적으로 다른 조합이 나오도록 slug 시드로 샘플링.
+ */
+export async function getRelatedRegionalPeers(
+  page: RegionalLandingPage,
+  limit = 30
+): Promise<RegionalLandingPage[]> {
+  const category = resolvePageCategory(page);
+  const all = await getAllRegionalLandings();
+  const peers = all
+    .filter(
+      (p) =>
+        p.isPublished &&
+        p.slug !== page.slug &&
+        resolvePageCategory(p) === category
+    )
+    .sort((a, b) => {
+      const tb = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+      const ta = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+      return tb - ta;
+    });
+
+  if (peers.length <= limit) return peers;
+
+  // 최근 풀을 넓게 잡은 뒤 페이지별로 다른 30개 선택 (내부링크 다양성)
+  const pool = peers.slice(0, Math.min(peers.length, limit * 3));
+  return sampleStableRandom(pool, limit, `${page.slug}-related-peers`);
 }

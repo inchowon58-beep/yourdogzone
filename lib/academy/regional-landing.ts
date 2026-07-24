@@ -11,6 +11,7 @@ export {
   getRegionalLandingBySlug,
   getPublishedRegionalSlugs,
   resolveNearbyPages,
+  getRelatedRegionalPeers,
   upsertRegionalLanding,
   insertRegionalLanding,
   deleteRegionalLanding,
