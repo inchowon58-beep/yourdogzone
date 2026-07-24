@@ -300,6 +300,7 @@ def build_page(
         "metaDescription": meta_description,
         # 로컬 SEO 발행만 새 신뢰 가이드 UI (사이트 웹 발행·기존 글은 v1)
         "layoutVersion": "v2" if category == "shelter" else "v1",
+        "publishSource": "offline-seo",
         "isPublished": True,
         "createdAt": now,
         "updatedAt": now,

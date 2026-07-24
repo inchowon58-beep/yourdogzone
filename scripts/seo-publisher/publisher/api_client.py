@@ -61,12 +61,24 @@ def page_url(cfg: Config, category: str, slug: str) -> str:
     return f"{cfg.site_url.rstrip('/')}{base}/region/{slug}"
 
 
+def _ensure_layout_fields(page: dict[str, Any]) -> dict[str, Any]:
+    """exe/구버전이라도 보호소는 v2 신뢰 가이드로 올라가도록 보정."""
+    out = dict(page)
+    out["publishSource"] = out.get("publishSource") or "offline-seo"
+    cat = str(out.get("category") or "")
+    if cat == "shelter":
+        out["layoutVersion"] = "v2"
+    elif not out.get("layoutVersion"):
+        out["layoutVersion"] = "v1"
+    return out
+
+
 def _publish_one(cfg: Config, page: dict[str, Any]) -> dict[str, Any]:
     """프로덕션 호환: 단건 upsert (body.page)."""
     return _post_json(
         cfg,
         "/api/admin/regional-landings",
-        {"page": page},
+        {"page": _ensure_layout_fields(page)},
     )
 
 
@@ -80,7 +92,7 @@ def _publish_batch(
             "/api/admin/regional-landings",
             {
                 "action": "upsert_batch",
-                "pages": pages,
+                "pages": [_ensure_layout_fields(p) for p in pages],
                 "submit_indexnow": False,
             },
         )

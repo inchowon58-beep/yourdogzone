@@ -151,6 +151,7 @@ export async function generateRegionalLandingFromKeyword(
       faqItems: gemini.data.faqItems,
       /** 웹 관리자 발행은 기존 레이아웃 유지 */
       layoutVersion: "v1",
+      publishSource: "web",
       isPublished: true,
       geminiUsed: true,
       isSlugVariant,
@@ -179,6 +180,7 @@ export async function generateRegionalLandingFromKeyword(
     nearbyAreas,
     nearbyStations,
     layoutVersion: "v1",
+    publishSource: "web",
     isPublished: true,
     geminiUsed: false,
     geminiError: gemini.error,

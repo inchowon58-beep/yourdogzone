@@ -53,6 +53,8 @@ export type RegionalLandingPage = {
    * - v2: ShelterRegionalTrustGuide (로컬 SEO 도구 발행)
    */
   layoutVersion?: "v1" | "v2";
+  /** 발행 출처 — 로컬 SEO 도구는 offline-seo */
+  publishSource?: "web" | "offline-seo";
   /** @deprecated */
   metaDescriptionNearby?: string;
   /** @deprecated */

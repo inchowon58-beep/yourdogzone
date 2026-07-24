@@ -66,6 +66,36 @@ function pageAbsoluteUrl(
   return absoluteUrl(regionalLandingPathForCategory(category, slug));
 }
 
+/**
+ * 로컬 SEO 도구(구 exe 포함)가 layoutVersion 없이 올려도 보호소는 v2.
+ * 웹 generate는 항상 layoutVersion: "v1"을 명시하므로 영향 없음.
+ */
+function applyLayoutDefaults(
+  raw: RegionalLandingInsert,
+  category: RegionalServiceCategory
+): RegionalLandingInsert {
+  if (raw.layoutVersion === "v1" || raw.layoutVersion === "v2") {
+    return {
+      ...raw,
+      publishSource:
+        raw.publishSource ??
+        (raw.layoutVersion === "v2" ? "offline-seo" : "web"),
+    };
+  }
+  if (category === "shelter" && raw.publishSource !== "web") {
+    return {
+      ...raw,
+      layoutVersion: "v2",
+      publishSource: raw.publishSource ?? "offline-seo",
+    };
+  }
+  return {
+    ...raw,
+    layoutVersion: "v1",
+    publishSource: raw.publishSource ?? "web",
+  };
+}
+
 export async function GET(request: Request) {
   const denied = await requireMainAdmin(request);
   if (denied) return denied;
@@ -130,21 +160,26 @@ export async function POST(request: Request) {
       }
       const category = resolvePageCategory(raw);
       try {
-        const result = await upsertRegionalLanding({
-          ...raw,
-          category,
-          nearbySlugs: (raw.nearbySlugs ?? []).slice(0, 5),
-          nearbyAreas: (
-            raw.nearbyAreas ?? getNearbyDistricts(raw.label, 5)
-          ).slice(0, 5),
-          nearbyStations: (
-            raw.nearbyStations ?? getNearbyStations(raw.label, 5)
-          ).slice(0, 5),
-          keyword:
-            raw.keyword ||
-            normalizeRegionalKeyword("", raw.label, category),
-          isPublished: raw.isPublished ?? true,
-        });
+        const result = await upsertRegionalLanding(
+          applyLayoutDefaults(
+            {
+              ...raw,
+              category,
+              nearbySlugs: (raw.nearbySlugs ?? []).slice(0, 5),
+              nearbyAreas: (
+                raw.nearbyAreas ?? getNearbyDistricts(raw.label, 5)
+              ).slice(0, 5),
+              nearbyStations: (
+                raw.nearbyStations ?? getNearbyStations(raw.label, 5)
+              ).slice(0, 5),
+              keyword:
+                raw.keyword ||
+                normalizeRegionalKeyword("", raw.label, category),
+              isPublished: raw.isPublished ?? true,
+            },
+            category
+          )
+        );
         if ("error" in result) {
           errors.push(`${raw.slug}: ${result.error}`);
           continue;
@@ -250,17 +285,27 @@ export async function POST(request: Request) {
 
   const category = resolvePageCategory(page);
 
-  const result = await upsertRegionalLanding({
-    ...page,
-    category,
-    nearbySlugs: (page.nearbySlugs ?? []).slice(0, 5),
-    nearbyAreas: (page.nearbyAreas ?? getNearbyDistricts(page.label, 5)).slice(0, 5),
-    nearbyStations: (page.nearbyStations ?? getNearbyStations(page.label, 5)).slice(0, 5),
-    keyword:
-      page.keyword ||
-      normalizeRegionalKeyword("", page.label, category),
-    isPublished: page.isPublished ?? true,
-  });
+  const result = await upsertRegionalLanding(
+    applyLayoutDefaults(
+      {
+        ...page,
+        category,
+        nearbySlugs: (page.nearbySlugs ?? []).slice(0, 5),
+        nearbyAreas: (page.nearbyAreas ?? getNearbyDistricts(page.label, 5)).slice(
+          0,
+          5
+        ),
+        nearbyStations: (
+          page.nearbyStations ?? getNearbyStations(page.label, 5)
+        ).slice(0, 5),
+        keyword:
+          page.keyword ||
+          normalizeRegionalKeyword("", page.label, category),
+        isPublished: page.isPublished ?? true,
+      },
+      category
+    )
+  );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
