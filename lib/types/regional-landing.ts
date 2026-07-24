@@ -48,13 +48,20 @@ export type RegionalLandingPage = {
   /** SEO 발행 시 지정한 대표 이미지 (CDN 랜덤 등) */
   imageUrl?: string;
   /**
-   * 보호소 SEO 레이아웃
+   * 보호소/분양 SEO 레이아웃
    * - v1(기본): 기존 seoBlocks 섹션 UI (웹 발행·기존 글)
-   * - v2: ShelterRegionalTrustGuide (로컬 SEO 도구 발행)
+   * - v2: TrustGuide UI (로컬 SEO 도구 발행)
    */
   layoutVersion?: "v1" | "v2";
   /** 발행 출처 — 로컬 SEO 도구는 offline-seo */
   publishSource?: "web" | "offline-seo";
+  /**
+   * 분양 콘텐츠 양식 id (예: dog_basic, goldendoodle)
+   * URL 카테고리(adoption)와 별개로 본문/UI 뼈대를 고릅니다.
+   */
+  formId?: string;
+  /** 양식 표시명 (발행 스냅샷) */
+  formLabel?: string;
   /** @deprecated */
   metaDescriptionNearby?: string;
   /** @deprecated */

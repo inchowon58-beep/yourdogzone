@@ -90,6 +90,14 @@ function applyLayoutDefaults(
       publishSource: raw.publishSource ?? "offline-seo",
     };
   }
+  if (category === "adoption" && raw.publishSource !== "web") {
+    return {
+      ...raw,
+      layoutVersion: "v2",
+      publishSource: raw.publishSource ?? "offline-seo",
+      formId: raw.formId || "dog_basic",
+    };
+  }
   return {
     ...raw,
     layoutVersion: "v1",

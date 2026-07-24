@@ -1,15 +1,13 @@
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { resolvePageCategory } from "@/lib/seo/regional-service-config";
 
-/** 보호소 SEO 레이아웃 버전 */
+/** SEO 레이아웃 버전 */
 export type RegionalLayoutVersion = "v1" | "v2";
 
-/** 로컬 SEO 템플릿(신뢰 가이드) 흔적 — layoutVersion 없이 올라간 어제 발행분 복구용 */
+/** 로컬 SEO 보호소 템플릿 흔적 — layoutVersion 없이 올라간 발행분 복구용 */
 function looksLikeOfflineShelterSeo(
   page: Pick<RegionalLandingPage, "faqItems" | "seoBlocks" | "publishSource">
 ): boolean {
-  if (page.publishSource === "offline-seo") return true;
-
   const faqText = (page.faqItems ?? [])
     .map((f) => `${f.question} ${f.answer}`)
     .join(" ");
@@ -35,32 +33,79 @@ function looksLikeOfflineShelterSeo(
   return false;
 }
 
+function looksLikeOfflineAdoptionSeo(
+  page: Pick<RegionalLandingPage, "formId" | "faqItems" | "seoBlocks">
+): boolean {
+  if (page.formId) return true;
+  const text = [
+    ...(page.faqItems ?? []).map((f) => `${f.question} ${f.answer}`),
+    ...(page.seoBlocks ?? []).map(
+      (b) => `${b.title} ${(b.paragraphs ?? []).join(" ")}`
+    ),
+  ].join(" ");
+  return /분양 전 체크|충동 분양|건강보증|사육 환경|골든두들|메인쿤|랙돌|폼스키|꼬똥드툴레아/.test(
+    text
+  );
+}
+
 /**
- * v1 — 기존 RegionalAcademySeoSection (seoBlocks 본문) · 웹 발행·구 페이지
- * v2 — ShelterRegionalTrustGuide · 로컬 SEO 발행
- * 필드 없음: 로컬 SEO 템플릿 흔적 있으면 v2, 아니면 v1
+ * v1 — 기존 RegionalAcademySeoSection
+ * v2 — TrustGuide (보호소/분양 로컬 SEO)
  */
 export function resolveRegionalLayoutVersion(
   page: Pick<
     RegionalLandingPage,
-    "layoutVersion" | "faqItems" | "seoBlocks" | "publishSource"
+    | "layoutVersion"
+    | "faqItems"
+    | "seoBlocks"
+    | "publishSource"
+    | "formId"
+    | "category"
   >
 ): RegionalLayoutVersion {
   if (page.layoutVersion === "v2") return "v2";
   if (page.layoutVersion === "v1") return "v1";
-  if (looksLikeOfflineShelterSeo(page)) return "v2";
+  const category = resolvePageCategory(page);
+  if (category === "shelter" && looksLikeOfflineShelterSeo(page)) return "v2";
+  if (category === "adoption" && looksLikeOfflineAdoptionSeo(page)) return "v2";
+  if (page.publishSource === "offline-seo" && category === "shelter") {
+    return "v2";
+  }
   return "v1";
 }
 
-/** 보호소 + v2 일 때만 새 신뢰 가이드 UI */
+/** 보호소 + v2 → ShelterRegionalTrustGuide */
 export function isShelterTrustLayout(
   page: Pick<
     RegionalLandingPage,
-    "layoutVersion" | "category" | "faqItems" | "seoBlocks" | "publishSource"
+    | "layoutVersion"
+    | "category"
+    | "faqItems"
+    | "seoBlocks"
+    | "publishSource"
+    | "formId"
   >
 ): boolean {
   return (
     resolvePageCategory(page) === "shelter" &&
+    resolveRegionalLayoutVersion(page) === "v2"
+  );
+}
+
+/** 분양 + v2 → AdoptionRegionalTrustGuide */
+export function isAdoptionTrustLayout(
+  page: Pick<
+    RegionalLandingPage,
+    | "layoutVersion"
+    | "category"
+    | "faqItems"
+    | "seoBlocks"
+    | "publishSource"
+    | "formId"
+  >
+): boolean {
+  return (
+    resolvePageCategory(page) === "adoption" &&
     resolveRegionalLayoutVersion(page) === "v2"
   );
 }

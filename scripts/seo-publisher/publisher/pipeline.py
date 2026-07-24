@@ -23,6 +23,7 @@ def run_pipeline(
     image_cdn: str = "",
     image_max: int = 0,
     image_ext: str = "webp",
+    form_id: str | None = None,
     do_publish: bool = True,
     do_indexnow: bool = True,
     do_webdoc: bool = False,
@@ -55,13 +56,18 @@ def run_pipeline(
     else:
         log("이미지: 미설정 (폴더 URL + 최대번호 입력 시 적용)")
 
-    log(f"키워드 {len(keywords)}건 · 카테고리={category} · 템플릿 생성(Gemini 없음)")
+    log(
+        f"키워드 {len(keywords)}건 · 카테고리={category}"
+        + (f" · 양식={form_id}" if form_id else "")
+        + " · 템플릿 생성(Gemini 없음)"
+    )
     pages = build_pages_for_keywords(
         keywords,
         category,
         image_cdn=cdn,
         image_max=max_num,
         image_ext=ext,
+        form_id=form_id,
     )
     log(f"페이지 초안 {len(pages)}건 생성 완료")
 

@@ -48,6 +48,10 @@ from publisher.config import (  # noqa: E402
 )
 from publisher.pipeline import run_pipeline  # noqa: E402
 from publisher.slug import CATEGORY_META  # noqa: E402
+from publisher.adoption_forms import (  # noqa: E402
+    ADOPTION_FORMS,
+    DEFAULT_ADOPTION_FORM,
+)
 
 
 class SeoPublisherApp(tk.Tk):
@@ -100,10 +104,23 @@ class SeoPublisherApp(tk.Tk):
         ttk.Label(r2, text="카테고리", width=16).pack(side=tk.LEFT)
         cat_labels = [f"{k} — {v['title']}" for k, v in CATEGORY_META.items()]
         self.cat_combo = ttk.Combobox(
-            r2, state="readonly", width=36, values=cat_labels
+            r2, state="readonly", width=28, values=cat_labels
         )
-        self.cat_combo.set("shelter — 강아지보호소")
-        self.cat_combo.pack(side=tk.LEFT, padx=(4, 0))
+        saved_cat = str(saved.get("category") or "shelter")
+        cat_set = next(
+            (x for x in cat_labels if x.startswith(f"{saved_cat} ")),
+            "shelter — 강아지보호소",
+        )
+        self.cat_combo.set(cat_set)
+        self.cat_combo.pack(side=tk.LEFT, padx=(4, 8))
+        self.cat_combo.bind("<<ComboboxSelected>>", self._on_category_change)
+
+        ttk.Label(r2, text="양식").pack(side=tk.LEFT)
+        self.form_combo = ttk.Combobox(r2, state="readonly", width=22, values=[])
+        self.form_combo.pack(side=tk.LEFT, padx=(4, 0))
+        self._refresh_form_options(
+            initial_form=str(saved.get("form_id") or "")
+        )
 
         r3 = ttk.Frame(meta)
         r3.pack(fill=tk.X, pady=2)
@@ -274,6 +291,35 @@ class SeoPublisherApp(tk.Tk):
         raw = self.cat_combo.get().split("—")[0].strip()
         return raw or "shelter"
 
+    def _form_id(self) -> str | None:
+        if self._category_id() != "adoption":
+            return None
+        raw = self.form_combo.get().split("—")[0].strip()
+        return raw or DEFAULT_ADOPTION_FORM
+
+    def _on_category_change(self, _event=None) -> None:
+        self._refresh_form_options()
+
+    def _refresh_form_options(self, initial_form: str = "") -> None:
+        cat = self._category_id()
+        if cat == "adoption":
+            values = [f"{fid} — {label}" for fid, label in ADOPTION_FORMS]
+            self.form_combo.configure(state="readonly", values=values)
+            prefer = initial_form or DEFAULT_ADOPTION_FORM
+            match = next(
+                (v for v in values if v.startswith(f"{prefer} ")),
+                values[0],
+            )
+            self.form_combo.set(match)
+        elif cat == "shelter":
+            values = ["shelter_trust — 기본(신뢰가이드)"]
+            self.form_combo.configure(state="readonly", values=values)
+            self.form_combo.set(values[0])
+        else:
+            values = ["(해당 없음)"]
+            self.form_combo.configure(state="disabled", values=values)
+            self.form_combo.set(values[0])
+
     def _settings_payload(self) -> dict:
         return {
             "naver_id": self.naver_id_var.get().strip(),
@@ -288,6 +334,8 @@ class SeoPublisherApp(tk.Tk):
             "webdoc_enabled": bool(self.webdoc_check.get()),
             "count": self.count_var.get().strip(),
             "last_keywords": self.text.get("1.0", tk.END).strip(),
+            "category": self._category_id(),
+            "form_id": self._form_id() or "",
             "daily_limit": "50",
             "delay_min": "15",
             "delay_max": "20",
@@ -401,6 +449,7 @@ class SeoPublisherApp(tk.Tk):
                 result = run_pipeline(
                     cfg=cfg,
                     category=self._category_id(),
+                    form_id=self._form_id(),
                     keyword_text=keywords,
                     count=count,
                     image_cdn=self.image_cdn_var.get().strip(),

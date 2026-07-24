@@ -5,6 +5,7 @@ import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
 import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademySeoSection";
 import { ShelterRegionalTrustGuide } from "@/components/regional/ShelterRegionalTrustGuide";
+import { AdoptionRegionalTrustGuide } from "@/components/regional/AdoptionRegionalTrustGuide";
 import { RecentRegionalPostsScroll } from "@/components/regional/RecentRegionalPostsScroll";
 import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
@@ -32,7 +33,7 @@ import {
   getRegionalServiceConfig,
   resolvePageCategory,
 } from "@/lib/seo/regional-service-config";
-import { isShelterTrustLayout } from "@/lib/academy/regional-layout-version";
+import { isAdoptionTrustLayout, isShelterTrustLayout } from "@/lib/academy/regional-layout-version";
 
 type Props = {
   bundle: RegionalPageBundle;
@@ -47,6 +48,8 @@ export function RegionalLandingPageView({ bundle }: Props) {
   const regionFilter = regionBig ?? "전체";
   const seoCtx = pageCtx.seoCtx;
   const useShelterTrust = isShelterTrustLayout(page);
+  const useAdoptionTrust = isAdoptionTrustLayout(page);
+  const useTrustGuide = useShelterTrust || useAdoptionTrust;
 
   const {
     premium,
@@ -74,7 +77,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
   const nearbyAreas = resolveNearbyAreas(page);
   const nearbyStations = resolveNearbyStations(page);
   const heroIntro = resolveBoundRegionInfo(page, seoCtx);
-  const seoBlocks = useShelterTrust
+  const seoBlocks = useTrustGuide
     ? []
     : resolveBoundSeoBlocks(page, seoCtx);
   const faqItems = resolveBoundFaqItems(page, seoCtx);
@@ -164,6 +167,15 @@ export function RegionalLandingPageView({ bundle }: Props) {
           faqItems={faqItems}
           coverImageUrl={page.imageUrl}
         />
+      ) : useAdoptionTrust ? (
+        <AdoptionRegionalTrustGuide
+          label={label}
+          pageKeyword={pageKeyword}
+          seedKey={page.slug}
+          faqItems={faqItems}
+          coverImageUrl={page.imageUrl}
+          formId={page.formId}
+        />
       ) : (
         <RegionalAcademySeoSection
           label={label}
@@ -227,7 +239,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
         keywordSuffix={keywordTheme}
       />
 
-      {useShelterTrust ? (
+      {useTrustGuide ? (
         <RecentRegionalPostsScroll
           currentLabel={label}
           pages={relatedPages ?? []}

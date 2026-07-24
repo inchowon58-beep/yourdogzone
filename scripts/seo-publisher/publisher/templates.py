@@ -17,6 +17,15 @@ from publisher.slug import (
     build_unique_slug,
     parse_label,
 )
+from publisher.adoption_forms import (
+    ADOPTION_FORMS,
+    COMMON_CHECKS,
+    FLOW_CAT,
+    FLOW_DOG,
+    DEFAULT_ADOPTION_FORM,
+    form_meta,
+    resolve_adoption_form_id,
+)
 
 
 def _seed(keyword: str) -> random.Random:
@@ -214,19 +223,110 @@ def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]
     ]
 
 
+def _adoption_faqs(
+    rng: random.Random,
+    region: str,
+    keyword: str,
+    meta: dict[str, Any],
+) -> list[dict]:
+    subject = meta["subject"]
+    species = meta["species"]
+    pet = "고양이" if species == "cat" else "강아지"
+    pool = [
+        (
+            f"{region} {subject} 분양은 어떻게 시작하나요?",
+            f"원하는 조건(성격·예산·가정 환경)을 정리한 뒤 {region} 인근 분양처에 상담하고, 가능하면 사육 환경을 직접 확인하세요.",
+        ),
+        (
+            f"{subject} 분양 전 꼭 확인할 것은?",
+            "접종·건강검진 기록, 계약·건강보증, 분양가·추가비, 아이 상태를 확인하는 것이 중요합니다.",
+        ),
+        (
+            "계약서에 무엇이 있어야 하나요?",
+            "환불·건강보증 기간·사후관리·추가비용 범위를 문서로 남겨 두는 것이 안전합니다.",
+        ),
+        (
+            f"{pet} 분양 직후 병원은 가야 하나요?",
+            "가능하면 인수 후 가까운 동물병원에서 건강검진을 받는 것을 권장합니다.",
+        ),
+        (
+            f"{subject} 특성을 모르면 어떻게 하나요?",
+            f"{subject}는 {', '.join(meta['traits'][:2])} 같은 특징이 있습니다. 생활 패턴과 맞는지 상담 시 꼭 물어보세요.",
+        ),
+        (
+            "가격이 너무 싸거나 비싸면?",
+            meta["warning"],
+        ),
+    ]
+    count = 4 + rng.randrange(3)
+    picked = _shuffle(rng, pool)[:count]
+    return [{"question": q, "answer": a} for q, a in picked]
+
+
+def _adoption_blocks(
+    rng: random.Random,
+    region: str,
+    keyword: str,
+    meta: dict[str, Any],
+) -> list[dict]:
+    subject = meta["subject"]
+    checks = _shuffle(rng, list(COMMON_CHECKS))[:4]
+    traits = _shuffle(rng, list(meta["traits"]))[:4]
+    care = _shuffle(rng, list(meta["care_notes"]))[:3]
+    return [
+        {
+            "title": f"{subject} · 분양 전 체크",
+            "paragraphs": [
+                f"{region}에서 {keyword}을(를) 알아볼 때, {subject} 기준으로 건강·계약·사육 환경을 먼저 확인하세요.",
+                meta["warning"],
+            ],
+            "bullets": checks,
+        },
+        {
+            "title": f"{subject} 특징",
+            "paragraphs": [
+                f"{meta['headline_focus']}. {region} 분양 상담 시 아래 특성을 함께 물어보세요.",
+            ],
+            "bullets": traits,
+        },
+        {
+            "title": "초기 케어",
+            "paragraphs": care,
+            "bullets": ["병원 검진", "적응 공간", "용품·일정 준비"],
+        },
+        {
+            "title": "진행 순서",
+            "paragraphs": [
+                "상담 → 방문·확인 → 계약·인수 → 적응·케어 순으로 진행하는 편이 안전합니다.",
+            ],
+            "bullets": [
+                t[0] for t in (FLOW_CAT if meta["species"] == "cat" else FLOW_DOG)
+            ],
+        },
+    ]
+
+
 def build_page(
     *,
     keyword: str,
     category: str,
     taken_slugs: list[str],
     image_url: str | None = None,
+    form_id: str | None = None,
 ) -> dict[str, Any]:
     meta = CATEGORY_META.get(category) or CATEGORY_META["shelter"]
     label = parse_label(keyword, category)
     if not label:
         raise ValueError(f"지역명을 추출할 수 없습니다: {keyword}")
 
-    rng = _seed(f"{category}:{keyword}")
+    resolved_form = (
+        resolve_adoption_form_id(form_id)
+        if category == "adoption"
+        else None
+    )
+    form = form_meta(resolved_form) if resolved_form else None
+
+    rng = _seed(f"{category}:{resolved_form or ''}:{keyword}")
     slug = build_unique_slug(label, category, taken_slugs)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     page_keyword = keyword.strip()
@@ -242,6 +342,22 @@ def build_page(
         )
         nearby_intro = _pick(rng, SHELTER_NEARBY_INTRO).format(
             region=label, keyword=page_keyword
+        )
+    elif category == "adoption" and form:
+        seo_blocks = _adoption_blocks(rng, label, page_keyword, form)
+        faq_items = _adoption_faqs(rng, label, page_keyword, form)
+        subject = form["subject"]
+        region_info = (
+            f"{label}에서 {page_keyword}을(를) 찾을 때, {subject} 분양은 "
+            f"건강·계약·사육 환경을 먼저 확인하는 것이 중요합니다."
+        )
+        meta_description = (
+            f"{page_keyword} | {subject} 분양 전 체크리스트 · "
+            f"건강·계약·사육환경 안내 ({label})"
+        )
+        nearby_intro = (
+            f"{label} 인근에서도 {subject} 분양 상담 시 동일하게 "
+            f"환경·건강·계약을 비교해 보세요."
         )
     else:
         title_word = meta["title"]
@@ -283,6 +399,7 @@ def build_page(
         meta_description = f"{page_keyword} - {label} {title_word} 안내"
         nearby_intro = f"{label} 인근 {title_word} 정보도 참고해 보세요."
 
+    use_trust_v2 = category in {"shelter", "adoption"}
     page: dict[str, Any] = {
         "category": category,
         "slug": slug,
@@ -298,13 +415,15 @@ def build_page(
         "seoBlocks": seo_blocks,
         "faqItems": faq_items,
         "metaDescription": meta_description,
-        # 로컬 SEO 발행만 새 신뢰 가이드 UI (사이트 웹 발행·기존 글은 v1)
-        "layoutVersion": "v2" if category == "shelter" else "v1",
+        "layoutVersion": "v2" if use_trust_v2 else "v1",
         "publishSource": "offline-seo",
         "isPublished": True,
         "createdAt": now,
         "updatedAt": now,
     }
+    if form:
+        page["formId"] = form["id"]
+        page["formLabel"] = form["label"]
     if image_url:
         page["imageUrl"] = image_url
     return page
@@ -318,13 +437,14 @@ def build_pages_for_keywords(
     image_cdn: str = "",
     image_max: int = 0,
     image_ext: str = "webp",
+    form_id: str | None = None,
 ) -> list[dict[str, Any]]:
     from publisher.cdn_images import pick_random_image_url
 
     taken = list(existing_slugs or [])
     pages: list[dict[str, Any]] = []
     for kw in keywords:
-        rng = _seed(f"{category}:{kw}:img")
+        rng = _seed(f"{category}:{form_id or ''}:{kw}:img")
         img = pick_random_image_url(
             image_cdn, image_max, ext=image_ext, rng=rng
         )
@@ -333,7 +453,17 @@ def build_pages_for_keywords(
             category=category,
             taken_slugs=taken,
             image_url=img,
+            form_id=form_id,
         )
         taken.append(page["slug"])
         pages.append(page)
     return pages
+
+
+# GUI용 re-export
+__all__ = [
+    "build_page",
+    "build_pages_for_keywords",
+    "ADOPTION_FORMS",
+    "DEFAULT_ADOPTION_FORM",
+]

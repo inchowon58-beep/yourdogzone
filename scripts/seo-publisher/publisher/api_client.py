@@ -87,12 +87,17 @@ def page_url(cfg: Config, category: str, slug: str) -> str:
 
 
 def _ensure_layout_fields(page: dict[str, Any]) -> dict[str, Any]:
-    """exe/구버전이라도 보호소는 v2 신뢰 가이드로 올라가도록 보정."""
+    """exe/구버전이라도 보호소·분양은 v2 가이드로 올라가도록 보정."""
     out = dict(page)
     out["publishSource"] = out.get("publishSource") or "offline-seo"
     cat = str(out.get("category") or "")
     if cat == "shelter":
         out["layoutVersion"] = "v2"
+    elif cat == "adoption":
+        out["layoutVersion"] = "v2"
+        if not out.get("formId"):
+            out["formId"] = "dog_basic"
+            out["formLabel"] = out.get("formLabel") or "기본강아지"
     elif not out.get("layoutVersion"):
         out["layoutVersion"] = "v1"
     return out
