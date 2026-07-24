@@ -16,6 +16,7 @@ import {
   ADOPTION_COMMON_CHECKS,
   resolveAdoptionContentForm,
 } from "@/lib/seo/adoption-content-forms";
+import { CatBasicAdoptionGuide } from "@/components/regional/CatBasicAdoptionGuide";
 import { sampleStableRandom } from "@/lib/utils/random-sample";
 
 type Faq = { question: string; answer: string };
@@ -27,6 +28,7 @@ type Props = {
   faqItems: Faq[];
   coverImageUrl?: string | null;
   formId?: string | null;
+  recommendedName?: string | null;
 };
 
 const HEADLINE_TAILS = [
@@ -43,8 +45,23 @@ export function AdoptionRegionalTrustGuide({
   faqItems,
   coverImageUrl,
   formId,
+  recommendedName,
 }: Props) {
   const form = resolveAdoptionContentForm(formId);
+
+  if (form.id === "cat_basic") {
+    return (
+      <CatBasicAdoptionGuide
+        label={label}
+        pageKeyword={pageKeyword}
+        seedKey={seedKey}
+        faqItems={faqItems}
+        coverImageUrl={coverImageUrl}
+        recommendedName={recommendedName}
+      />
+    );
+  }
+
   const isCat = form.species === "cat";
   const petWord = isCat ? "고양이" : "강아지";
   const adoptWord = "분양";

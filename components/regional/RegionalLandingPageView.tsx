@@ -98,6 +98,24 @@ export function RegionalLandingPageView({ bundle }: Props) {
     category === "shelter" && featuredSource?.phone
       ? featuredSource.phone.replace(/-/g, "")
       : null;
+  const adoptionCtaPhone =
+    category === "adoption" && featuredSource?.phone
+      ? featuredSource.phone.replace(/-/g, "")
+      : null;
+  const fixedCtaPhone = shelterCtaPhone || adoptionCtaPhone;
+  const isCatAdoptionForm =
+    page.formId === "cat_basic" ||
+    [
+      "maine_coon",
+      "nevskaya_masquerade",
+      "munchkin",
+      "ragdoll",
+      "russian_blue",
+    ].includes(page.formId ?? "");
+  const fixedCtaLabel =
+    category === "shelter"
+      ? `강아지파양(입소) 무료분양 : 인증추천업체 ${featuredSource?.phone ?? ""}`
+      : `${isCatAdoptionForm ? "고양이분양" : "강아지분양"} : 인증추천업체 ${featuredSource?.phone ?? ""}`;
 
   const pageKeyword =
     page.keyword?.trim() || `${label} ${config.title}`;
@@ -175,6 +193,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
           faqItems={faqItems}
           coverImageUrl={page.imageUrl}
           formId={page.formId}
+          recommendedName={featuredSource?.name}
         />
       ) : (
         <RegionalAcademySeoSection
@@ -262,21 +281,21 @@ export function RegionalLandingPageView({ bundle }: Props) {
         </Link>
       </div>
 
-      {category === "shelter" && featuredSource?.phone && shelterCtaPhone ? (
+      {fixedCtaPhone && featuredSource?.phone ? (
         <>
           <div className="h-24 sm:h-20" aria-hidden />
           <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-emerald-100 bg-white/95 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md sm:px-4 sm:py-3">
             <div className="mx-auto flex w-full max-w-[92rem] items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-foreground">
-                  강아지파양(입소) 무료분양 : 인증추천업체 {featuredSource.phone}
+                  {fixedCtaLabel}
                 </p>
                 <p className="truncate text-xs text-emerald-700">
                   {featuredSource.name}
                 </p>
               </div>
               <a
-                href={`tel:${shelterCtaPhone}`}
+                href={`tel:${fixedCtaPhone}`}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"
               >
                 <Phone className="h-4 w-4" />

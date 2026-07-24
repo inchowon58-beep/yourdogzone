@@ -223,6 +223,92 @@ def _shelter_blocks(rng: random.Random, region: str, keyword: str) -> list[dict]
     ]
 
 
+def _cat_basic_faqs(
+    rng: random.Random, region: str, keyword: str
+) -> list[dict]:
+    pool = [
+        (
+            "고양이 분양가격은 얼마인가요?",
+            "아이들의 퀄리티·혈통·건강 관리에 따라 적게는 10만 원대부터 수백만 원 이상까지 달라질 수 있습니다. 포함 항목과 사후관리를 함께 확인하세요.",
+        ),
+        (
+            "유기묘보호소 무료분양은 비용이 전혀 없나요?",
+            "분양비가 무료여도 진료비·책임비 등으로 일부 비용이 발생할 수 있습니다. 완전 무비용으로 단정하지 않는 편이 안전합니다.",
+        ),
+        (
+            "고양이 처음 키울 때 비용은?",
+            "용품(화장실·모래·스크래처·이동장), 사료, 병원(검진·접종) 등 초기 정착비를 분양가와 별도로 준비하세요.",
+        ),
+        (
+            "고양이 배변훈련은 어떻게 하나요?",
+            "대부분 본능적으로 화장실을 이용합니다. 청결·모래·위치가 중요하고, 분양 직후에는 좁은 공간 적응이 도움이 됩니다.",
+        ),
+        (
+            "접종은 꼭 해야 하나요?",
+            "예방접종·구충·건강검진 기록을 분양 전 확인하고, 인수 후 병원에서 상태를 재확인하는 것을 권장합니다.",
+        ),
+        (
+            f"{region}에서 어떤 업체를 고르면 좋을까요?",
+            f"업체가 많아 고민이라면 {keyword} 페이지의 인증 추천업체 정보를 먼저 참고해 보세요. 환경·상담·계약 투명성을 기준으로 비교하세요.",
+        ),
+        (
+            "아파트에서 키우기 좋은 고양이가 있나요?",
+            "조용하고 실내 적응이 빠른 아이, 그루밍 부담이 적은 단모 등이 많이 선택됩니다. 개체 차가 크니 성격을 꼭 확인하세요.",
+        ),
+        (
+            "키우기 쉬운 고양이는 어떤 타입인가요?",
+            "온순하고 실내 생활에 잘 적응하는 아이들이 초보 집사에게 상대적으로 수월한 편입니다. 절대 기준은 없으니 상담이 중요합니다.",
+        ),
+    ]
+    count = 5 + rng.randrange(2)
+    picked = _shuffle(rng, pool)[:count]
+    return [{"question": q, "answer": a} for q, a in picked]
+
+
+def _cat_basic_blocks(
+    rng: random.Random, region: str, keyword: str
+) -> list[dict]:
+    return [
+        {
+            "title": "키우기 쉬운 고양이 · 아파트 환경",
+            "paragraphs": [
+                f"{region}에서 {keyword}을(를) 알아볼 때, 초보 집사·아파트 가구는 성격과 실내 적응을 먼저 보세요.",
+            ],
+            "bullets": _shuffle(
+                rng,
+                [
+                    "온순·실내 적응이 빠른 타입",
+                    "그루밍 부담이 적은 단모",
+                    "화장실 적응",
+                    "층간·소음 고려",
+                ],
+            )[:4],
+        },
+        {
+            "title": "고양이 분양가격 · 초기 비용",
+            "paragraphs": [
+                "분양가는 퀄리티·혈통에 따라 적게는 10만 원대부터 수백만 원 이상까지 달라질 수 있습니다.",
+                "유기묘 무료분양도 진료비·책임비 등 일부 비용이 발생할 수 있습니다.",
+            ],
+            "bullets": ["용품", "사료", "병원·접종", "안전 환경"],
+        },
+        {
+            "title": "배변 · 접종 · 키우는 방법",
+            "paragraphs": [
+                "화장실 청결·접종 일정·적응 공간을 분양 직후 우선 챙기세요.",
+            ],
+            "bullets": ["배변(화장실)", "접종·구충", "독립 적응 공간", "스크래처·놀이"],
+        },
+        {
+            "title": "어떤 업체에서 입양하면 좋을까?",
+            "paragraphs": [
+                f"업체가 많아 고민이라면 {region} {keyword} 페이지의 추천업체 정보를 활용해 보세요.",
+            ],
+            "bullets": ["사육 환경", "상담 투명성", "계약·사후관리", "인증 추천 참고"],
+        },
+    ]
+
+
 def _adoption_faqs(
     rng: random.Random,
     region: str,
@@ -344,21 +430,35 @@ def build_page(
             region=label, keyword=page_keyword
         )
     elif category == "adoption" and form:
-        seo_blocks = _adoption_blocks(rng, label, page_keyword, form)
-        faq_items = _adoption_faqs(rng, label, page_keyword, form)
-        subject = form["subject"]
-        region_info = (
-            f"{label}에서 {page_keyword}을(를) 찾을 때, {subject} 분양은 "
-            f"건강·계약·사육 환경을 먼저 확인하는 것이 중요합니다."
-        )
-        meta_description = (
-            f"{page_keyword} | {subject} 분양 전 체크리스트 · "
-            f"건강·계약·사육환경 안내 ({label})"
-        )
-        nearby_intro = (
-            f"{label} 인근에서도 {subject} 분양 상담 시 동일하게 "
-            f"환경·건강·계약을 비교해 보세요."
-        )
+        if form["id"] == "cat_basic":
+            seo_blocks = _cat_basic_blocks(rng, label, page_keyword)
+            faq_items = _cat_basic_faqs(rng, label, page_keyword)
+            region_info = (
+                f"{label}에서 {page_keyword}을(를) 찾을 때, 키우기 쉬운 고양이·"
+                f"아파트 환경·초기 비용·배변·접종을 먼저 확인하세요."
+            )
+            meta_description = (
+                f"{page_keyword} | 고양이 분양가격·초기비용·배변·접종 가이드 ({label})"
+            )
+            nearby_intro = (
+                f"{label} 인근에서도 고양이분양 상담 시 비용·건강·케어를 함께 비교해 보세요."
+            )
+        else:
+            seo_blocks = _adoption_blocks(rng, label, page_keyword, form)
+            faq_items = _adoption_faqs(rng, label, page_keyword, form)
+            subject = form["subject"]
+            region_info = (
+                f"{label}에서 {page_keyword}을(를) 찾을 때, {subject} 분양은 "
+                f"건강·계약·사육 환경을 먼저 확인하는 것이 중요합니다."
+            )
+            meta_description = (
+                f"{page_keyword} | {subject} 분양 전 체크리스트 · "
+                f"건강·계약·사육환경 안내 ({label})"
+            )
+            nearby_intro = (
+                f"{label} 인근에서도 {subject} 분양 상담 시 동일하게 "
+                f"환경·건강·계약을 비교해 보세요."
+            )
     else:
         title_word = meta["title"]
         seo_blocks = [
