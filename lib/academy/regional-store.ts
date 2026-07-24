@@ -219,6 +219,54 @@ export async function upsertRegionalLanding(
   return { page };
 }
 
+/**
+ * 일괄 upsert — index 전체 읽기/쓰기 1회.
+ * (단건 upsert를 N번 하면 R2 roundtrip이 N배가 되어 Cloudflare 524 유발)
+ */
+export async function upsertRegionalLandingsBatch(
+  inputs: RegionalLandingInsert[]
+): Promise<
+  | { pages: RegionalLandingPage[]; errors: string[] }
+  | { error: string }
+> {
+  const now = new Date().toISOString();
+  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const next = [...all];
+  const pages: RegionalLandingPage[] = [];
+  const errors: string[] = [];
+
+  for (const input of inputs) {
+    if (!input?.slug || !input?.label) {
+      errors.push("slug/label 누락");
+      continue;
+    }
+    const category = resolvePageCategory(input);
+    const idx = next.findIndex(
+      (p) => p.slug === input.slug && resolvePageCategory(p) === category
+    );
+    const page: RegionalLandingPage = {
+      ...input,
+      category,
+      nearbySlugs: (input.nearbySlugs ?? []).slice(0, 5),
+      nearbyAreas: (input.nearbyAreas ?? []).slice(0, 5),
+      nearbyStations: (input.nearbyStations ?? []).slice(0, 5),
+      createdAt: idx >= 0 ? next[idx].createdAt : input.createdAt ?? now,
+      updatedAt: now,
+    };
+    if (idx >= 0) next[idx] = page;
+    else next.push(page);
+    pages.push(page);
+  }
+
+  if (pages.length === 0) {
+    return { pages: [], errors };
+  }
+
+  const saved = await saveRegionalLandings(next);
+  if ("error" in saved) return saved;
+  return { pages, errors };
+}
+
 export async function deleteRegionalLanding(
   slug: string,
   category?: RegionalServiceCategory

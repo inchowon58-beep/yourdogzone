@@ -26,7 +26,7 @@ class Config:
     image_cdn: str = ""
     image_max: int = 0
     image_ext: str = "webp"
-    chunk_size: int = 25
+    chunk_size: int = 10
 
 
 def settings_path(root: Path | None = None) -> Path:

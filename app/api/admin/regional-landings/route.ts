@@ -9,6 +9,7 @@ import {
   deleteRegionalLanding,
   insertRegionalLanding,
   upsertRegionalLanding,
+  upsertRegionalLandingsBatch,
 } from "@/lib/academy/regional-store";
 import {
   getRegionalLandingForAdmin,
@@ -148,10 +149,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const created: { slug: string; url: string; category: RegionalServiceCategory }[] =
-      [];
+    const prepared: RegionalLandingInsert[] = [];
     const errors: string[] = [];
-    const categories = new Set<RegionalServiceCategory>();
 
     for (const raw of rawPages) {
       if (!raw?.slug || !raw?.label) {
@@ -159,42 +158,50 @@ export async function POST(request: Request) {
         continue;
       }
       const category = resolvePageCategory(raw);
-      try {
-        const result = await upsertRegionalLanding(
-          applyLayoutDefaults(
-            {
-              ...raw,
-              category,
-              nearbySlugs: (raw.nearbySlugs ?? []).slice(0, 5),
-              nearbyAreas: (
-                raw.nearbyAreas ?? getNearbyDistricts(raw.label, 5)
-              ).slice(0, 5),
-              nearbyStations: (
-                raw.nearbyStations ?? getNearbyStations(raw.label, 5)
-              ).slice(0, 5),
-              keyword:
-                raw.keyword ||
-                normalizeRegionalKeyword("", raw.label, category),
-              isPublished: raw.isPublished ?? true,
-            },
-            category
-          )
-        );
-        if ("error" in result) {
-          errors.push(`${raw.slug}: ${result.error}`);
-          continue;
-        }
-        categories.add(category);
-        created.push({
-          slug: result.page.slug,
-          url: pageAbsoluteUrl(category, result.page.slug),
-          category,
-        });
-      } catch (e) {
-        errors.push(
-          `${raw.slug}: ${e instanceof Error ? e.message : "저장 실패"}`
-        );
-      }
+      prepared.push(
+        applyLayoutDefaults(
+          {
+            ...raw,
+            category,
+            nearbySlugs: (raw.nearbySlugs ?? []).slice(0, 5),
+            nearbyAreas: (
+              raw.nearbyAreas ?? getNearbyDistricts(raw.label, 5)
+            ).slice(0, 5),
+            nearbyStations: (
+              raw.nearbyStations ?? getNearbyStations(raw.label, 5)
+            ).slice(0, 5),
+            keyword:
+              raw.keyword ||
+              normalizeRegionalKeyword("", raw.label, category),
+            isPublished: raw.isPublished ?? true,
+          },
+          category
+        )
+      );
+    }
+
+    // R2 index 읽기/쓰기 1회 — 단건 N회면 Cloudflare 524 타임아웃 발생
+    const batchResult = await upsertRegionalLandingsBatch(prepared);
+    if ("error" in batchResult) {
+      return NextResponse.json({ error: batchResult.error }, { status: 500 });
+    }
+    errors.push(...batchResult.errors);
+
+    const created: {
+      slug: string;
+      url: string;
+      category: RegionalServiceCategory;
+    }[] = [];
+    const categories = new Set<RegionalServiceCategory>();
+
+    for (const page of batchResult.pages) {
+      const category = resolvePageCategory(page);
+      categories.add(category);
+      created.push({
+        slug: page.slug,
+        url: pageAbsoluteUrl(category, page.slug),
+        category,
+      });
     }
 
     for (const cat of categories) {
