@@ -18,7 +18,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const [academyIndex, regional, breedsRemote, ...listingIndexes] =
     await Promise.all([
       getCachedAcademyIndex(),
-      getAllRegionalLandings({ includeUnpublished: true }),
+      getAllRegionalLandings({ includeUnpublished: true, fresh: true }),
       fetchBreedsIndexFromR2(),
       ...LISTING_CATEGORIES.map((cat) => fetchListingsFromR2(cat)),
     ]);

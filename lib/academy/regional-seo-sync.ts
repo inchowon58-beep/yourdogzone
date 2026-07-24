@@ -47,7 +47,10 @@ export async function fillRegionalNearbyGeo(
   });
   if (!geo.ok) return page;
 
-  const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
+  const allLandings = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const byLabel = buildCategoryNearbyMap(allLandings, category);
   const nearbySlugs = geo.data.nearbyAreas
     .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area, category))
@@ -93,7 +96,10 @@ export async function fillRegionalSeoContent(
 
   if (!gemini.ok) return page;
 
-  const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
+  const allLandings = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const byLabel = buildCategoryNearbyMap(allLandings, category);
   const nearbySlugs = gemini.data.nearbyAreas
     .map((area) => byLabel.get(area)?.slug ?? buildRegionalSlug(area, category))

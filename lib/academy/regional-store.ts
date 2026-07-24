@@ -62,10 +62,14 @@ export async function fetchRegionalLandingsFromR2(options?: {
   noCache?: boolean;
 }): Promise<RegionalLandingPage[]> {
   try {
-    const res = await fetch(indexPublicUrl(), {
+    const bust = options?.noCache ? `?t=${Date.now()}` : "";
+    const res = await fetch(`${indexPublicUrl()}${bust}`, {
       ...(options?.noCache
         ? { cache: "no-store" as const }
         : { next: { revalidate: 60 } }),
+      headers: options?.noCache
+        ? { "Cache-Control": "no-cache", Pragma: "no-cache" }
+        : undefined,
     });
     if (!res.ok) return [];
     const data = (await res.json()) as IndexPayload;
@@ -85,10 +89,23 @@ const loadRegionalLandingsIndex = unstable_cache(
   { revalidate: 300, tags: [REGIONAL_LANDINGS_TAG] }
 );
 
+/** 쓰기·관리자용 — unstable_cache / CDN 잔상 없이 최신 index */
+export async function loadRegionalLandingsIndexFresh(): Promise<
+  RegionalLandingPage[]
+> {
+  const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
+  const pages = fromR2.length > 0 ? fromR2 : await readLocalSeed();
+  return normalizeLandings(pages);
+}
+
 export async function getAllRegionalLandings(options?: {
   includeUnpublished?: boolean;
+  /** true면 캐시 무시 (관리자 목록·upsert 직전 읽기) */
+  fresh?: boolean;
 }): Promise<RegionalLandingPage[]> {
-  const pages = await loadRegionalLandingsIndex();
+  const pages = options?.fresh
+    ? await loadRegionalLandingsIndexFresh()
+    : await loadRegionalLandingsIndex();
   if (options?.includeUnpublished) return pages;
   return pages.filter((p) => p.isPublished);
 }
@@ -164,7 +181,10 @@ export async function insertRegionalLanding(
   input: RegionalLandingInsert
 ): Promise<{ page: RegionalLandingPage } | { error: string }> {
   const now = new Date().toISOString();
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const all = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const category = resolvePageCategory(input);
 
   const exists = all.some(
@@ -193,7 +213,10 @@ export async function upsertRegionalLanding(
   input: RegionalLandingInsert
 ): Promise<{ page: RegionalLandingPage } | { error: string }> {
   const now = new Date().toISOString();
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const all = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
 
   const idx = all.findIndex(
     (p) =>
@@ -230,7 +253,10 @@ export async function upsertRegionalLandingsBatch(
   | { error: string }
 > {
   const now = new Date().toISOString();
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const all = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const next = [...all];
   const pages: RegionalLandingPage[] = [];
   const errors: string[] = [];
@@ -271,7 +297,10 @@ export async function deleteRegionalLanding(
   slug: string,
   category?: RegionalServiceCategory
 ): Promise<{ ok: true } | { error: string }> {
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const all = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const next = all.filter((p) => {
     if (p.slug !== slug) return true;
     if (category && resolvePageCategory(p) !== category) return true;

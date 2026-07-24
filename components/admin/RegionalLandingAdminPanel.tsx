@@ -152,7 +152,7 @@ export function RegionalLandingAdminPanel() {
           </h2>
           <p className="mt-1 text-sm text-muted">
             카테고리 선택 후 키워드 1건씩 생성합니다. 최신순 · 페이지당{" "}
-            {PAGE_SIZE}건
+            {PAGE_SIZE}건 · 목록은 최신 index를 직접 조회합니다.
           </p>
         </div>
         <button
@@ -324,28 +324,57 @@ export function RegionalLandingAdminPanel() {
 
       {totalPages > 1 && (
         <nav
-          className="mt-6 flex items-center justify-center gap-2"
+          className="mt-6 flex flex-wrap items-center justify-center gap-1.5"
           aria-label="SEO 페이지 목록"
         >
           <button
             type="button"
             disabled={listPage <= 1 || loading}
             onClick={() => setListPage((p) => Math.max(1, p - 1))}
-            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm disabled:opacity-40"
+            aria-label="이전"
           >
             <ChevronLeft className="h-4 w-4" />
-            이전
           </button>
-          <span className="px-2 text-sm text-muted">
-            {listPage} / {totalPages}
-          </span>
+          {Array.from({ length: Math.min(20, totalPages) }, (_, i) => {
+            const maxButtons = 20;
+            let start = 1;
+            if (totalPages > maxButtons) {
+              start = Math.max(
+                1,
+                Math.min(
+                  listPage - Math.floor(maxButtons / 2),
+                  totalPages - maxButtons + 1
+                )
+              );
+            }
+            const pageNum = start + i;
+            if (pageNum > totalPages) return null;
+            const active = pageNum === listPage;
+            return (
+              <button
+                key={pageNum}
+                type="button"
+                disabled={loading}
+                onClick={() => setListPage(pageNum)}
+                className={
+                  active
+                    ? "min-w-9 rounded-lg bg-primary px-2.5 py-2 text-sm font-semibold text-white"
+                    : "min-w-9 rounded-lg border px-2.5 py-2 text-sm text-foreground hover:bg-gray-50 disabled:opacity-40"
+                }
+                aria-current={active ? "page" : undefined}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
           <button
             type="button"
             disabled={listPage >= totalPages || loading}
             onClick={() => setListPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm disabled:opacity-40"
+            aria-label="다음"
           >
-            다음
             <ChevronRight className="h-4 w-4" />
           </button>
         </nav>

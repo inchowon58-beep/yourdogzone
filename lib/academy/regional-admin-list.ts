@@ -65,7 +65,7 @@ export async function listRegionalLandingsForAdmin(options?: {
   const page = Math.max(options?.page ?? 1, 1);
 
   let all = sortNewestFirst(
-    await getAllRegionalLandings({ includeUnpublished: true })
+    await getAllRegionalLandings({ includeUnpublished: true, fresh: true })
   );
 
   if (options?.category) {
@@ -90,7 +90,10 @@ export async function getRegionalLandingForAdmin(
   slug: string,
   category?: RegionalServiceCategory
 ): Promise<RegionalLandingPage | null> {
-  const all = await getAllRegionalLandings({ includeUnpublished: true });
+  const all = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   return (
     all.find((p) => {
       if (p.slug !== slug) return false;

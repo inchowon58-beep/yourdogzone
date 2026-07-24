@@ -70,7 +70,10 @@ export async function generateRegionalLandingFromKeyword(
   const query = REGION_BIG_SET.has(label) ? label : label;
   const pageKeyword = normalizeRegionalKeyword(trimmed, label, category);
 
-  const allLandings = await getAllRegionalLandings({ includeUnpublished: true });
+  const allLandings = await getAllRegionalLandings({
+    includeUnpublished: true,
+    fresh: true,
+  });
   const categoryLandings = allLandings.filter(
     (p) => resolvePageCategory(p) === category
   );

@@ -119,7 +119,11 @@ export async function GET(request: Request) {
       : undefined;
 
   const result = await listRegionalLandingsForAdmin({ page, limit, category });
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
+  });
 }
 
 export async function POST(request: Request) {
