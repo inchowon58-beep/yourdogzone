@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink, LogOut } from "lucide-react";
@@ -42,8 +42,8 @@ export function MainAdminDashboard({ username }: Props) {
   const [stats, setStats] = useState<AdminOverviewStats>(emptyStats);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  async function refreshStats() {
-    setStatsLoading(true);
+  const refreshStats = useCallback(async (showLoading = false) => {
+    if (showLoading) setStatsLoading(true);
     try {
       const res = await fetch("/api/admin/overview", { cache: "no-store" });
       const data = await res.json();
@@ -55,10 +55,20 @@ export function MainAdminDashboard({ username }: Props) {
     } finally {
       setStatsLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void refreshStats();
+    void refreshStats(true);
+  }, [refreshStats]);
+
+  const handleRegionalTotalChange = useCallback((total: number) => {
+    setStats((current) => ({
+      ...current,
+      regionalPages: {
+        ...current.regionalPages,
+        total,
+      },
+    }));
   }, []);
 
   async function logout() {
@@ -93,7 +103,11 @@ export function MainAdminDashboard({ username }: Props) {
     if (!active) return null;
 
     if (active === "regional") {
-      return <RegionalLandingAdminPanel onTotalsChange={() => void refreshStats()} />;
+      return (
+        <RegionalLandingAdminPanel
+          onTotalsChange={handleRegionalTotalChange}
+        />
+      );
     }
     if (active === "advisory") {
       return <AdvisoryMembersAdminPanel />;

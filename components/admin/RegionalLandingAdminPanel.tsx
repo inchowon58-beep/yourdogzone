@@ -62,7 +62,8 @@ export function RegionalLandingAdminPanel({ onTotalsChange }: Props) {
       setTotalPages(data.totalPages ?? 1);
       const nextTotal = data.total ?? 0;
       setTotal(nextTotal);
-      onTotalsChange?.(nextTotal);
+      // 카테고리 필터 수량으로 상단의 전체 수량을 덮어쓰지 않음
+      if (!filterCategory) onTotalsChange?.(nextTotal);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     } finally {
