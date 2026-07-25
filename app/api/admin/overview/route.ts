@@ -20,5 +20,8 @@ export async function GET() {
   if (denied) return denied;
 
   const stats = await getAdminOverviewStats();
-  return NextResponse.json({ stats });
+  return NextResponse.json(
+    { stats },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }

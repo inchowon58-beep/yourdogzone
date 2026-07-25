@@ -42,24 +42,23 @@ export function MainAdminDashboard({ username }: Props) {
   const [stats, setStats] = useState<AdminOverviewStats>(emptyStats);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/overview");
-        const data = await res.json();
-        if (!cancelled && res.ok && data.stats) {
-          setStats(data.stats as AdminOverviewStats);
-        }
-      } catch {
-        // 통계 없이 메뉴는 바로 사용 가능
-      } finally {
-        if (!cancelled) setStatsLoading(false);
+  async function refreshStats() {
+    setStatsLoading(true);
+    try {
+      const res = await fetch("/api/admin/overview", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && data.stats) {
+        setStats(data.stats as AdminOverviewStats);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch {
+      // 통계 없이 메뉴는 사용 가능
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshStats();
   }, []);
 
   async function logout() {
@@ -94,7 +93,7 @@ export function MainAdminDashboard({ username }: Props) {
     if (!active) return null;
 
     if (active === "regional") {
-      return <RegionalLandingAdminPanel />;
+      return <RegionalLandingAdminPanel onTotalsChange={() => void refreshStats()} />;
     }
     if (active === "advisory") {
       return <AdvisoryMembersAdminPanel />;
@@ -147,7 +146,10 @@ export function MainAdminDashboard({ username }: Props) {
               <button
                 key={svc.id}
                 type="button"
-                onClick={() => setActive(svc.id)}
+                onClick={() => {
+                  setActive(svc.id);
+                  if (svc.id === "regional") void refreshStats();
+                }}
                 className={`rounded-2xl border p-5 text-left shadow-[var(--card-shadow)] transition ${
                   selected
                     ? "border-primary bg-indigo-50/50 ring-2 ring-primary/30"

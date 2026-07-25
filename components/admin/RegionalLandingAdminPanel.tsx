@@ -22,7 +22,12 @@ import {
 
 const PAGE_SIZE = 10;
 
-export function RegionalLandingAdminPanel() {
+type Props = {
+  /** 목록 total이 바뀌면 상위 대시보드 카드 수량도 갱신 */
+  onTotalsChange?: (total: number) => void;
+};
+
+export function RegionalLandingAdminPanel({ onTotalsChange }: Props) {
   const [pages, setPages] = useState<RegionalLandingAdminSummary[]>([]);
   const [listPage, setListPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -47,20 +52,23 @@ export function RegionalLandingAdminPanel() {
         ? `&category=${encodeURIComponent(filterCategory)}`
         : "";
       const res = await fetch(
-        `/api/admin/regional-landings?page=${page}&limit=${PAGE_SIZE}${categoryQuery}`
+        `/api/admin/regional-landings?page=${page}&limit=${PAGE_SIZE}${categoryQuery}`,
+        { cache: "no-store" }
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "불러오기 실패");
       setPages(data.pages ?? []);
       setListPage(data.page ?? page);
       setTotalPages(data.totalPages ?? 1);
-      setTotal(data.total ?? 0);
+      const nextTotal = data.total ?? 0;
+      setTotal(nextTotal);
+      onTotalsChange?.(nextTotal);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     } finally {
       setLoading(false);
     }
-  }, [filterCategory]);
+  }, [filterCategory, onTotalsChange]);
 
   useEffect(() => {
     void load(listPage);
@@ -151,8 +159,9 @@ export function RegionalLandingAdminPanel() {
             지역 SEO 페이지
           </h2>
           <p className="mt-1 text-sm text-muted">
-            카테고리 선택 후 키워드 1건씩 생성합니다. 최신순 · 페이지당{" "}
-            {PAGE_SIZE}건 · 목록은 최신 index를 직접 조회합니다.
+            카테고리 선택 후 키워드 1건씩 생성합니다. 최신 작업순 · 페이지당{" "}
+            {PAGE_SIZE}건. 같은 키워드 재발행은 건수가 늘지 않고 목록 상단으로만
+            올라갑니다.
           </p>
         </div>
         <button
@@ -254,6 +263,11 @@ export function RegionalLandingAdminPanel() {
                 <tr key={`${p.category}-${p.slug}`} className="border-b border-gray-50">
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
                     {formatDate(p.updatedAt || p.createdAt)}
+                    {p.updatedAt &&
+                    p.createdAt &&
+                    p.updatedAt.slice(0, 10) !== p.createdAt.slice(0, 10) ? (
+                      <span className="ml-1 text-[11px] text-primary">갱신</span>
+                    ) : null}
                   </td>
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
                     {p.categoryTitle}

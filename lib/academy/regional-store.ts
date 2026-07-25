@@ -261,7 +261,12 @@ export async function upsertRegionalLanding(
 export async function upsertRegionalLandingsBatch(
   inputs: RegionalLandingInsert[]
 ): Promise<
-  | { pages: RegionalLandingPage[]; errors: string[] }
+  | {
+      pages: RegionalLandingPage[];
+      errors: string[];
+      createdCount: number;
+      updatedCount: number;
+    }
   | { error: string }
 > {
   const now = new Date().toISOString();
@@ -272,6 +277,8 @@ export async function upsertRegionalLandingsBatch(
   const next = [...all];
   const pages: RegionalLandingPage[] = [];
   const errors: string[] = [];
+  let createdCount = 0;
+  let updatedCount = 0;
 
   for (const input of inputs) {
     if (!input?.slug || !input?.label) {
@@ -291,18 +298,23 @@ export async function upsertRegionalLandingsBatch(
       createdAt: idx >= 0 ? next[idx].createdAt : input.createdAt ?? now,
       updatedAt: now,
     };
-    if (idx >= 0) next[idx] = page;
-    else next.push(page);
+    if (idx >= 0) {
+      next[idx] = page;
+      updatedCount += 1;
+    } else {
+      next.push(page);
+      createdCount += 1;
+    }
     pages.push(page);
   }
 
   if (pages.length === 0) {
-    return { pages: [], errors };
+    return { pages: [], errors, createdCount: 0, updatedCount: 0 };
   }
 
   const saved = await saveRegionalLandings(next);
   if ("error" in saved) return saved;
-  return { pages, errors };
+  return { pages, errors, createdCount, updatedCount };
 }
 
 export async function deleteRegionalLanding(

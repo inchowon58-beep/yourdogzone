@@ -228,6 +228,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       count: created.length,
+      createdCount: batchResult.createdCount,
+      updatedCount: batchResult.updatedCount,
       pages: created,
       urls: created.map((c) => c.url),
       errors,

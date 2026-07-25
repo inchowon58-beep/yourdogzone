@@ -194,11 +194,15 @@ def _publish_chunk_resilient(
     if mode is not False:
         try:
             data = _publish_batch(cfg, chunk, on_log=on_log)
-            if data is not None:
+            if (data is not None):
                 batch_urls = data.get("urls") or []
                 urls.extend(batch_urls)
                 errors.extend(data.get("errors") or [])
                 created += int(data.get("count") or 0)
+                c_new = int(data.get("createdCount") or 0)
+                c_upd = int(data.get("updatedCount") or 0)
+                if c_new or c_upd:
+                    log(f"  배치 결과: 신규 {c_new} · 업데이트 {c_upd}")
                 for i, page in enumerate(chunk):
                     n = done_before + i + 1
                     log(f"성공: {_page_label(page)[:40]} — {n} / {total}")
