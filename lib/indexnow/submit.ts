@@ -101,8 +101,8 @@ export async function submitToIndexNow(urls: string[]): Promise<{
     }
   }
 
-  // 배치 422 시 URL별 개별 전송 (일부 엔진은 소량만 허용)
-  if (last.status === 422 && urlList.length > 1) {
+  // 배치 422 시 URL별 개별 전송 (소량만 — 대량은 클라이언트에서 청크)
+  if (last.status === 422 && urlList.length > 1 && urlList.length <= 20) {
     let okCount = 0;
     let lastSingle = last;
     for (const url of urlList) {
@@ -124,6 +124,15 @@ export async function submitToIndexNow(urls: string[]): Promise<{
       };
     }
     return { ok: false, status: lastSingle.status, message: lastSingle.message };
+  }
+
+  if (last.status === 422 && urlList.length > 20) {
+    return {
+      ok: false,
+      status: 422,
+      message:
+        "IndexNow 배치 거부(422). 클라이언트가 URL을 나눠 재전송하세요.",
+    };
   }
 
   return { ok: last.ok, status: last.status, message: last.message };

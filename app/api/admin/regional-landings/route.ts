@@ -219,11 +219,6 @@ export async function POST(request: Request) {
     for (const cat of categories) {
       revalidateRegional(cat);
     }
-    for (const item of created) {
-      revalidatePath(
-        regionalLandingPathForCategory(item.category, item.slug)
-      );
-    }
 
     let indexnow: Awaited<ReturnType<typeof submitToIndexNow>> | null = null;
     if (body.submit_indexnow && created.length > 0) {

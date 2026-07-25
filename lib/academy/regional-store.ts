@@ -6,6 +6,7 @@ import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";
 import { getPublicBaseUrl } from "@/lib/upload/r2-server";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { getR2ObjectText } from "@/lib/upload/r2-get";
 import type {
   RegionalLandingInsert,
   RegionalLandingPage,
@@ -89,10 +90,21 @@ const loadRegionalLandingsIndex = unstable_cache(
   { revalidate: 300, tags: [REGIONAL_LANDINGS_TAG] }
 );
 
-/** 쓰기·관리자용 — unstable_cache / CDN 잔상 없이 최신 index */
+/** 쓰기·관리자용 — R2 API 직접 조회(CDN 우회) → 공개 URL → 로컬 */
 export async function loadRegionalLandingsIndexFresh(): Promise<
   RegionalLandingPage[]
 > {
+  const direct = await getR2ObjectText(INDEX_KEY);
+  if (direct) {
+    try {
+      const data = JSON.parse(direct) as IndexPayload;
+      if (Array.isArray(data.pages) && data.pages.length > 0) {
+        return normalizeLandings(data.pages);
+      }
+    } catch {
+      // fall through
+    }
+  }
   const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
   const pages = fromR2.length > 0 ? fromR2 : await readLocalSeed();
   return normalizeLandings(pages);
@@ -144,7 +156,7 @@ export async function saveRegionalLandings(
     updatedAt: new Date().toISOString(),
     pages,
   };
-  const body = JSON.stringify(payload, null, 2);
+  const body = JSON.stringify(payload);
 
   try {
     await writeLocalSeed(pages);
