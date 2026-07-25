@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Phone, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, Star } from "lucide-react";
 import { PremiumAcademyGrid } from "@/components/academy/PremiumAcademyGrid";
 import { AcademyGuideTabs } from "@/components/academy/AcademyGuideTabs";
 import { AcademyList } from "@/components/academy/AcademyList";
@@ -105,19 +105,6 @@ export function RegionalLandingPageView({ bundle }: Props) {
       ? featuredSource.phone.replace(/-/g, "")
       : null;
   const fixedCtaPhone = shelterCtaPhone || adoptionCtaPhone;
-  const isCatAdoptionForm =
-    page.formId === "cat_basic" ||
-    [
-      "maine_coon",
-      "nevskaya_masquerade",
-      "munchkin",
-      "ragdoll",
-      "russian_blue",
-    ].includes(page.formId ?? "");
-  const fixedCtaLabel =
-    category === "shelter"
-      ? `강아지파양(입소) 무료분양 : 인증추천업체 ${featuredSource?.phone ?? ""}`
-      : `${isCatAdoptionForm ? "고양이분양" : "강아지분양"} : 인증추천업체 ${featuredSource?.phone ?? ""}`;
 
   const pageKeyword =
     page.keyword?.trim() || `${label} ${config.title}`;
@@ -305,22 +292,28 @@ export function RegionalLandingPageView({ bundle }: Props) {
 
       {fixedCtaPhone && featuredSource?.phone ? (
         <>
-          <div className="h-24 sm:h-20" aria-hidden />
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-emerald-100 bg-white/95 px-3 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md sm:px-4 sm:py-3">
+          <div className="h-28 sm:h-24" aria-hidden />
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t-2 border-emerald-500 bg-white px-3 py-3 shadow-[0_-8px_28px_rgba(0,0,0,0.16)] sm:px-4">
             <div className="mx-auto flex w-full max-w-[92rem] items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-foreground">
-                  {fixedCtaLabel}
-                </p>
-                <p className="truncate text-xs text-emerald-700">
-                  {featuredSource.name}
-                </p>
+              <div className="flex min-w-0 items-center gap-2">
+                <Star
+                  className="h-5 w-5 shrink-0 fill-amber-400 text-amber-400"
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                    인증추천업체
+                  </p>
+                  <p className="truncate text-base font-black leading-tight text-foreground sm:text-lg">
+                    {featuredSource.name}
+                  </p>
+                </div>
               </div>
               <a
                 href={`tel:${fixedCtaPhone}`}
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white"
+                className="inline-flex shrink-0 animate-pulse items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 sm:px-8"
               >
-                <Phone className="h-4 w-4" />
+                <Phone className="h-5 w-5" />
                 전화하기
               </a>
             </div>
