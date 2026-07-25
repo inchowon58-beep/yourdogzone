@@ -234,9 +234,15 @@ export function RegionalLandingAdminPanel({ onTotalsChange }: Props) {
       {message && <p className="mb-3 text-sm text-emerald-700">{message}</p>}
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
-        <span>전체 {total}건</span>
-        <span>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="font-semibold text-foreground">
+          전체{" "}
+          <span className="text-primary">{total.toLocaleString("ko-KR")}</span>건
+          {filterCategory ? (
+            <span className="ml-1 font-normal text-muted">(필터 적용)</span>
+          ) : null}
+        </span>
+        <span className="text-muted">
           {listPage} / {totalPages} 페이지
         </span>
       </div>

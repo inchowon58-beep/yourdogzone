@@ -80,7 +80,7 @@ export function MainAdminDashboard({ username }: Props) {
     }
     if (id === "breeds") return `${stats.breeds}건`;
     if (id === "regional") {
-      return `전체 ${stats.regionalPages.total}건 · 공개 ${stats.regionalPages.published}건`;
+      return `전체 ${stats.regionalPages.total.toLocaleString("ko-KR")}건 · 공개 ${stats.regionalPages.published.toLocaleString("ko-KR")}건`;
     }
     if (id === "advisory") return "위원장 프로필·순서 관리";
     if (id === "care-intake") return "신청·입금·매칭 상태";

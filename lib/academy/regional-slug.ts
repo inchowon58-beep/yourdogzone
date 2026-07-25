@@ -84,7 +84,7 @@ export function romanizeLabel(label: string): string {
   return `region-${Buffer.from(key, "utf8").toString("hex").slice(0, 12)}`;
 }
 
-/** 영문 슬러그 생성 (카테고리별 suffix) */
+/** 영문 슬러그 생성 (카테고리별 suffix) — 기본 주소 */
 export function buildRegionalSlug(
   label: string,
   category: RegionalServiceCategory = "academy"
@@ -94,7 +94,15 @@ export function buildRegionalSlug(
   return `${base}-${suffix}`;
 }
 
-/** 이미 사용 중인 slug가 있으면 -2, -3 … 접미사로 새 slug 부여 */
+/** 7자리 숫자 — 문서 URL 중복 최소화 */
+function randomSevenDigits(): string {
+  return String(Math.floor(Math.random() * 10_000_000)).padStart(7, "0");
+}
+
+/**
+ * 기본주소 + 7자리 숫자.
+ * 예: songtan-dog-shelter-1847293
+ */
 export function buildUniqueRegionalSlug(
   label: string,
   category: RegionalServiceCategory,
@@ -102,11 +110,14 @@ export function buildUniqueRegionalSlug(
 ): string {
   const taken = new Set(takenSlugs);
   const base = buildRegionalSlug(label, category);
-  if (!taken.has(base)) return base;
 
-  let n = 2;
-  while (taken.has(`${base}-${n}`)) n += 1;
-  return `${base}-${n}`;
+  for (let i = 0; i < 80; i += 1) {
+    const candidate = `${base}-${randomSevenDigits()}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+
+  // 극히 드문 충돌 — 시간 섞어 재시도
+  return `${base}-${Date.now().toString().slice(-7)}`;
 }
 
 export function isRegionalSlugVariant(

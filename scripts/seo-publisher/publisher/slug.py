@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import random
 import re
+import time
 from typing import Iterable
 
 # lib/academy/regional-slug.ts 와 동기화
@@ -170,17 +172,24 @@ def build_slug(label: str, category: str) -> str:
     return f"{romanize_label(label)}-{suffix}"
 
 
+def _seven_digits() -> str:
+    return f"{random.randint(0, 9_999_999):07d}"
+
+
 def build_unique_slug(
     label: str, category: str, taken: Iterable[str]
 ) -> str:
+    """기본주소 + 7자리 숫자 (문서 URL 중복 최소화).
+
+    예: songtan-dog-shelter-1847293
+    """
     taken_set = set(taken)
     base = build_slug(label, category)
-    if base not in taken_set:
-        return base
-    n = 2
-    while f"{base}-{n}" in taken_set:
-        n += 1
-    return f"{base}-{n}"
+    for _ in range(80):
+        candidate = f"{base}-{_seven_digits()}"
+        if candidate not in taken_set:
+            return candidate
+    return f"{base}-{str(int(time.time()))[-7:]}"
 
 
 def parse_keywords(text: str, count: int | None = None) -> list[str]:

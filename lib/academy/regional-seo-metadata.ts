@@ -105,6 +105,7 @@ export function buildRegionalLandingMetadata(
     const thumb = resolveRegionalHeroThumbCopy({
       keyword: pageKeyword,
       category,
+      seedKey: page.slug,
     });
     const photoOg = buildRegionalPhotoOgImageUrl({
       backgroundUrl: cover,

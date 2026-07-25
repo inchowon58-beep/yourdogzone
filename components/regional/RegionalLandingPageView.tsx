@@ -128,7 +128,11 @@ export function RegionalLandingPageView({ bundle }: Props) {
   );
   const coverImageUrl = page.imageUrl?.trim() || null;
   const heroThumb = coverImageUrl
-    ? resolveRegionalHeroThumbCopy({ keyword: pageKeyword, category })
+    ? resolveRegionalHeroThumbCopy({
+        keyword: pageKeyword,
+        category,
+        seedKey: page.slug,
+      })
     : null;
 
   const listTitle = isNearbyFallback
