@@ -7,6 +7,7 @@ import { RegionalAcademySeoSection } from "@/components/academy/RegionalAcademyS
 import { ShelterRegionalTrustGuide } from "@/components/regional/ShelterRegionalTrustGuide";
 import { AdoptionRegionalTrustGuide } from "@/components/regional/AdoptionRegionalTrustGuide";
 import { RecentRegionalPostsScroll } from "@/components/regional/RecentRegionalPostsScroll";
+import { RegionalSeoHeroThumb } from "@/components/regional/RegionalSeoHeroThumb";
 import { ChairmanConsultBanner } from "@/components/academy/ChairmanConsultBanner";
 import { OfficialAdvisoryBanner } from "@/components/academy/OfficialAdvisoryBanner";
 import { NearbyDistrictSeoSection } from "@/components/academy/NearbyDistrictSeoSection";
@@ -33,6 +34,7 @@ import {
   getRegionalServiceConfig,
   resolvePageCategory,
 } from "@/lib/seo/regional-service-config";
+import { resolveRegionalHeroThumbCopy } from "@/lib/seo/regional-hero-thumb";
 import { isAdoptionTrustLayout, isShelterTrustLayout } from "@/lib/academy/regional-layout-version";
 
 type Props = {
@@ -124,6 +126,10 @@ export function RegionalLandingPageView({ bundle }: Props) {
     label,
     category
   );
+  const coverImageUrl = page.imageUrl?.trim() || null;
+  const heroThumb = coverImageUrl
+    ? resolveRegionalHeroThumbCopy({ keyword: pageKeyword, category })
+    : null;
 
   const listTitle = isNearbyFallback
     ? `${nearbySourceLabel ?? "인근"} ${config.title} (${label} 인근)`
@@ -147,16 +153,31 @@ export function RegionalLandingPageView({ bundle }: Props) {
         {config.listBackLabel}
       </Link>
 
-      <section className="mb-10 text-center md:mb-12">
-        <p className="mb-3 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-primary">
-          <MapPin className="h-4 w-4" aria-hidden />
-          {label} 지역
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-          {pageKeyword}
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
-      </section>
+      {heroThumb && coverImageUrl ? (
+        <section className="mb-10 md:mb-12">
+          <RegionalSeoHeroThumb
+            imageSrc={coverImageUrl}
+            keyword={heroThumb.line1}
+            badge={heroThumb.badge}
+            line2={heroThumb.line2}
+            bar={heroThumb.bar}
+          />
+          <p className="mx-auto mt-6 max-w-xl text-center text-base text-muted">
+            {heroIntro}
+          </p>
+        </section>
+      ) : (
+        <section className="mb-10 text-center md:mb-12">
+          <p className="mb-3 inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-primary">
+            <MapPin className="h-4 w-4" aria-hidden />
+            {label} 지역
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            {pageKeyword}
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted">{heroIntro}</p>
+        </section>
+      )}
 
       {recommended ? (
         <section className="mb-12">
@@ -183,7 +204,6 @@ export function RegionalLandingPageView({ bundle }: Props) {
           pageKeyword={pageKeyword}
           seedKey={page.slug}
           faqItems={faqItems}
-          coverImageUrl={page.imageUrl}
         />
       ) : useAdoptionTrust ? (
         <AdoptionRegionalTrustGuide
@@ -191,7 +211,6 @@ export function RegionalLandingPageView({ bundle }: Props) {
           pageKeyword={pageKeyword}
           seedKey={page.slug}
           faqItems={faqItems}
-          coverImageUrl={page.imageUrl}
           formId={page.formId}
           recommendedName={featuredSource?.name}
         />
@@ -202,7 +221,6 @@ export function RegionalLandingPageView({ bundle }: Props) {
           blocks={seoBlocks}
           intro={resolveBoundSeoSectionIntro(label, seoCtx, category)}
           featuredAcademy={featuredAcademy}
-          coverImageUrl={page.imageUrl}
           serviceTitle={config.title}
           servicePath={config.basePath}
           entityLabel={config.entityLabel}

@@ -3,6 +3,8 @@ import "server-only";
 import type { Metadata } from "next";
 import type { RegionalLandingPage } from "@/lib/types/regional-landing";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildRegionalPhotoOgImageUrl } from "@/lib/seo/og-image";
+import { resolveRegionalHeroThumbCopy } from "@/lib/seo/regional-hero-thumb";
 import { regionalLandingPath } from "@/lib/academy/regional-path";
 import {
   resolveNearbyAreas,
@@ -98,12 +100,34 @@ export function buildRegionalLandingMetadata(
       ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 ${config.entityLabel}`
       : `${pageKeyword} 정보`;
 
+  const cover = page.imageUrl?.trim();
+  if (cover?.startsWith("http")) {
+    const thumb = resolveRegionalHeroThumbCopy({
+      keyword: pageKeyword,
+      category,
+    });
+    const photoOg = buildRegionalPhotoOgImageUrl({
+      backgroundUrl: cover,
+      title: thumb.line1,
+      badge: thumb.badge,
+      line2: thumb.line2,
+      bar: thumb.bar,
+    });
+    return buildPageMetadata({
+      title,
+      description,
+      path,
+      keywords,
+      images: [photoOg],
+      imageAlt,
+    });
+  }
+
   return buildPageMetadata({
     title,
     description,
     path,
     keywords,
-    images: page.imageUrl ? [page.imageUrl] : undefined,
     ogSubtitle: config.ogSubtitle,
     imageAlt,
   });

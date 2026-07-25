@@ -28,6 +28,25 @@ export function buildBrandedOgImageUrl(subtitle: string): string {
   return absoluteUrl(`/api/og?${params.toString()}`);
 }
 
+/** CDN 사진 + 키워드 오버레이 OG (지역 SEO 웹문서형) */
+export function buildRegionalPhotoOgImageUrl(input: {
+  backgroundUrl: string;
+  title: string;
+  badge: string;
+  line2: string;
+  bar: string;
+}): string {
+  const params = new URLSearchParams({
+    mode: "photo",
+    bg: input.backgroundUrl,
+    title: input.title.slice(0, 48),
+    badge: input.badge.slice(0, 40),
+    line2: input.line2.slice(0, 40),
+    bar: input.bar.slice(0, 60),
+  });
+  return absoluteUrl(`/api/og?${params.toString()}`);
+}
+
 export function buildAcademyOgImageUrl(): string {
   return getAcademyOgImageUrl();
 }
@@ -51,10 +70,11 @@ export function buildOgImageDescriptor(
   }
 ): OgImageDescriptor {
   const url = resolveOgImageUrls(options)[0];
+  const isPhotoHero = url.includes("/api/og?") && url.includes("mode=photo");
   return {
     url,
-    width: OG_IMAGE_WIDTH,
-    height: OG_IMAGE_HEIGHT,
+    width: isPhotoHero ? 1200 : OG_IMAGE_WIDTH,
+    height: isPhotoHero ? 1200 : OG_IMAGE_HEIGHT,
     alt,
   };
 }
