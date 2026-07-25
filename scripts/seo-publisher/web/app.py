@@ -34,7 +34,8 @@ if not STATIC.exists():
 app = FastAPI(title="유아독존 SEO")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
-_job_lock = threading.Lock()
+# 같은 스레드에서 상태 갱신 중 로그를 남겨도 멈추지 않도록 재진입 락
+_job_lock = threading.RLock()
 _job: dict[str, Any] = {
     "running": False,
     "logs": [],
@@ -247,12 +248,19 @@ def start_run(body: RunBody) -> dict[str, Any]:
                     "errors": result.get("errors") or [],
                     "urls_file": result.get("urls_file"),
                 }
-                _append_log(f"완료: {result.get('generated')}건")
+            _append_log(f"완료: {result.get('generated')}건")
         except Exception as e:
             tb = traceback.format_exc()
             _append_log(tb)
             with _job_lock:
                 _job["error"] = str(e)
+                if _job["result"] is None:
+                    _job["result"] = {
+                        "generated": 0,
+                        "urls": [],
+                        "errors": [str(e)],
+                        "urls_file": None,
+                    }
         finally:
             with _job_lock:
                 _job["running"] = False

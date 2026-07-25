@@ -239,7 +239,7 @@ export function RegionalLandingAdminPanel() {
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead>
               <tr className="border-b text-muted">
-                <th className="py-2 pr-4">등록일</th>
+                <th className="py-2 pr-4">최근 작업일</th>
                 <th className="py-2 pr-4">카테고리</th>
                 <th className="py-2 pr-4">지역</th>
                 <th className="py-2 pr-4">키워드</th>
@@ -253,7 +253,7 @@ export function RegionalLandingAdminPanel() {
               {pages.map((p) => (
                 <tr key={`${p.category}-${p.slug}`} className="border-b border-gray-50">
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
-                    {formatDate(p.createdAt)}
+                    {formatDate(p.updatedAt || p.createdAt)}
                   </td>
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
                     {p.categoryTitle}

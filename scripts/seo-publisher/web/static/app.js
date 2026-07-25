@@ -173,11 +173,10 @@
       log.scrollTop = log.scrollHeight;
       lastLogLen = job.logs.length;
     }
-    if (!job.running && job.result) {
-      renderUrls(job.result.urls || []);
-      if ((job.result.urls || []).length) {
-        setCopyHint(`${job.result.urls.length}건 · 전체 복사 가능`);
-      }
+    if (job.result) {
+      const urls = job.result.urls || [];
+      renderUrls(urls);
+      if (urls.length) setCopyHint(`${urls.length}건 · 전체 복사 가능`);
     }
     if (!job.running) {
       setRunning(false);
@@ -185,16 +184,26 @@
         clearInterval(pollTimer);
         pollTimer = null;
       }
+      if (job.error) {
+        setCopyHint(`오류: ${job.error}`);
+      }
+    }
+  }
+
+  async function pollOnce() {
+    try {
+      const res = await fetch("/api/job", { cache: "no-store" });
+      if (!res.ok) return;
+      renderJob(await res.json());
+    } catch {
+      // 로컬 서버 일시 지연 — 다음 폴링에서 재시도
     }
   }
 
   async function startPoll() {
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(async () => {
-      const res = await fetch("/api/job");
-      const job = await res.json();
-      renderJob(job);
-    }, 800);
+    pollTimer = setInterval(pollOnce, 800);
+    await pollOnce();
   }
 
   async function run(generateOnly) {
@@ -261,5 +270,19 @@
     setSecretBadge(!!meta.adminSecretLoaded);
     fillCategories();
     applySettings(meta.settings || {});
+
+    // 창을 다시 열어도 진행 중 작업·직전 결과를 이어서 표시
+    try {
+      const jobRes = await fetch("/api/job", { cache: "no-store" });
+      const job = await jobRes.json();
+      if (job.running) {
+        setRunning(true);
+        await startPoll();
+      } else {
+        renderJob(job);
+      }
+    } catch {
+      // 무시
+    }
   })();
 })();

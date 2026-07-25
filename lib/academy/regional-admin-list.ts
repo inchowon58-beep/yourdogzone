@@ -48,12 +48,11 @@ function toSummary(page: RegionalLandingPage): RegionalLandingAdminSummary {
   };
 }
 
+/** 재발행(업데이트)도 최근 작업으로 보이도록 createdAt·updatedAt 중 최신 기준 */
 function sortNewestFirst(pages: RegionalLandingPage[]): RegionalLandingPage[] {
-  return [...pages].sort((a, b) => {
-    const aTime = Date.parse(a.createdAt || a.updatedAt) || 0;
-    const bTime = Date.parse(b.createdAt || b.updatedAt) || 0;
-    return bTime - aTime;
-  });
+  const recency = (p: RegionalLandingPage) =>
+    Math.max(Date.parse(p.updatedAt) || 0, Date.parse(p.createdAt) || 0);
+  return [...pages].sort((a, b) => recency(b) - recency(a));
 }
 
 export async function listRegionalLandingsForAdmin(options?: {
