@@ -292,29 +292,23 @@ export function RegionalLandingPageView({ bundle }: Props) {
 
       {fixedCtaPhone && featuredSource?.phone ? (
         <>
-          <div className="h-28 sm:h-24" aria-hidden />
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t-2 border-emerald-500 bg-white px-3 py-3 shadow-[0_-8px_28px_rgba(0,0,0,0.16)] sm:px-4">
-            <div className="mx-auto flex w-full max-w-[92rem] items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
+          <div className="h-32 sm:h-28" aria-hidden />
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-emerald-200/80 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-10px_32px_rgba(0,0,0,0.14)] backdrop-blur-md sm:px-4">
+            <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
+              <p className="flex items-center justify-center gap-1.5 truncate px-1 text-sm font-bold text-foreground">
                 <Star
-                  className="h-5 w-5 shrink-0 fill-amber-400 text-amber-400"
+                  className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400"
                   aria-hidden
                 />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">
-                    인증추천업체
-                  </p>
-                  <p className="truncate text-base font-black leading-tight text-foreground sm:text-lg">
-                    {featuredSource.name}
-                  </p>
-                </div>
-              </div>
+                <span className="shrink-0 text-emerald-700">인증추천업체</span>
+                <span className="truncate">{featuredSource.name}</span>
+              </p>
               <a
                 href={`tel:${fixedCtaPhone}`}
-                className="inline-flex shrink-0 animate-pulse items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 sm:px-8"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3.5 text-base font-black tracking-tight text-white shadow-lg shadow-emerald-600/35 transition hover:bg-emerald-700 active:scale-[0.99]"
               >
-                <Phone className="h-5 w-5" />
-                전화하기
+                <Phone className="h-5 w-5 shrink-0" />
+                파양입소.무료분양문의
               </a>
             </div>
           </div>
