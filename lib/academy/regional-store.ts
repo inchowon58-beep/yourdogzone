@@ -1,12 +1,16 @@
 import "server-only";
 
-import { revalidateTag, unstable_cache } from "next/cache";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";
 import { getPublicBaseUrl } from "@/lib/upload/r2-server";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
 import { getR2ObjectText } from "@/lib/upload/r2-get";
+import {
+  readTtlMemoryCache,
+  writeTtlMemoryCache,
+  type TtlMemoryCache,
+} from "@/lib/cache/ttl-memory-cache";
 import type {
   RegionalLandingInsert,
   RegionalLandingPage,
@@ -29,13 +33,22 @@ function normalizeLandings(pages: RegionalLandingPage[]): RegionalLandingPage[] 
 }
 
 const INDEX_KEY = "regional-landings/index.json";
+/** @deprecated Data Cache 미사용 — 관리자/호환용 태그명만 유지 */
 export const REGIONAL_LANDINGS_TAG = "regional-landings";
 const LOCAL_FILE = path.join(process.cwd(), "data", "regional-landings.json");
+/** 인스턴스 메모리 TTL (초) — unstable_cache 대체 */
+const INDEX_MEMORY_TTL_MS = 300_000;
 
 type IndexPayload = {
   updatedAt: string;
   pages: RegionalLandingPage[];
 };
+
+let regionalIndexMemory: TtlMemoryCache<RegionalLandingPage[]> | null = null;
+
+export function invalidateRegionalLandingsMemoryCache() {
+  regionalIndexMemory = null;
+}
 
 function indexPublicUrl(): string {
   return `${getPublicBaseUrl()}/${INDEX_KEY}`;
@@ -59,18 +72,15 @@ async function writeLocalSeed(pages: RegionalLandingPage[]): Promise<void> {
   await writeFile(LOCAL_FILE, JSON.stringify(payload, null, 2), "utf8");
 }
 
-export async function fetchRegionalLandingsFromR2(options?: {
+export async function fetchRegionalLandingsFromR2(_options?: {
   noCache?: boolean;
 }): Promise<RegionalLandingPage[]> {
   try {
-    const bust = options?.noCache ? `?t=${Date.now()}` : "";
+    // 대용량 index는 Next Data Cache에 넣지 않음 (용량 초과 경고 방지)
+    const bust = `?t=${Date.now()}`;
     const res = await fetch(`${indexPublicUrl()}${bust}`, {
-      ...(options?.noCache
-        ? { cache: "no-store" as const }
-        : { next: { revalidate: 60 } }),
-      headers: options?.noCache
-        ? { "Cache-Control": "no-cache", Pragma: "no-cache" }
-        : undefined,
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
     });
     if (!res.ok) return [];
     const data = (await res.json()) as IndexPayload;
@@ -80,15 +90,17 @@ export async function fetchRegionalLandingsFromR2(options?: {
   }
 }
 
-const loadRegionalLandingsIndex = unstable_cache(
-  async (): Promise<RegionalLandingPage[]> => {
-    const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
-    const pages = fromR2.length > 0 ? fromR2 : await readLocalSeed();
-    return normalizeLandings(pages);
-  },
-  ["regional-landings-index-v2"],
-  { revalidate: 300, tags: [REGIONAL_LANDINGS_TAG] }
-);
+async function loadRegionalLandingsIndex(): Promise<RegionalLandingPage[]> {
+  const hit = readTtlMemoryCache(regionalIndexMemory);
+  if (hit) return hit;
+
+  const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
+  const pages = normalizeLandings(
+    fromR2.length > 0 ? fromR2 : await readLocalSeed()
+  );
+  regionalIndexMemory = writeTtlMemoryCache(pages, INDEX_MEMORY_TTL_MS);
+  return pages;
+}
 
 /** 쓰기·관리자용 — R2 API 직접 조회(CDN 우회) → 공개 URL → 로컬 */
 export async function loadRegionalLandingsIndexFresh(): Promise<
@@ -160,7 +172,7 @@ export async function saveRegionalLandings(
 
   try {
     await writeLocalSeed(pages);
-    revalidateTag(REGIONAL_LANDINGS_TAG, "max");
+    invalidateRegionalLandingsMemoryCache();
   } catch {
     // Vercel 등 읽기 전용 환경에서는 R2만 사용
   }
@@ -170,6 +182,7 @@ export async function saveRegionalLandings(
     if (process.env.VERCEL) {
       return { error: presign.error };
     }
+    invalidateRegionalLandingsMemoryCache();
     return { ok: true };
   }
 
@@ -181,7 +194,7 @@ export async function saveRegionalLandings(
         body,
       },
     ]);
-    revalidateTag(REGIONAL_LANDINGS_TAG, "max");
+    invalidateRegionalLandingsMemoryCache();
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "R2 저장 실패";
@@ -352,8 +365,9 @@ export async function resolveNearbyPages(
 
 /**
  * 동일 카테고리 최근 발행글 (최대 limit).
- * 이미 캐시된 regional-landings index만 사용 — 추가 R2/API 호출 없음.
+ * 이미 로드된 regional-landings index만 사용 — 추가 R2/API 호출 없음.
  * 페이지마다 안정적으로 다른 조합이 나오도록 slug 시드로 샘플링.
+ * RSC payload 절감을 위해 본문(seoBlocks/faq)은 제외한 슬림 객체 반환.
  */
 export async function getRelatedRegionalPeers(
   page: RegionalLandingPage,
@@ -374,9 +388,26 @@ export async function getRelatedRegionalPeers(
       return tb - ta;
     });
 
-  if (peers.length <= limit) return peers;
+  const selected =
+    peers.length <= limit
+      ? peers
+      : sampleStableRandom(
+          peers.slice(0, Math.min(peers.length, limit * 3)),
+          limit,
+          `${page.slug}-related-peers`
+        );
 
-  // 최근 풀을 넓게 잡은 뒤 페이지별로 다른 30개 선택 (내부링크 다양성)
-  const pool = peers.slice(0, Math.min(peers.length, limit * 3));
-  return sampleStableRandom(pool, limit, `${page.slug}-related-peers`);
+  return selected.map((p) => ({
+    slug: p.slug,
+    category: resolvePageCategory(p),
+    label: p.label,
+    keyword: p.keyword,
+    nearbySlugs: [],
+    metaDescription: p.metaDescription,
+    regionInfo: p.regionInfo,
+    imageUrl: p.imageUrl,
+    isPublished: p.isPublished,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  }));
 }

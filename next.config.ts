@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
     root: path.resolve(process.cwd()),
   },
   images: {
+    // Vercel Image Optimization 비용 $0 — /_next/image 변환 비활성
+    unoptimized: true,
+    loader: "custom",
+    loaderFile: "./image-loader.ts",
     remotePatterns: getR2ImageRemotePatterns(),
   },
   experimental: {

@@ -1,19 +1,32 @@
 import "server-only";
 
 import { cache } from "react";
-import { unstable_cache } from "next/cache";
 import { fetchAcademiesFromR2 } from "@/lib/academy/r2-store";
+import {
+  readTtlMemoryCache,
+  writeTtlMemoryCache,
+  type TtlMemoryCache,
+} from "@/lib/cache/ttl-memory-cache";
 import type { Academy } from "@/lib/types/academy";
 
 export const ACADEMY_INDEX_TAG = "academy-index";
+const ACADEMY_INDEX_TTL_MS = 300_000;
 
-const loadAcademyIndex = unstable_cache(
-  async (): Promise<Academy[]> => fetchAcademiesFromR2({ noCache: true }),
-  ["academy-index-v1"],
-  { revalidate: 300, tags: [ACADEMY_INDEX_TAG] }
-);
+let academyIndexMemory: TtlMemoryCache<Academy[]> | null = null;
 
-/** 목록·필터용 — index.json cross-request 캐시 + 요청 내 dedupe */
+export function invalidateAcademyIndexMemoryCache() {
+  academyIndexMemory = null;
+}
+
+async function loadAcademyIndex(): Promise<Academy[]> {
+  const hit = readTtlMemoryCache(academyIndexMemory);
+  if (hit) return hit;
+  const pages = await fetchAcademiesFromR2({ noCache: true });
+  academyIndexMemory = writeTtlMemoryCache(pages, ACADEMY_INDEX_TTL_MS);
+  return pages;
+}
+
+/** 목록·필터용 — 인스턴스 메모리 TTL + 요청 내 dedupe (Data Cache 미사용) */
 export const getCachedAcademyIndex = cache(async (): Promise<Academy[]> => {
   return loadAcademyIndex();
 });

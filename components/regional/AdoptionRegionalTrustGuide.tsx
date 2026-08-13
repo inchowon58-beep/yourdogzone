@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -177,12 +176,13 @@ export function AdoptionRegionalTrustGuide({
 
         {coverImageUrl ? (
           <div className="relative mx-auto mt-8 aspect-[16/9] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/80 shadow-[var(--card-shadow)] sm:mt-10">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={coverImageUrl}
               alt={`${label} ${form.subject} ${adoptWord}`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 768px"
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           </div>
         ) : null}

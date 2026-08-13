@@ -6,6 +6,7 @@ import { needsRegionalSeoContent } from "@/lib/academy/regional-seo-sync";
 import { buildRegionalLandingMetadata } from "@/lib/academy/regional-seo-metadata";
 import { getPublishedRegionalSlugs } from "@/lib/academy/regional-landing";
 
+/** ISR — 수천 건 generateStaticParams + 지속 발행이라 force-static 비권장 */
 export const revalidate = 3600;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {

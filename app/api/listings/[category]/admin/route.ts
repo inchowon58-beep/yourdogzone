@@ -10,6 +10,7 @@ import {
   updateListingFields,
 } from "@/lib/listings/queries";
 import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { invalidateListingRegionalIndexMemoryCache } from "@/lib/academy/regional-entity-index";
 import type { ListingCategory } from "@/lib/types/listing";
 
 export const runtime = "nodejs";
@@ -86,6 +87,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
       if (result.uploads?.length) {
         await completeR2Uploads(result.uploads);
+        invalidateListingRegionalIndexMemoryCache(category);
       }
 
       const base = listingBasePath(category);
@@ -127,6 +129,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (result.uploads?.length) {
       await completeR2Uploads(result.uploads);
+      invalidateListingRegionalIndexMemoryCache(category);
     }
 
     const base = listingBasePath(category);
@@ -166,6 +169,7 @@ export async function DELETE(request: Request, context: RouteContext) {
 
     if (result.uploads?.length) {
       await completeR2Uploads(result.uploads);
+      invalidateListingRegionalIndexMemoryCache(category);
     }
 
     const base = listingBasePath(category);

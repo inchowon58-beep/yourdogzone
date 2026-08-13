@@ -8,6 +8,7 @@ import { getPublishedRegionalSlugs } from "@/lib/academy/regional-landing";
 import { isListingCategory } from "@/lib/listings/config";
 import type { ListingCategory } from "@/lib/types/listing";
 
+/** ISR — 수천 건 generateStaticParams + 지속 발행이라 force-static 비권장 */
 export const revalidate = 3600;
 
 type PageProps = {
