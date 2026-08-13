@@ -72,15 +72,20 @@ async function writeLocalSeed(pages: RegionalLandingPage[]): Promise<void> {
   await writeFile(LOCAL_FILE, JSON.stringify(payload, null, 2), "utf8");
 }
 
-export async function fetchRegionalLandingsFromR2(_options?: {
+export async function fetchRegionalLandingsFromR2(options?: {
   noCache?: boolean;
 }): Promise<RegionalLandingPage[]> {
   try {
-    // 대용량 index는 Next Data Cache에 넣지 않음 (용량 초과 경고 방지)
-    const bust = `?t=${Date.now()}`;
+    // 공개 읽기는 CDN URL 그대로(캐시 활용). noCache일 때만 bust.
+    // ?t= 매번 bust 하면 9MB+ index를 요청마다 받아 타임아웃→빈배열→404가 난다.
+    const bust = options?.noCache ? `?t=${Date.now()}` : "";
     const res = await fetch(`${indexPublicUrl()}${bust}`, {
+      // Next Data Cache에 대용량 body를 넣지 않음 (용량 초과 경고 방지)
       cache: "no-store",
-      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      headers: options?.noCache
+        ? { "Cache-Control": "no-cache", Pragma: "no-cache" }
+        : undefined,
+      signal: AbortSignal.timeout(55_000),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as IndexPayload;
@@ -90,15 +95,40 @@ export async function fetchRegionalLandingsFromR2(_options?: {
   }
 }
 
+async function loadRegionalLandingsIndexFromSources(): Promise<
+  RegionalLandingPage[]
+> {
+  // 1) CDN (빠름) 2) R2 API 직접 3) 로컬 시드
+  const fromCdn = await fetchRegionalLandingsFromR2();
+  if (fromCdn.length > 0) return normalizeLandings(fromCdn);
+
+  const direct = await getR2ObjectText(INDEX_KEY);
+  if (direct) {
+    try {
+      const data = JSON.parse(direct) as IndexPayload;
+      if (Array.isArray(data.pages) && data.pages.length > 0) {
+        return normalizeLandings(data.pages);
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  const fromBust = await fetchRegionalLandingsFromR2({ noCache: true });
+  if (fromBust.length > 0) return normalizeLandings(fromBust);
+
+  return normalizeLandings(await readLocalSeed());
+}
+
 async function loadRegionalLandingsIndex(): Promise<RegionalLandingPage[]> {
   const hit = readTtlMemoryCache(regionalIndexMemory);
-  if (hit) return hit;
+  if (hit && hit.length > 0) return hit;
 
-  const fromR2 = await fetchRegionalLandingsFromR2({ noCache: true });
-  const pages = normalizeLandings(
-    fromR2.length > 0 ? fromR2 : await readLocalSeed()
-  );
-  regionalIndexMemory = writeTtlMemoryCache(pages, INDEX_MEMORY_TTL_MS);
+  const pages = await loadRegionalLandingsIndexFromSources();
+  // 빈 결과는 캐시하지 않음 — 일시 실패가 5분간 전체 404로 굳는 것 방지
+  if (pages.length > 0) {
+    regionalIndexMemory = writeTtlMemoryCache(pages, INDEX_MEMORY_TTL_MS);
+  }
   return pages;
 }
 
