@@ -10,7 +10,7 @@ const httpsAgent = new https.Agent({
   minVersion: "TLSv1.2",
 });
 
-function createDataS3Client() {
+function createDataS3Client(requestTimeoutMs = 45_000) {
   const config = getR2Config();
   if (!config) return null;
   return new S3Client({
@@ -26,15 +26,18 @@ function createDataS3Client() {
     requestHandler: new NodeHttpHandler({
       httpsAgent,
       connectionTimeout: 8_000,
-      requestTimeout: 45_000,
+      requestTimeout: requestTimeoutMs,
     }),
   });
 }
 
 /** CDN 우회 — R2에서 직접 index/JSON 읽기 (대량 upsert 안정성) */
-export async function getR2ObjectText(key: string): Promise<string | null> {
+export async function getR2ObjectText(
+  key: string,
+  options?: { requestTimeoutMs?: number }
+): Promise<string | null> {
   const config = getR2Config();
-  const client = createDataS3Client();
+  const client = createDataS3Client(options?.requestTimeoutMs ?? 45_000);
   if (!config || !client) return null;
 
   try {

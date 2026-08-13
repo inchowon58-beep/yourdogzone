@@ -8,6 +8,8 @@ import { getPublishedRegionalSlugs } from "@/lib/academy/regional-landing";
 
 /** ISR — 수천 건 generateStaticParams + 지속 발행이라 force-static 비권장 */
 export const revalidate = 3600;
+/** 대용량 index/단건 조회 여유 (Hobby 기본 10s면 404 유발) */
+export const maxDuration = 60;
 
 const LEGACY_SLUG_REDIRECT: Record<string, string> = {
   "안산-애견미용학원": "ansan-dog-grooming-academy",

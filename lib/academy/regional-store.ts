@@ -16,6 +16,7 @@ import type {
   RegionalLandingPage,
 } from "@/lib/types/regional-landing";
 import {
+  REGIONAL_SERVICE_CATEGORIES,
   resolvePageCategory,
   type RegionalServiceCategory,
 } from "@/lib/seo/regional-service-config";
@@ -33,25 +34,98 @@ function normalizeLandings(pages: RegionalLandingPage[]): RegionalLandingPage[] 
 }
 
 const INDEX_KEY = "regional-landings/index.json";
+const SUMMARY_KEY = "regional-landings/summary.json";
 /** @deprecated Data Cache 미사용 — 관리자/호환용 태그명만 유지 */
 export const REGIONAL_LANDINGS_TAG = "regional-landings";
 const LOCAL_FILE = path.join(process.cwd(), "data", "regional-landings.json");
-/** 인스턴스 메모리 TTL (초) — unstable_cache 대체 */
 const INDEX_MEMORY_TTL_MS = 300_000;
+const SUMMARY_MEMORY_TTL_MS = 300_000;
+const FULL_INDEX_TIMEOUT_MS = 120_000;
 
 type IndexPayload = {
   updatedAt: string;
   pages: RegionalLandingPage[];
 };
 
+/** seoBlocks/faq 제외 — 목록·관련글·슬러그용 (수 MB → ~1MB) */
+export type RegionalLandingSummary = {
+  slug: string;
+  category: RegionalServiceCategory;
+  label: string;
+  keyword: string;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+  metaDescription?: string;
+  regionInfo?: string;
+  imageUrl?: string;
+};
+
+type SummaryPayload = {
+  updatedAt: string;
+  items: RegionalLandingSummary[];
+};
+
 let regionalIndexMemory: TtlMemoryCache<RegionalLandingPage[]> | null = null;
+let regionalSummaryMemory: TtlMemoryCache<RegionalLandingSummary[]> | null =
+  null;
 
 export function invalidateRegionalLandingsMemoryCache() {
   regionalIndexMemory = null;
+  regionalSummaryMemory = null;
 }
 
 function indexPublicUrl(): string {
   return `${getPublicBaseUrl()}/${INDEX_KEY}`;
+}
+
+function summaryPublicUrl(): string {
+  return `${getPublicBaseUrl()}/${SUMMARY_KEY}`;
+}
+
+export function regionalPageDataKey(
+  category: RegionalServiceCategory,
+  slug: string
+): string {
+  return `regional-landings/data/${category}/${slug}.json`;
+}
+
+function regionalPageDataPublicUrl(
+  category: RegionalServiceCategory,
+  slug: string
+): string {
+  return `${getPublicBaseUrl()}/${regionalPageDataKey(category, slug)}`;
+}
+
+function toSummary(page: RegionalLandingPage): RegionalLandingSummary {
+  return {
+    slug: page.slug,
+    category: resolvePageCategory(page),
+    label: page.label,
+    keyword: page.keyword,
+    isPublished: page.isPublished,
+    createdAt: page.createdAt,
+    updatedAt: page.updatedAt,
+    metaDescription: page.metaDescription,
+    regionInfo: page.regionInfo,
+    imageUrl: page.imageUrl,
+  };
+}
+
+function summaryAsPage(item: RegionalLandingSummary): RegionalLandingPage {
+  return {
+    slug: item.slug,
+    category: item.category,
+    label: item.label,
+    keyword: item.keyword,
+    nearbySlugs: [],
+    metaDescription: item.metaDescription,
+    regionInfo: item.regionInfo,
+    imageUrl: item.imageUrl,
+    isPublished: item.isPublished,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
 }
 
 async function readLocalSeed(): Promise<RegionalLandingPage[]> {
@@ -76,11 +150,8 @@ export async function fetchRegionalLandingsFromR2(options?: {
   noCache?: boolean;
 }): Promise<RegionalLandingPage[]> {
   try {
-    // 공개 읽기는 CDN URL 그대로(캐시 활용). noCache일 때만 bust.
-    // ?t= 매번 bust 하면 9MB+ index를 요청마다 받아 타임아웃→빈배열→404가 난다.
     const bust = options?.noCache ? `?t=${Date.now()}` : "";
     const res = await fetch(`${indexPublicUrl()}${bust}`, {
-      // Next Data Cache에 대용량 body를 넣지 않음 (용량 초과 경고 방지)
       cache: "no-store",
       headers: options?.noCache
         ? { "Cache-Control": "no-cache", Pragma: "no-cache" }
@@ -98,11 +169,10 @@ export async function fetchRegionalLandingsFromR2(options?: {
 async function loadRegionalLandingsIndexFromSources(): Promise<
   RegionalLandingPage[]
 > {
-  // 1) CDN (빠름) 2) R2 API 직접 3) 로컬 시드
-  const fromCdn = await fetchRegionalLandingsFromR2();
-  if (fromCdn.length > 0) return normalizeLandings(fromCdn);
-
-  const direct = await getR2ObjectText(INDEX_KEY);
+  // 대용량 index: R2 API 직접(타임아웃 여유) → CDN → bust → 로컬
+  const direct = await getR2ObjectText(INDEX_KEY, {
+    requestTimeoutMs: FULL_INDEX_TIMEOUT_MS,
+  });
   if (direct) {
     try {
       const data = JSON.parse(direct) as IndexPayload;
@@ -113,6 +183,9 @@ async function loadRegionalLandingsIndexFromSources(): Promise<
       // fall through
     }
   }
+
+  const fromCdn = await fetchRegionalLandingsFromR2();
+  if (fromCdn.length > 0) return normalizeLandings(fromCdn);
 
   const fromBust = await fetchRegionalLandingsFromR2({ noCache: true });
   if (fromBust.length > 0) return normalizeLandings(fromBust);
@@ -125,18 +198,93 @@ async function loadRegionalLandingsIndex(): Promise<RegionalLandingPage[]> {
   if (hit && hit.length > 0) return hit;
 
   const pages = await loadRegionalLandingsIndexFromSources();
-  // 빈 결과는 캐시하지 않음 — 일시 실패가 5분간 전체 404로 굳는 것 방지
   if (pages.length > 0) {
     regionalIndexMemory = writeTtlMemoryCache(pages, INDEX_MEMORY_TTL_MS);
   }
   return pages;
 }
 
+async function fetchSummaryFromCdn(): Promise<RegionalLandingSummary[]> {
+  try {
+    const res = await fetch(summaryPublicUrl(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as SummaryPayload;
+    return Array.isArray(data.items) ? data.items : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadRegionalSummary(): Promise<RegionalLandingSummary[]> {
+  const hit = readTtlMemoryCache(regionalSummaryMemory);
+  if (hit && hit.length > 0) return hit;
+
+  let items = await fetchSummaryFromCdn();
+  if (items.length === 0) {
+    const direct = await getR2ObjectText(SUMMARY_KEY, {
+      requestTimeoutMs: 30_000,
+    });
+    if (direct) {
+      try {
+        const data = JSON.parse(direct) as SummaryPayload;
+        if (Array.isArray(data.items)) items = data.items;
+      } catch {
+        // fall through
+      }
+    }
+  }
+
+  // summary 아직 없으면 풀 index에서 한 번 만들어 메모리에만 보관
+  if (items.length === 0) {
+    const pages = await loadRegionalLandingsIndex();
+    items = pages.map(toSummary);
+  }
+
+  if (items.length > 0) {
+    regionalSummaryMemory = writeTtlMemoryCache(items, SUMMARY_MEMORY_TTL_MS);
+  }
+  return items;
+}
+
+async function fetchPageDataFile(
+  category: RegionalServiceCategory,
+  slug: string
+): Promise<RegionalLandingPage | null> {
+  try {
+    const res = await fetch(regionalPageDataPublicUrl(category, slug), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.ok) {
+      const page = (await res.json()) as RegionalLandingPage;
+      if (page?.slug) return normalizeLandingPage(page);
+    }
+  } catch {
+    // fall through to R2 API
+  }
+
+  const direct = await getR2ObjectText(regionalPageDataKey(category, slug), {
+    requestTimeoutMs: 20_000,
+  });
+  if (!direct) return null;
+  try {
+    const page = JSON.parse(direct) as RegionalLandingPage;
+    return page?.slug ? normalizeLandingPage(page) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 쓰기·관리자용 — R2 API 직접 조회(CDN 우회) → 공개 URL → 로컬 */
 export async function loadRegionalLandingsIndexFresh(): Promise<
   RegionalLandingPage[]
 > {
-  const direct = await getR2ObjectText(INDEX_KEY);
+  const direct = await getR2ObjectText(INDEX_KEY, {
+    requestTimeoutMs: FULL_INDEX_TIMEOUT_MS,
+  });
   if (direct) {
     try {
       const data = JSON.parse(direct) as IndexPayload;
@@ -169,6 +317,32 @@ export async function getRegionalLandingBySlug(
   options?: { allowUnpublished?: boolean; category?: RegionalServiceCategory }
 ): Promise<RegionalLandingPage | null> {
   const decoded = decodeURIComponent(slug).trim();
+
+  // 1) 단건 JSON (가벼움) — category 힌트 또는 summary로 경로 확정
+  const categoriesToTry: RegionalServiceCategory[] = options?.category
+    ? [options.category]
+    : [];
+  if (!options?.category) {
+    const summary = await loadRegionalSummary();
+    const hit = summary.find((p) => p.slug === decoded);
+    if (hit) categoriesToTry.push(hit.category);
+    for (const cat of REGIONAL_SERVICE_CATEGORIES) {
+      if (!categoriesToTry.includes(cat)) categoriesToTry.push(cat);
+    }
+  }
+
+  for (const cat of categoriesToTry) {
+    const fromFile = await fetchPageDataFile(cat, decoded);
+    if (fromFile) {
+      if (options?.category && resolvePageCategory(fromFile) !== options.category) {
+        continue;
+      }
+      if (!fromFile.isPublished && !options?.allowUnpublished) return null;
+      return fromFile;
+    }
+  }
+
+  // 2) 풀 index 폴백 (구 데이터·백필 전)
   const all = await getAllRegionalLandings({ includeUnpublished: true });
   const found = all.find((p) => {
     if (p.slug !== decoded) return false;
@@ -185,14 +359,69 @@ export async function getRegionalLandingBySlug(
 export async function getPublishedRegionalSlugs(
   category?: RegionalServiceCategory
 ): Promise<string[]> {
-  const pages = await getAllRegionalLandings();
-  return pages
-    .filter((p) => !category || resolvePageCategory(p) === category)
+  const items = await loadRegionalSummary();
+  return items
+    .filter(
+      (p) =>
+        p.isPublished && (!category || p.category === category)
+    )
     .map((p) => p.slug);
 }
 
-export async function saveRegionalLandings(
+async function uploadSummary(pages: RegionalLandingPage[]): Promise<void> {
+  const payload: SummaryPayload = {
+    updatedAt: new Date().toISOString(),
+    items: pages.map(toSummary),
+  };
+  const presign = await createPresignedPutObject(
+    SUMMARY_KEY,
+    "application/json"
+  );
+  if ("error" in presign) return;
+  await completeR2Uploads([
+    {
+      uploadUrl: presign.uploadUrl,
+      contentType: presign.contentType,
+      body: JSON.stringify(payload),
+    },
+  ]);
+}
+
+/** 발행·수정된 페이지만 단건 JSON 업로드 (전체 N건 PUT 방지) */
+export async function uploadRegionalPageDataFiles(
   pages: RegionalLandingPage[]
+): Promise<void> {
+  if (pages.length === 0) return;
+  const uploads: {
+    uploadUrl: string;
+    contentType: string;
+    body: string;
+  }[] = [];
+
+  for (const page of pages) {
+    const category = resolvePageCategory(page);
+    const presign = await createPresignedPutObject(
+      regionalPageDataKey(category, page.slug),
+      "application/json"
+    );
+    if ("error" in presign) continue;
+    uploads.push({
+      uploadUrl: presign.uploadUrl,
+      contentType: presign.contentType,
+      body: JSON.stringify(normalizeLandingPage(page)),
+    });
+  }
+
+  // 청크 업로드 (한 번에 너무 많으면 타임아웃)
+  const chunkSize = 40;
+  for (let i = 0; i < uploads.length; i += chunkSize) {
+    await completeR2Uploads(uploads.slice(i, i + chunkSize));
+  }
+}
+
+export async function saveRegionalLandings(
+  pages: RegionalLandingPage[],
+  options?: { pageDataFiles?: RegionalLandingPage[] }
 ): Promise<{ ok: true } | { error: string }> {
   const payload: IndexPayload = {
     updatedAt: new Date().toISOString(),
@@ -224,6 +453,11 @@ export async function saveRegionalLandings(
         body,
       },
     ]);
+    // summary 는 가벼워서 항상 같이 갱신
+    await uploadSummary(pages);
+    if (options?.pageDataFiles?.length) {
+      await uploadRegionalPageDataFiles(options.pageDataFiles);
+    }
     invalidateRegionalLandingsMemoryCache();
     return { ok: true };
   } catch (e) {
@@ -259,7 +493,9 @@ export async function insertRegionalLanding(
     updatedAt: now,
   };
 
-  const saved = await saveRegionalLandings([...all, page]);
+  const saved = await saveRegionalLandings([...all, page], {
+    pageDataFiles: [page],
+  });
   if ("error" in saved) return saved;
   return { page };
 }
@@ -292,7 +528,7 @@ export async function upsertRegionalLanding(
   if (idx >= 0) next[idx] = page;
   else next.push(page);
 
-  const saved = await saveRegionalLandings(next);
+  const saved = await saveRegionalLandings(next, { pageDataFiles: [page] });
   if ("error" in saved) return saved;
   return { page };
 }
@@ -355,7 +591,7 @@ export async function upsertRegionalLandingsBatch(
     return { pages: [], errors, createdCount: 0, updatedCount: 0 };
   }
 
-  const saved = await saveRegionalLandings(next);
+  const saved = await saveRegionalLandings(next, { pageDataFiles: pages });
   if ("error" in saved) return saved;
   return { pages, errors, createdCount, updatedCount };
 }
@@ -381,36 +617,35 @@ export async function resolveNearbyPages(
   page: RegionalLandingPage
 ): Promise<RegionalLandingPage[]> {
   const category = resolvePageCategory(page);
-  const all = await getAllRegionalLandings();
+  const summary = await loadRegionalSummary();
   const bySlug = new Map(
-    all
-      .filter((p) => resolvePageCategory(p) === category)
+    summary
+      .filter((p) => p.category === category && p.isPublished)
       .map((p) => [p.slug, p])
   );
   return page.nearbySlugs
     .map((s) => bySlug.get(s))
-    .filter((p): p is RegionalLandingPage => Boolean(p && p.isPublished))
-    .slice(0, 5);
+    .filter((p): p is RegionalLandingSummary => Boolean(p))
+    .slice(0, 5)
+    .map(summaryAsPage);
 }
 
 /**
  * 동일 카테고리 최근 발행글 (최대 limit).
- * 이미 로드된 regional-landings index만 사용 — 추가 R2/API 호출 없음.
- * 페이지마다 안정적으로 다른 조합이 나오도록 slug 시드로 샘플링.
- * RSC payload 절감을 위해 본문(seoBlocks/faq)은 제외한 슬림 객체 반환.
+ * summary.json(경량) 우선 — 풀 index 다운로드 없음.
  */
 export async function getRelatedRegionalPeers(
   page: RegionalLandingPage,
   limit = 30
 ): Promise<RegionalLandingPage[]> {
   const category = resolvePageCategory(page);
-  const all = await getAllRegionalLandings();
+  const all = await loadRegionalSummary();
   const peers = all
     .filter(
       (p) =>
         p.isPublished &&
         p.slug !== page.slug &&
-        resolvePageCategory(p) === category
+        p.category === category
     )
     .sort((a, b) => {
       const tb = Date.parse(b.updatedAt || b.createdAt || "") || 0;
@@ -427,17 +662,5 @@ export async function getRelatedRegionalPeers(
           `${page.slug}-related-peers`
         );
 
-  return selected.map((p) => ({
-    slug: p.slug,
-    category: resolvePageCategory(p),
-    label: p.label,
-    keyword: p.keyword,
-    nearbySlugs: [],
-    metaDescription: p.metaDescription,
-    regionInfo: p.regionInfo,
-    imageUrl: p.imageUrl,
-    isPublished: p.isPublished,
-    createdAt: p.createdAt,
-    updatedAt: p.updatedAt,
-  }));
+  return selected.map(summaryAsPage);
 }
