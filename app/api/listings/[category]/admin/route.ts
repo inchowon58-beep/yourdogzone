@@ -141,6 +141,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const base = listingBasePath(category);
     revalidatePath(`${base}/${result.data.slug}`);
     revalidatePath(base);
+    revalidatePath(`${base}/region`, "layout");
     revalidatePath(`${base}/region/[slug]`, "page");
     revalidatePath("/sitemap.xml");
 

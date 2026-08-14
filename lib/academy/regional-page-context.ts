@@ -15,7 +15,34 @@ import {
 import {
   getRegionalServiceConfig,
   resolvePageCategory,
+  type RegionalServiceCategory,
 } from "@/lib/seo/regional-service-config";
+import { isListingCategory } from "@/lib/listings/config";
+import { fetchListingFromR2 } from "@/lib/listings/r2-read";
+import { listingAsAcademy } from "@/lib/listings/queries";
+
+async function hydrateListingAcademy(
+  category: RegionalServiceCategory,
+  academy: Academy | null
+): Promise<Academy | null> {
+  if (!academy || !isListingCategory(category)) return academy;
+  const latest = await fetchListingFromR2(category, academy.slug, {
+    noCache: true,
+  });
+  return latest ? listingAsAcademy(latest) : academy;
+}
+
+async function hydrateListingAcademies(
+  category: RegionalServiceCategory,
+  academies: Academy[]
+): Promise<Academy[]> {
+  if (academies.length === 0 || !isListingCategory(category)) return academies;
+  return Promise.all(
+    academies.map((item) =>
+      hydrateListingAcademy(category, item).then((next) => next ?? item)
+    )
+  );
+}
 
 export type RegionalPageContext = {
   all: Academy[];
@@ -69,10 +96,17 @@ export async function loadRegionalPageContext(
     allEntities
   );
 
-  const seoNearby = premiumPick.seoNearby;
+  const [recommended, nearbyPremium] = await Promise.all([
+    hydrateListingAcademy(category, localRecommended),
+    hydrateListingAcademies(category, premiumPick.nearbyList),
+  ]);
+  const seoNearby =
+    (await hydrateListingAcademy(category, premiumPick.seoNearby)) ??
+    nearbyPremium[0] ??
+    null;
   const seoCtx = buildRegionalSeoContext(
     page.label,
-    localRecommended,
+    recommended,
     seoNearby,
     serviceConfig
   );
@@ -81,9 +115,9 @@ export async function loadRegionalPageContext(
     all,
     premium: localPremium,
     regular: all.filter((a) => !a.is_premium),
-    recommended: localRecommended,
+    recommended,
     seoNearby,
-    nearbyPremium: premiumPick.nearbyList,
+    nearbyPremium,
     isPoolPremiumFallback: premiumPick.isPoolFallback,
     seoCtx,
     isNearbyFallback: listFallback.isNearbyFallback,

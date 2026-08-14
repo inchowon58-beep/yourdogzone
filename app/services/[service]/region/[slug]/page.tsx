@@ -8,8 +8,8 @@ import { getPublishedRegionalSlugs } from "@/lib/academy/regional-landing";
 import { isListingCategory } from "@/lib/listings/config";
 import type { ListingCategory } from "@/lib/types/listing";
 
-/** ISR — 수천 건 generateStaticParams + 지속 발행이라 force-static 비권장 */
-export const revalidate = 3600;
+/** ISR — 업체 수정(히어로 사진 등)이 지역 SEO에 빨리 반영되도록 짧게 */
+export const revalidate = 60;
 /** 대용량 index/단건 조회 여유 (Hobby 기본 10s면 404 유발) */
 export const maxDuration = 60;
 

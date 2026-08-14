@@ -28,6 +28,10 @@ export type RegionalSeoContext = {
   hasNearbyRecommendedAcademy: boolean;
   /** OG·SEO 섹션용 대표 이미지 (추천학원 → 없으면 인근 추천학원) */
   ogImageUrl: string | null;
+  /** 관리자 등록 SEO 히어로 사진 — 있으면 OG 우선 사용 */
+  seoHeroImageUrl: string | null;
+  seoHeroLine1: string | null;
+  seoHeroLine2: string | null;
 };
 
 const DEFAULT_HIGHLIGHT =
@@ -109,6 +113,7 @@ export function buildRegionalSeoContext(
   const hasRecommendedAcademy = Boolean(recommended);
   const nearby = !hasRecommendedAcademy ? nearbyRecommended : null;
   const imageAcademy = pickRegionalSeoImageAcademy(recommended, nearby);
+  const seoHeroImageUrl = imageAcademy?.seo_hero_image?.trim() || null;
 
   return {
     region: regionLabel,
@@ -120,7 +125,12 @@ export function buildRegionalSeoContext(
     nearbyRecommendedRegion: nearby?.region_small ?? "",
     nearbyRecommendedAcademyHighlight: academyHighlight(nearby),
     hasNearbyRecommendedAcademy: Boolean(nearby),
-    ogImageUrl: imageAcademy ? getAcademyThumbnail(imageAcademy) : null,
+    ogImageUrl:
+      seoHeroImageUrl ||
+      (imageAcademy ? getAcademyThumbnail(imageAcademy) : null),
+    seoHeroImageUrl,
+    seoHeroLine1: imageAcademy?.seo_hero_line1?.trim() || null,
+    seoHeroLine2: imageAcademy?.seo_hero_line2?.trim() || null,
   };
 }
 

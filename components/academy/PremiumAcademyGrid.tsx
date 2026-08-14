@@ -90,13 +90,19 @@ function PremiumCard({
             </Link>
           )}
         </div>
-        <div className="seo-detail-html space-y-3 px-4 py-5 text-sm leading-relaxed text-foreground sm:px-6 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1">
+        <div className="space-y-4 px-4 py-5 sm:px-6">
           {htmlParts?.before ? (
-            <div dangerouslySetInnerHTML={{ __html: htmlParts.before }} />
+            <div
+              className="seo-detail-html space-y-3 text-sm leading-relaxed text-foreground [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1"
+              dangerouslySetInnerHTML={{ __html: htmlParts.before }}
+            />
           ) : null}
           {hero}
           {htmlParts?.after ? (
-            <div dangerouslySetInnerHTML={{ __html: htmlParts.after }} />
+            <div
+              className="seo-detail-html space-y-3 text-sm leading-relaxed text-foreground [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1"
+              dangerouslySetInnerHTML={{ __html: htmlParts.after }}
+            />
           ) : null}
         </div>
       </article>

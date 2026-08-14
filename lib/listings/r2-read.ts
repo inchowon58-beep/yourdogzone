@@ -18,6 +18,12 @@ function dataPublicUrl(category: ListingCategory, slug: string): string {
   return `${getPublicBaseUrl()}/${dataKey(category, encodedSlug)}`;
 }
 
+function withCacheBust(url: string, noCache?: boolean): string {
+  if (!noCache) return url;
+  const join = url.includes("?") ? "&" : "?";
+  return `${url}${join}t=${Date.now()}`;
+}
+
 export function normalizeListingSlug(slug: string): string {
   let value = slug.trim();
   try {
@@ -33,7 +39,7 @@ export async function fetchListingsFromR2(
   options?: { noCache?: boolean }
 ): Promise<Listing[]> {
   try {
-    const res = await fetch(indexPublicUrl(category), {
+    const res = await fetch(withCacheBust(indexPublicUrl(category), options?.noCache), {
       ...(options?.noCache ? { cache: "no-store" as const } : { next: { revalidate: 60 } }),
     });
     if (!res.ok) return [];
@@ -57,7 +63,10 @@ export async function fetchListingFromR2(
   for (const candidate of [normalized, slug.trim()]) {
     if (!candidate) continue;
     try {
-      const res = await fetch(dataPublicUrl(category, candidate), fetchOpts);
+      const res = await fetch(
+        withCacheBust(dataPublicUrl(category, candidate), options?.noCache),
+        fetchOpts
+      );
       if (!res.ok) continue;
       const data = (await res.json()) as Listing & { deleted?: boolean };
       if (data.deleted) return null;

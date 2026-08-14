@@ -100,7 +100,9 @@ export function buildRegionalLandingMetadata(
       ? `${seoCtx.nearbyRecommendedAcademyName} 인근 인증 추천 ${config.entityLabel}`
       : `${pageKeyword} 정보`;
 
-  const cover = page.imageUrl?.trim();
+  const heroCover = seoCtx.seoHeroImageUrl?.trim();
+  const pageCover = page.imageUrl?.trim();
+  const cover = heroCover || pageCover;
   if (cover?.startsWith("http")) {
     const thumb = resolveRegionalHeroThumbCopy({
       keyword: pageKeyword,
@@ -109,9 +111,9 @@ export function buildRegionalLandingMetadata(
     });
     const photoOg = buildRegionalPhotoOgImageUrl({
       backgroundUrl: cover,
-      title: thumb.line1,
+      title: seoCtx.seoHeroLine1 || thumb.line1,
       badge: thumb.badge,
-      line2: thumb.line2,
+      line2: seoCtx.seoHeroLine2 || thumb.line2,
       bar: thumb.bar,
     });
     return buildPageMetadata({

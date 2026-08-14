@@ -430,7 +430,11 @@ export function ListingAdminPanel({
     }
   }
 
-  async function handleSeoHeroUpload(file: File | null) {
+  async function handleSeoHeroUpload(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !editForm) return;
     setSeoHeroUploading(true);
     setError("");
@@ -443,8 +447,10 @@ export function ListingAdminPanel({
       setEditForm((prev) =>
         prev ? { ...prev, seo_hero_image: result.url } : prev
       );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "사진 업로드에 실패했습니다.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "사진 업로드에 실패했습니다."
+      );
     } finally {
       setSeoHeroUploading(false);
     }
@@ -790,21 +796,26 @@ export function ListingAdminPanel({
                   「3대 안심 공약」 바로 위에 둥근 테두리로 표시됩니다. 사진 위에
                   반투명 색을 얹고, 두 줄 문구를 올릴 수 있습니다.
                 </p>
-                <label className="mb-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-indigo-200 bg-white py-5">
-                  <Upload className="mb-1.5 h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium text-primary">
-                    {seoHeroUploading ? "업로드 중…" : "클릭해서 사진 등록"}
+                <label className="mb-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-indigo-200 bg-white py-8">
+                  <Upload className="mb-2 h-6 w-6 text-muted" />
+                  <span className="text-sm text-muted">
+                    {seoHeroUploading
+                      ? "업로드 중…"
+                      : "클릭하여 컴퓨터에서 사진 선택"}
                   </span>
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
                     disabled={seoHeroUploading}
-                    onChange={(e) =>
-                      void handleSeoHeroUpload(e.target.files?.[0] ?? null)
-                    }
+                    onChange={(e) => void handleSeoHeroUpload(e)}
                   />
                 </label>
+                {editForm.seo_hero_image ? (
+                  <p className="mb-3 text-xs text-emerald-600">
+                    ✓ SEO 상세 사진 업로드 완료. 저장을 눌러야 페이지에 반영됩니다.
+                  </p>
+                ) : null}
                 <div className="mb-3 grid gap-2 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1 block text-xs font-medium text-muted">
@@ -944,7 +955,7 @@ export function ListingAdminPanel({
               </button>
               <button
                 type="submit"
-                disabled={editSaving}
+                disabled={editSaving || seoHeroUploading}
                 className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {editSaving ? "저장 중…" : "저장"}
