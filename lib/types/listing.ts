@@ -48,6 +48,8 @@ export type Listing = {
    * HTML 또는 일반 텍스트(저장 시 문단 변환).
    */
   seo_detail_html?: string | null;
+  /** SEO 상단 「홈페이지」 버튼 링크 (없으면 업체 상세 페이지) */
+  homepage_url?: string | null;
 };
 
 export type ListingInsert = Omit<

@@ -33,6 +33,7 @@ type EditForm = {
   service_info: string;
   naver_place_url: string;
   seo_detail_html: string;
+  homepage_url: string;
 };
 
 function storageKey(category: ListingCategory) {
@@ -346,6 +347,7 @@ export function ListingAdminPanel({
         service_info: String(L.service_info ?? ""),
         naver_place_url: String(L.naver_place_url ?? ""),
         seo_detail_html: String(L.seo_detail_html ?? ""),
+        homepage_url: String(L.homepage_url ?? ""),
       });
     } catch (e) {
       setError(
@@ -382,6 +384,7 @@ export function ListingAdminPanel({
           service_info: editForm.service_info || null,
           naver_place_url: editForm.naver_place_url || null,
           seo_detail_html: editForm.seo_detail_html || null,
+          homepage_url: editForm.homepage_url || null,
         }),
       });
       const data = await res.json().catch(() => ({} as { error?: string; uploads?: unknown[] }));
@@ -722,6 +725,25 @@ export function ListingAdminPanel({
                     )
                   }
                   rows={4}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">
+                  홈페이지 URL
+                </span>
+                <p className="mb-2 text-[11px] leading-relaxed text-muted">
+                  SEO 상단 「홈페이지」 버튼 링크입니다. 비우면 사이트 내 업체
+                  상세로 이동합니다.
+                </p>
+                <input
+                  value={editForm.homepage_url}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev ? { ...prev, homepage_url: e.target.value } : prev
+                    )
+                  }
+                  placeholder="https://..."
                   className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 />
               </label>

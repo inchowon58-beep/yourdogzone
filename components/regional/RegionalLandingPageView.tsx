@@ -100,14 +100,18 @@ export function RegionalLandingPageView({ bundle }: Props) {
     category === "shelter" && featuredSource?.phone
       ? featuredSource.phone.replace(/-/g, "")
       : null;
-  const adoptionCtaPhone =
-    category === "adoption" && featuredSource?.phone
+  const otherCtaPhone =
+    category !== "shelter" && featuredSource?.phone
       ? featuredSource.phone.replace(/-/g, "")
       : null;
-  const fixedCtaPhone = shelterCtaPhone || adoptionCtaPhone;
+  const fixedCtaPhone = shelterCtaPhone || otherCtaPhone;
 
   const pageKeyword =
     page.keyword?.trim() || `${label} ${config.title}`;
+  const fixedCtaLabel =
+    category === "shelter"
+      ? "파양입소.무료분양문의"
+      : `${pageKeyword} 문의`;
   const keywordTheme = extractRegionalKeywordTheme(
     pageKeyword,
     label,
@@ -308,7 +312,7 @@ export function RegionalLandingPageView({ bundle }: Props) {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3.5 text-base font-black tracking-tight text-white shadow-lg shadow-emerald-600/35 transition hover:bg-emerald-700 active:scale-[0.99]"
               >
                 <Phone className="h-5 w-5 shrink-0" />
-                파양입소.무료분양문의
+                {fixedCtaLabel}
               </a>
             </div>
           </div>

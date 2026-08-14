@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Phone, Star } from "lucide-react";
+import { Phone, Star } from "lucide-react";
 import type { Academy } from "@/lib/types/academy";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
@@ -9,6 +9,17 @@ function galleryGridClass(count: number) {
   if (count <= 1) return "grid-cols-1";
   if (count === 2) return "grid-cols-2";
   return "grid-cols-2 sm:grid-cols-3";
+}
+
+function homepageHref(academy: Academy, servicePath: string): string {
+  const raw = academy.homepage_url?.trim();
+  if (raw && /^https?:\/\//i.test(raw)) return raw;
+  return `${servicePath}/${academy.slug}`;
+}
+
+function isExternalHomepage(academy: Academy): boolean {
+  const raw = academy.homepage_url?.trim();
+  return Boolean(raw && /^https?:\/\//i.test(raw));
 }
 
 function PremiumCard({
@@ -24,6 +35,8 @@ function PremiumCard({
   const detailHtml = academy.seo_detail_html
     ? sanitizeSeoDetailHtml(academy.seo_detail_html)
     : "";
+  const href = homepageHref(academy, servicePath);
+  const external = isExternalHomepage(academy);
 
   if (detailHtml) {
     return (
@@ -37,28 +50,33 @@ function PremiumCard({
             <h3 className="truncate text-lg font-bold text-foreground">
               {academy.name}
             </h3>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                {academy.region_big} {academy.region_small}
-              </span>
-              {academy.phone ? (
-                <a
-                  href={`tel:${academy.phone.replace(/-/g, "")}`}
-                  className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
-                >
-                  <Phone className="h-3.5 w-3.5 shrink-0" />
-                  {academy.phone}
-                </a>
-              ) : null}
-            </div>
+            {academy.phone ? (
+              <a
+                href={`tel:${academy.phone.replace(/-/g, "")}`}
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
+              >
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                {academy.phone}
+              </a>
+            ) : null}
           </div>
-          <Link
-            href={`${servicePath}/${academy.slug}`}
-            className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            업체 상세
-          </Link>
+          {external ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              홈페이지
+            </a>
+          ) : (
+            <Link
+              href={href}
+              className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              홈페이지
+            </Link>
+          )}
         </div>
         <div
           className="seo-detail-html space-y-3 px-4 py-5 text-sm leading-relaxed text-foreground sm:px-6 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1"
@@ -68,11 +86,8 @@ function PremiumCard({
     );
   }
 
-  return (
-    <Link
-      href={`${servicePath}/${academy.slug}`}
-      className="group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-4 shadow-[var(--card-shadow)] transition-all hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)] sm:p-6"
-    >
+  const cardInner = (
+    <>
       <span className="mb-4 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
         <Star className="h-3 w-3 fill-white" />
         {premiumBadge}
@@ -99,18 +114,34 @@ function PremiumCard({
         {academy.title_copy}
       </p>
 
-      <div className="mt-4 space-y-1.5 text-xs text-muted">
-        <p className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          {academy.region_big} {academy.region_small}
+      {academy.phone ? (
+        <p className="mt-4 flex items-center gap-1.5 text-xs text-muted">
+          <Phone className="h-3.5 w-3.5 shrink-0" />
+          {academy.phone}
         </p>
-        {academy.phone && (
-          <p className="flex items-center gap-1.5">
-            <Phone className="h-3.5 w-3.5 shrink-0" />
-            {academy.phone}
-          </p>
-        )}
-      </div>
+      ) : null}
+    </>
+  );
+
+  const cardClass =
+    "group relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-4 shadow-[var(--card-shadow)] transition-all hover:-translate-y-1 hover:shadow-[var(--card-shadow-hover)] sm:p-6";
+
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cardClass}
+      >
+        {cardInner}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={cardClass}>
+      {cardInner}
     </Link>
   );
 }

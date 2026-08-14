@@ -121,6 +121,7 @@ export async function prepareListingR2Insert(
     extra_info: payload.extra_info ?? null,
     extra_info_2: payload.extra_info_2 ?? null,
     seo_detail_html: payload.seo_detail_html ?? null,
+    homepage_url: payload.homepage_url ?? null,
     created_at: now,
     updated_at: now,
   };
@@ -229,6 +230,7 @@ export type ListingFieldPatch = {
   naver_place_url?: string | null;
   kakao_url?: string | null;
   seo_detail_html?: string | null;
+  homepage_url?: string | null;
 };
 
 export async function prepareListingFieldsUpdate(
@@ -322,6 +324,10 @@ export async function prepareListingFieldsUpdate(
       patch.seo_detail_html !== undefined
         ? normalizeSeoDetailInput(patch.seo_detail_html ?? "")
         : target.seo_detail_html,
+    homepage_url:
+      patch.homepage_url !== undefined
+        ? patch.homepage_url?.trim() || null
+        : target.homepage_url,
   };
 
   const mergedList = listings.map((item) =>

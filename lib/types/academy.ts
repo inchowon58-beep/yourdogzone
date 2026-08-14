@@ -26,6 +26,8 @@ export type Academy = {
    * 리스팅에서 listingAsAcademy 로 전달되거나 학원 직접 저장.
    */
   seo_detail_html?: string | null;
+  /** SEO 상단 「홈페이지」 버튼 링크 */
+  homepage_url?: string | null;
   created_at: string;
   updated_at: string;
 };

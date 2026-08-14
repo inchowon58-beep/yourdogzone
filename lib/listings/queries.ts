@@ -184,6 +184,7 @@ export function listingAsAcademy(listing: Listing): Academy {
     naver_review_count: listing.naver_review_count,
     naver_blog_reviews: listing.naver_blog_reviews,
     seo_detail_html: listing.seo_detail_html ?? null,
+    homepage_url: listing.homepage_url ?? null,
     is_premium: listing.is_premium,
     created_at: listing.created_at,
     updated_at: listing.updated_at,

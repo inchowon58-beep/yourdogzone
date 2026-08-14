@@ -119,6 +119,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       naver_place_url: body.naver_place_url,
       kakao_url: body.kakao_url,
       seo_detail_html: body.seo_detail_html,
+      homepage_url: body.homepage_url,
     });
 
     if (result.error || !result.data) {
