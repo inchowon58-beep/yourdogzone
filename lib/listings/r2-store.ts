@@ -1,5 +1,6 @@
 import { createPresignedPutObject } from "@/lib/upload/presign";
 import { normalizeSeoDetailInput } from "@/lib/seo/sanitize-seo-html";
+import { normalizeSeoHeroOverlay } from "@/lib/seo/seo-hero";
 import type { Listing, ListingCategory, ListingInsert } from "@/lib/types/listing";
 import {
   fetchListingFromR2,
@@ -122,6 +123,10 @@ export async function prepareListingR2Insert(
     extra_info_2: payload.extra_info_2 ?? null,
     seo_detail_html: payload.seo_detail_html ?? null,
     homepage_url: payload.homepage_url ?? null,
+    seo_hero_image: payload.seo_hero_image ?? null,
+    seo_hero_overlay: normalizeSeoHeroOverlay(payload.seo_hero_overlay),
+    seo_hero_line1: payload.seo_hero_line1?.trim() || null,
+    seo_hero_line2: payload.seo_hero_line2?.trim() || null,
     created_at: now,
     updated_at: now,
   };
@@ -231,6 +236,10 @@ export type ListingFieldPatch = {
   kakao_url?: string | null;
   seo_detail_html?: string | null;
   homepage_url?: string | null;
+  seo_hero_image?: string | null;
+  seo_hero_overlay?: string | null;
+  seo_hero_line1?: string | null;
+  seo_hero_line2?: string | null;
 };
 
 export async function prepareListingFieldsUpdate(
@@ -328,6 +337,22 @@ export async function prepareListingFieldsUpdate(
       patch.homepage_url !== undefined
         ? patch.homepage_url?.trim() || null
         : target.homepage_url,
+    seo_hero_image:
+      patch.seo_hero_image !== undefined
+        ? patch.seo_hero_image?.trim() || null
+        : target.seo_hero_image,
+    seo_hero_overlay:
+      patch.seo_hero_overlay !== undefined
+        ? normalizeSeoHeroOverlay(patch.seo_hero_overlay)
+        : target.seo_hero_overlay,
+    seo_hero_line1:
+      patch.seo_hero_line1 !== undefined
+        ? patch.seo_hero_line1?.trim() || null
+        : target.seo_hero_line1,
+    seo_hero_line2:
+      patch.seo_hero_line2 !== undefined
+        ? patch.seo_hero_line2?.trim() || null
+        : target.seo_hero_line2,
   };
 
   const mergedList = listings.map((item) =>

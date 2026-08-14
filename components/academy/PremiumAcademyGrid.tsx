@@ -3,7 +3,9 @@ import { Phone, Star } from "lucide-react";
 import type { Academy } from "@/lib/types/academy";
 import { getAcademyGalleryImages } from "@/lib/academy/images";
 import { AcademyThumbnail } from "@/components/academy/AcademyThumbnail";
+import { SeoHeroBanner } from "@/components/seo/SeoHeroBanner";
 import { sanitizeSeoDetailHtml } from "@/lib/seo/sanitize-seo-html";
+import { splitSeoHtmlAroundHero } from "@/lib/seo/seo-hero";
 
 function galleryGridClass(count: number) {
   if (count <= 1) return "grid-cols-1";
@@ -35,10 +37,20 @@ function PremiumCard({
   const detailHtml = academy.seo_detail_html
     ? sanitizeSeoDetailHtml(academy.seo_detail_html)
     : "";
+  const heroImage = academy.seo_hero_image?.trim() || "";
   const href = homepageHref(academy, servicePath);
   const external = isExternalHomepage(academy);
+  const hero = heroImage ? (
+    <SeoHeroBanner
+      imageUrl={heroImage}
+      overlayColor={academy.seo_hero_overlay}
+      line1={academy.seo_hero_line1}
+      line2={academy.seo_hero_line2}
+    />
+  ) : null;
+  const htmlParts = detailHtml ? splitSeoHtmlAroundHero(detailHtml) : null;
 
-  if (detailHtml) {
+  if (detailHtml || hero) {
     return (
       <article className="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white shadow-[var(--card-shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100/80 px-4 py-3.5 sm:px-6">
@@ -78,10 +90,15 @@ function PremiumCard({
             </Link>
           )}
         </div>
-        <div
-          className="seo-detail-html space-y-3 px-4 py-5 text-sm leading-relaxed text-foreground sm:px-6 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1"
-          dangerouslySetInnerHTML={{ __html: detailHtml }}
-        />
+        <div className="seo-detail-html space-y-3 px-4 py-5 text-sm leading-relaxed text-foreground sm:px-6 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_img]:my-2 [&_img]:max-h-72 [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:ml-4 [&_li]:list-disc [&_p]:text-muted [&_strong]:text-foreground [&_ul]:space-y-1">
+          {htmlParts?.before ? (
+            <div dangerouslySetInnerHTML={{ __html: htmlParts.before }} />
+          ) : null}
+          {hero}
+          {htmlParts?.after ? (
+            <div dangerouslySetInnerHTML={{ __html: htmlParts.after }} />
+          ) : null}
+        </div>
       </article>
     );
   }
@@ -159,8 +176,12 @@ export function PremiumAcademyGrid({
 }) {
   if (academies.length === 0) return null;
 
-  const rich = academies.filter((a) => a.seo_detail_html?.trim());
-  const plain = academies.filter((a) => !a.seo_detail_html?.trim());
+  const rich = academies.filter(
+    (a) => a.seo_detail_html?.trim() || a.seo_hero_image?.trim()
+  );
+  const plain = academies.filter(
+    (a) => !a.seo_detail_html?.trim() && !a.seo_hero_image?.trim()
+  );
   const useFullWidth = rich.length > 0;
 
   return (

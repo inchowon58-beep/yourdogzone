@@ -50,6 +50,14 @@ export type Listing = {
   seo_detail_html?: string | null;
   /** SEO 상단 「홈페이지」 버튼 링크 (없으면 업체 상세 페이지) */
   homepage_url?: string | null;
+  /** SEO 상세 본문 히어로 이미지 */
+  seo_hero_image?: string | null;
+  /** 히어로 오버레이 색상 (#RRGGBB) */
+  seo_hero_overlay?: string | null;
+  /** 히어로 위 큰 글씨 (1행) */
+  seo_hero_line1?: string | null;
+  /** 히어로 위 작은 글씨 (2행) */
+  seo_hero_line2?: string | null;
 };
 
 export type ListingInsert = Omit<

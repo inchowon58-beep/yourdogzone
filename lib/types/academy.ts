@@ -28,6 +28,10 @@ export type Academy = {
   seo_detail_html?: string | null;
   /** SEO 상단 「홈페이지」 버튼 링크 */
   homepage_url?: string | null;
+  seo_hero_image?: string | null;
+  seo_hero_overlay?: string | null;
+  seo_hero_line1?: string | null;
+  seo_hero_line2?: string | null;
   created_at: string;
   updated_at: string;
 };

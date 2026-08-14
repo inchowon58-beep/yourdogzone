@@ -120,6 +120,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       kakao_url: body.kakao_url,
       seo_detail_html: body.seo_detail_html,
       homepage_url: body.homepage_url,
+      seo_hero_image: body.seo_hero_image,
+      seo_hero_overlay: body.seo_hero_overlay,
+      seo_hero_line1: body.seo_hero_line1,
+      seo_hero_line2: body.seo_hero_line2,
     });
 
     if (result.error || !result.data) {

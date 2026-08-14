@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Pencil, RefreshCw, Star, Trash2, X } from "lucide-react";
+import { KeyRound, Pencil, RefreshCw, Star, Trash2, Upload, X } from "lucide-react";
 import { getListingConfig, listingBasePath } from "@/lib/listings/config";
-import { uploadToPresignedUrl } from "@/lib/upload/r2-client";
+import { uploadImageToR2, uploadToPresignedUrl } from "@/lib/upload/r2-client";
 import { adminPanelHeaders, adminPanelJsonHeaders } from "@/lib/admin/panel-headers";
 import type { ListingCategory } from "@/lib/types/listing";
+import { SeoHeroBanner } from "@/components/seo/SeoHeroBanner";
+import { DEFAULT_SEO_HERO_OVERLAY } from "@/lib/seo/seo-hero";
 
 type ListingRow = {
   slug: string;
@@ -34,6 +36,10 @@ type EditForm = {
   naver_place_url: string;
   seo_detail_html: string;
   homepage_url: string;
+  seo_hero_image: string;
+  seo_hero_overlay: string;
+  seo_hero_line1: string;
+  seo_hero_line2: string;
 };
 
 function storageKey(category: ListingCategory) {
@@ -78,6 +84,7 @@ export function ListingAdminPanel({
   >([]);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [seoHeroUploading, setSeoHeroUploading] = useState(false);
 
   const naverApi = `/api/listings/${category}/admin/naver`;
   const naverEnabled = true;
@@ -348,6 +355,10 @@ export function ListingAdminPanel({
         naver_place_url: String(L.naver_place_url ?? ""),
         seo_detail_html: String(L.seo_detail_html ?? ""),
         homepage_url: String(L.homepage_url ?? ""),
+        seo_hero_image: String(L.seo_hero_image ?? ""),
+        seo_hero_overlay: String(L.seo_hero_overlay ?? DEFAULT_SEO_HERO_OVERLAY),
+        seo_hero_line1: String(L.seo_hero_line1 ?? ""),
+        seo_hero_line2: String(L.seo_hero_line2 ?? ""),
       });
     } catch (e) {
       setError(
@@ -385,6 +396,10 @@ export function ListingAdminPanel({
           naver_place_url: editForm.naver_place_url || null,
           seo_detail_html: editForm.seo_detail_html || null,
           homepage_url: editForm.homepage_url || null,
+          seo_hero_image: editForm.seo_hero_image || null,
+          seo_hero_overlay: editForm.seo_hero_overlay || null,
+          seo_hero_line1: editForm.seo_hero_line1 || null,
+          seo_hero_line2: editForm.seo_hero_line2 || null,
         }),
       });
       const data = await res.json().catch(() => ({} as { error?: string; uploads?: unknown[] }));
@@ -412,6 +427,26 @@ export function ListingAdminPanel({
       setError("네트워크 오류가 발생했습니다.");
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleSeoHeroUpload(file: File | null) {
+    if (!file || !editForm) return;
+    setSeoHeroUploading(true);
+    setError("");
+    try {
+      const result = await uploadImageToR2(file);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setEditForm((prev) =>
+        prev ? { ...prev, seo_hero_image: result.url } : prev
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "사진 업로드에 실패했습니다.");
+    } finally {
+      setSeoHeroUploading(false);
     }
   }
 
@@ -747,6 +782,126 @@ export function ListingAdminPanel({
                   className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 />
               </label>
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3.5">
+                <p className="mb-1 text-xs font-semibold text-foreground">
+                  SEO 상세 히어로 사진
+                </p>
+                <p className="mb-3 text-[11px] leading-relaxed text-muted">
+                  「3대 안심 공약」 바로 위에 둥근 테두리로 표시됩니다. 사진 위에
+                  반투명 색을 얹고, 두 줄 문구를 올릴 수 있습니다.
+                </p>
+                <label className="mb-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-indigo-200 bg-white py-5">
+                  <Upload className="mb-1.5 h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    {seoHeroUploading ? "업로드 중…" : "클릭해서 사진 등록"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={seoHeroUploading}
+                    onChange={(e) =>
+                      void handleSeoHeroUpload(e.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-muted">
+                      첫째 줄 (큰 글씨)
+                    </span>
+                    <input
+                      value={editForm.seo_hero_line1}
+                      onChange={(e) =>
+                        setEditForm((prev) =>
+                          prev
+                            ? { ...prev, seo_hero_line1: e.target.value }
+                            : prev
+                        )
+                      }
+                      placeholder="무료분양이라더니, 결국 결제창엔 80만 원이 찍혔나요?"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-muted">
+                      둘째 줄 (작은 글씨)
+                    </span>
+                    <input
+                      value={editForm.seo_hero_line2}
+                      onChange={(e) =>
+                        setEditForm((prev) =>
+                          prev
+                            ? { ...prev, seo_hero_line2: e.target.value }
+                            : prev
+                        )
+                      }
+                      placeholder="오케이독은 100% 투명한 정찰제로 승부합니다."
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                    />
+                  </label>
+                </div>
+                <label className="mb-3 flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted">
+                    오버레이 색상
+                  </span>
+                  <input
+                    type="color"
+                    value={
+                      /^#[0-9a-fA-F]{6}$/.test(editForm.seo_hero_overlay)
+                        ? editForm.seo_hero_overlay
+                        : DEFAULT_SEO_HERO_OVERLAY
+                    }
+                    onChange={(e) =>
+                      setEditForm((prev) =>
+                        prev
+                          ? { ...prev, seo_hero_overlay: e.target.value }
+                          : prev
+                      )
+                    }
+                    className="h-9 w-12 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+                  />
+                  <div className="flex gap-1.5">
+                    {["#312e81", "#111827", "#064e3b", "#4c1d13"].map(
+                      (color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          aria-label={`오버레이 ${color}`}
+                          onClick={() =>
+                            setEditForm((prev) =>
+                              prev ? { ...prev, seo_hero_overlay: color } : prev
+                            )
+                          }
+                          className="h-7 w-7 rounded-full border border-white shadow ring-1 ring-black/10"
+                          style={{ backgroundColor: color }}
+                        />
+                      )
+                    )}
+                  </div>
+                </label>
+                {editForm.seo_hero_image ? (
+                  <div>
+                    <SeoHeroBanner
+                      imageUrl={editForm.seo_hero_image}
+                      overlayColor={editForm.seo_hero_overlay}
+                      line1={editForm.seo_hero_line1}
+                      line2={editForm.seo_hero_line2}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditForm((prev) =>
+                          prev ? { ...prev, seo_hero_image: "" } : prev
+                        )
+                      }
+                      className="mt-2 text-xs font-medium text-muted hover:text-red-600"
+                    >
+                      사진 삭제
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-muted">
                   SEO 페이지 상세설명 등록
