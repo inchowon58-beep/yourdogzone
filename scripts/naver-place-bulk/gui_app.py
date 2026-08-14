@@ -119,7 +119,7 @@ class AcademyRegisterApp(tk.Tk):
         )
         tk.Label(
             frm,
-            text="(로컬 PC에서 gemini-2.5-flash 변환 — Google AI Studio 키)",
+            text="(로컬 PC에서 gemini-3.5-flash 변환 — Google AI Studio 키)",
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),

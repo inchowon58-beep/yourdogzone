@@ -37,10 +37,10 @@ export type RegionalGeminiResult =
   | { ok: false; error: string };
 
 const REGIONAL_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
 ];
 
 type GeminiPart =
@@ -425,15 +425,16 @@ export async function generateRegionalLandingWithGemini(input: {
     const lastError = errors[errors.length - 1] ?? "";
     // 키/계정 오류는 모델 바꿔도 동일 — 즉시 종료 + Redeploy 안내
     if (
-      /UNAUTHENTICATED|service account is deleted|API key not valid|API_KEY_INVALID/i.test(
+      /UNAUTHENTICATED|PERMISSION_DENIED|has been suspended|service account is deleted|API key not valid|API_KEY_INVALID/i.test(
         lastError
       )
     ) {
+      const suspended = /has been suspended/i.test(lastError);
       return {
         ok: false,
-        error:
-          `${lastError} → Vercel GEMINI_API_KEY 저장 후 Production Redeploy가 필요합니다. ` +
-          `AI Studio에서 새로 발급한 키인지 확인하세요.`,
+        error: suspended
+          ? `${lastError} → 이 Gemini API 키는 Google에서 정지되었습니다. AI Studio에서 새 프로젝트/새 키를 발급해 Vercel GEMINI_API_KEY를 교체한 뒤 Redeploy 하세요.`
+          : `${lastError} → Vercel GEMINI_API_KEY 저장 후 Production Redeploy가 필요합니다. AI Studio에서 새로 발급한 키인지 확인하세요.`,
       };
     }
     if (lastError.includes("HTTP 404")) continue;

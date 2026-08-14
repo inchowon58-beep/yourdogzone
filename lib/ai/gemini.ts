@@ -18,7 +18,11 @@ export type GeminiRefineResult =
   | { ok: false; error: string };
 
 /** Google AI Studio — 서버 폴백용 (로컬 프로그램 권장) */
-const DEFAULT_MODELS = ["gemini-2.5-flash"];
+const DEFAULT_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-3.5-flash-lite",
+];
 
 function parseRefinedCopy(text: string, model: string): GeminiRefineResult {
   let parsed: RefinedCopy;

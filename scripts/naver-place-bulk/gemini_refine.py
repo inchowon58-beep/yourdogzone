@@ -13,7 +13,7 @@ import requests
 
 LogFn = Callable[[str], None]
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 GEMINI_MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
 GEMINI_RETRY_DELAY_SEC = float(os.getenv("GEMINI_RETRY_DELAY_SEC", "5"))
 API_URL = (
