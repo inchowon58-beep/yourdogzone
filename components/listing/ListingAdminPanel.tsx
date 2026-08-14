@@ -32,6 +32,7 @@ type EditForm = {
   gallery_images: string;
   service_info: string;
   naver_place_url: string;
+  seo_detail_html: string;
 };
 
 function storageKey(category: ListingCategory) {
@@ -334,6 +335,7 @@ export function ListingAdminPanel({
           : "",
         service_info: L.service_info ?? "",
         naver_place_url: L.naver_place_url ?? "",
+        seo_detail_html: L.seo_detail_html ?? "",
       });
     } catch {
       setError("네트워크 오류가 발생했습니다.");
@@ -367,6 +369,7 @@ export function ListingAdminPanel({
           gallery_images: gallery.length ? gallery : null,
           service_info: editForm.service_info || null,
           naver_place_url: editForm.naver_place_url || null,
+          seo_detail_html: editForm.seo_detail_html || null,
         }),
       });
       const data = await res.json();
@@ -639,7 +642,7 @@ export function ListingAdminPanel({
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <form
             onSubmit={(e) => void saveEdit(e)}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-bold">업체 정보 수정</h2>
@@ -708,6 +711,29 @@ export function ListingAdminPanel({
                   }
                   rows={4}
                   className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">
+                  SEO 페이지 상세설명 등록
+                </span>
+                <p className="mb-2 text-[11px] leading-relaxed text-muted">
+                  지역 SEO 상단 「인증 추천」 영역에 표시됩니다. HTML 또는 일반
+                  글(줄바꿈) 모두 가능합니다. 비우면 기존처럼 간단한 카드만
+                  나갑니다.
+                </p>
+                <textarea
+                  value={editForm.seo_detail_html}
+                  onChange={(e) =>
+                    setEditForm((prev) =>
+                      prev
+                        ? { ...prev, seo_detail_html: e.target.value }
+                        : prev
+                    )
+                  }
+                  rows={10}
+                  placeholder={`예시:\n<h3>왜 이곳을 추천하나요?</h3>\n<p>상담·방문 전 확인하면 좋은 포인트...</p>\n<ul><li>건강·계약 체크</li><li>전화 상담 가능</li></ul>`}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 font-mono text-xs outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 />
               </label>
               {editForm.logo_image ? (

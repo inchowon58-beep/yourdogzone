@@ -21,6 +21,11 @@ export type Academy = {
   naver_review_count?: number | null;
   naver_blog_reviews?: NaverBlogReview[] | null;
   is_premium: boolean;
+  /**
+   * 지역 SEO 랜딩 상단(인증 추천) 상세 설명 HTML.
+   * 리스팅에서 listingAsAcademy 로 전달되거나 학원 직접 저장.
+   */
+  seo_detail_html?: string | null;
   created_at: string;
   updated_at: string;
 };

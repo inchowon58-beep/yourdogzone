@@ -1,4 +1,5 @@
 import { createPresignedPutObject } from "@/lib/upload/presign";
+import { normalizeSeoDetailInput } from "@/lib/seo/sanitize-seo-html";
 import type { Listing, ListingCategory, ListingInsert } from "@/lib/types/listing";
 import {
   fetchListingFromR2,
@@ -119,6 +120,7 @@ export async function prepareListingR2Insert(
     service_info: payload.service_info ?? null,
     extra_info: payload.extra_info ?? null,
     extra_info_2: payload.extra_info_2 ?? null,
+    seo_detail_html: payload.seo_detail_html ?? null,
     created_at: now,
     updated_at: now,
   };
@@ -226,6 +228,7 @@ export type ListingFieldPatch = {
   extra_info_2?: string | null;
   naver_place_url?: string | null;
   kakao_url?: string | null;
+  seo_detail_html?: string | null;
 };
 
 export async function prepareListingFieldsUpdate(
@@ -315,6 +318,10 @@ export async function prepareListingFieldsUpdate(
       patch.kakao_url !== undefined
         ? patch.kakao_url?.trim() || null
         : target.kakao_url,
+    seo_detail_html:
+      patch.seo_detail_html !== undefined
+        ? normalizeSeoDetailInput(patch.seo_detail_html ?? "")
+        : target.seo_detail_html,
   };
 
   const mergedList = listings.map((item) =>

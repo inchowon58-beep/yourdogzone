@@ -43,6 +43,11 @@ export type Listing = {
   extra_info: string | null;
   /** 카테고리별 추가 정보 (입양절차·응급여부 등) */
   extra_info_2: string | null;
+  /**
+   * 지역 SEO 랜딩 상단(인증 추천)에 노출할 상세 설명.
+   * HTML 또는 일반 텍스트(저장 시 문단 변환).
+   */
+  seo_detail_html?: string | null;
 };
 
 export type ListingInsert = Omit<

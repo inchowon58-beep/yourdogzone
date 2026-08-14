@@ -118,6 +118,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       extra_info_2: body.extra_info_2,
       naver_place_url: body.naver_place_url,
       kakao_url: body.kakao_url,
+      seo_detail_html: body.seo_detail_html,
     });
 
     if (result.error || !result.data) {
@@ -135,13 +136,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const base = listingBasePath(category);
     revalidatePath(`${base}/${result.data.slug}`);
     revalidatePath(base);
+    revalidatePath(`${base}/region/[slug]`, "page");
     revalidatePath("/sitemap.xml");
-
-    return NextResponse.json({
-      ok: true,
-      listing: result.data,
-      storage: "r2",
-    });
   } catch {
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
