@@ -315,30 +315,42 @@ export function ListingAdminPanel({
       const res = await fetch(`${apiBase}?slug=${encodeURIComponent(row.slug)}`, {
         headers: adminPanelHeaders(secret, embedded),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: { listing?: EditForm & Record<string, unknown>; error?: string } =
+        {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        setError(
+          `상세 응답을 읽지 못했습니다. (${res.status}) ${text.slice(0, 80)}`
+        );
+        return;
+      }
       if (!res.ok || !data.listing) {
         setError(data.error ?? "상세를 불러오지 못했습니다.");
         return;
       }
       const L = data.listing;
       setEditForm({
-        slug: L.slug,
-        name: L.name ?? "",
-        address: L.address ?? "",
-        phone: L.phone ?? "",
-        title_copy: L.title_copy ?? "",
-        region_big: L.region_big ?? "",
-        region_small: L.region_small ?? "",
-        logo_image: L.logo_image ?? "",
+        slug: String(L.slug ?? ""),
+        name: String(L.name ?? ""),
+        address: String(L.address ?? ""),
+        phone: String(L.phone ?? ""),
+        title_copy: String(L.title_copy ?? ""),
+        region_big: String(L.region_big ?? ""),
+        region_small: String(L.region_small ?? ""),
+        logo_image: String(L.logo_image ?? ""),
         gallery_images: Array.isArray(L.gallery_images)
-          ? L.gallery_images.join("\n")
+          ? (L.gallery_images as string[]).join("\n")
           : "",
-        service_info: L.service_info ?? "",
-        naver_place_url: L.naver_place_url ?? "",
-        seo_detail_html: L.seo_detail_html ?? "",
+        service_info: String(L.service_info ?? ""),
+        naver_place_url: String(L.naver_place_url ?? ""),
+        seo_detail_html: String(L.seo_detail_html ?? ""),
       });
-    } catch {
-      setError("네트워크 오류가 발생했습니다.");
+    } catch (e) {
+      setError(
+        `네트워크 오류가 발생했습니다.${e instanceof Error ? ` (${e.message})` : ""}`
+      );
     }
   }
 
@@ -372,9 +384,9 @@ export function ListingAdminPanel({
           seo_detail_html: editForm.seo_detail_html || null,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as { error?: string; uploads?: unknown[] }));
       if (!res.ok) {
-        setError(data.error ?? "수정에 실패했습니다.");
+        setError(data.error ?? `수정에 실패했습니다. (${res.status})`);
         return;
       }
       if (Array.isArray(data.uploads)) {
