@@ -423,6 +423,19 @@ export async function generateRegionalLandingWithGemini(input: {
     }
 
     const lastError = errors[errors.length - 1] ?? "";
+    // 키/계정 오류는 모델 바꿔도 동일 — 즉시 종료 + Redeploy 안내
+    if (
+      /UNAUTHENTICATED|service account is deleted|API key not valid|API_KEY_INVALID/i.test(
+        lastError
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          `${lastError} → Vercel GEMINI_API_KEY 저장 후 Production Redeploy가 필요합니다. ` +
+          `AI Studio에서 새로 발급한 키인지 확인하세요.`,
+      };
+    }
     if (lastError.includes("HTTP 404")) continue;
   }
 
