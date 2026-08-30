@@ -9,7 +9,7 @@ import {
 } from "@/lib/breeds/config";
 import { getBreedBySlug, getBreedSlugs } from "@/lib/breeds/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-shared";
 
 export const revalidate = 3600;
 export const dynamicParams = true;

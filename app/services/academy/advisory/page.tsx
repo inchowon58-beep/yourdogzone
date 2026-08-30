@@ -9,7 +9,7 @@ import {
 } from "@/lib/site/advisory-banner";
 import { getAllAdvisoryMembers } from "@/lib/site/advisory-members-store";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-shared";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "공식 자문단 인증 위원장",

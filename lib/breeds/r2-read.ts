@@ -68,16 +68,8 @@ export async function fetchBreedFromR2(
 }
 
 export async function loadAllBreedsFromR2(options?: {
-  noCache?: boolean;
+  noCache?: boolean
 }): Promise<Breed[]> {
-  const indexList = await fetchBreedsIndexFromR2(options);
-  if (indexList.length === 0) return [];
-
-  const merged = await Promise.all(
-    indexList.map(async (summary) => {
-      const latest = await fetchBreedFromR2(summary.slug, options);
-      return latest ?? summary;
-    })
-  );
-  return merged;
+  // index.json 만 사용 (개별 data JSON N+1 은 Vercel 타임아웃·500 유발)
+  return fetchBreedsIndexFromR2(options);
 }

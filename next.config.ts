@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(process.cwd()),
   },
+  serverExternalPackages: ["sharp"],
   images: {
     // Vercel Image Optimization 비용 $0 — /_next/image 변환 비활성
     unoptimized: true,

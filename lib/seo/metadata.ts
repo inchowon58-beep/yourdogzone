@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildOgImageMetadata, resolveOgImageUrls } from "@/lib/seo/og-image";
-import { OG_BRAND_LINE } from "@/lib/seo/og-image-render";
+import { OG_BRAND_LINE } from "@/lib/seo/og-image-shared";
 
 type PageMetadataInput = {
   title: string;

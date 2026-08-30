@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-shared";
 
 const SAMPLE_QNA = [
   {

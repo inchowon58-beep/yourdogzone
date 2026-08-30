@@ -8,7 +8,7 @@ import { BreedSearchBar } from "@/components/breed/BreedSearchBar";
 import type { BreedGroupTab } from "@/lib/breeds/config";
 import { getBreeds } from "@/lib/breeds/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-shared";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "견종소개",

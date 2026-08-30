@@ -86,15 +86,6 @@ export async function loadLatestListingList(
   category: ListingCategory,
   options?: { noCache?: boolean }
 ): Promise<Listing[]> {
-  const indexList = await fetchListingsFromR2(category, options);
-  if (indexList.length === 0) return [];
-
-  const merged = await Promise.all(
-    indexList.map(async (summary) => {
-      const latest = await fetchListingFromR2(category, summary.slug, options);
-      return latest ?? summary;
-    })
-  );
-
-  return merged;
+  // index.json 만 사용 (개별 data JSON N+1 은 Vercel 타임아웃·500 유발)
+  return fetchListingsFromR2(category, options);
 }

@@ -16,7 +16,7 @@ import {
   buildAcademyListJsonLd,
 } from "@/lib/seo/academy-jsonld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-shared";
 import { buildAcademyGuideFaqItems } from "@/lib/academy/guide-content";
 import { buildFaqPageJsonLd } from "@/lib/seo/site-jsonld";
 import { sampleRandom } from "@/lib/utils/random-sample";

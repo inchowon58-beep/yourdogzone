@@ -18,7 +18,7 @@ import {
   getListingSlugs,
 } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-shared";
 import type { ListingCategory } from "@/lib/types/listing";
 import { AdoptionDetailPage } from "@/components/adoption/AdoptionDetailPage";
 

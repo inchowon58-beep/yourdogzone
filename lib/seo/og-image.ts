@@ -4,7 +4,7 @@ import {
   buildCategoryOgSubtitle,
   OG_IMAGE_HEIGHT,
   OG_IMAGE_WIDTH,
-} from "@/lib/seo/og-image-render";
+} from "@/lib/seo/og-image-shared";
 
 /** 사이트 기본 OG 이미지 — API 실패·크롤러 폴백 */
 export const DEFAULT_OG_IMAGE_PATH = "/og-default.png";

@@ -15,7 +15,7 @@ import {
 } from "@/lib/listings/config";
 import { getListings, listingAsAcademy } from "@/lib/listings/queries";
 import { buildPageMetadata } from "@/lib/seo/metadata";
-import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-render";
+import { buildCategoryOgSubtitle } from "@/lib/seo/og-image-shared";
 import { paginate, parsePageParam } from "@/lib/utils/paginate";
 import type { ListingCategory } from "@/lib/types/listing";
 import { AdoptionListPage } from "@/components/adoption/AdoptionListPage";

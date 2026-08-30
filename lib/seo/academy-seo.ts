@@ -3,7 +3,7 @@ import type { Academy } from "@/lib/types/academy";
 import { absoluteUrl, SITE_NAME } from "@/lib/site/config";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildAcademyOgImageUrl } from "@/lib/seo/og-image";
-import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-render";
+import { ACADEMY_OG_SUBTITLE } from "@/lib/seo/og-image-shared";
 
 export type AcademySeoContent = {
   title: string;
