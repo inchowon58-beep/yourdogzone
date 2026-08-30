@@ -15,6 +15,30 @@ const LINE2_BY_CATEGORY: Record<RegionalServiceCategory, string[]> = {
     "어느 곳을 볼까?",
     "어디서 알아볼까?",
   ],
+  cafe: [
+    "어디가 좋을까?",
+    "어디서 놀까?",
+    "어느 곳을 갈까?",
+    "어디서 알아볼까?",
+  ],
+  hotel: [
+    "어디가 좋을까?",
+    "어디서 맡길까?",
+    "어느 곳을 고를까?",
+    "어디서 알아볼까?",
+  ],
+  kindergarten: [
+    "어디가 좋을까?",
+    "어디서 보낼까?",
+    "어느 곳을 고를까?",
+    "어디서 알아볼까?",
+  ],
+  training: [
+    "어디가 좋을까?",
+    "어디서 배울까?",
+    "어느 곳을 고를까?",
+    "어디서 알아볼까?",
+  ],
   shelter: [
     "어디서 알아볼까?",
     "어느 곳을 알아볼까?",
@@ -53,6 +77,10 @@ function poolForKeyword(
   if (/학원|미용/.test(kw)) return LINE2_BY_CATEGORY.academy;
   if (/병원/.test(kw)) return LINE2_BY_CATEGORY.hospital;
   if (/브리더/.test(kw)) return LINE2_BY_CATEGORY.breeder;
+  if (/카페/.test(kw)) return LINE2_BY_CATEGORY.cafe;
+  if (/호텔|위탁/.test(kw)) return LINE2_BY_CATEGORY.hotel;
+  if (/유치원|데이케어/.test(kw)) return LINE2_BY_CATEGORY.kindergarten;
+  if (/훈련/.test(kw)) return LINE2_BY_CATEGORY.training;
   return LINE2_BY_CATEGORY[category];
 }
 

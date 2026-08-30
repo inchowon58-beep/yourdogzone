@@ -1,5 +1,9 @@
 export type ListingCategory =
   | "adoption"
+  | "cafe"
+  | "hotel"
+  | "kindergarten"
+  | "training"
   | "shelter"
   | "funeral"
   | "breeder"

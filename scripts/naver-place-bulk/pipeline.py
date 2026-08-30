@@ -40,6 +40,26 @@ LISTING_CATEGORIES: dict[str, dict[str, str]] = {
         "search_hint": "강아지분양",
         "default_suffix": "강아지분양",
     },
+    "cafe": {
+        "label": "애견카페",
+        "search_hint": "애견카페",
+        "default_suffix": "애견카페",
+    },
+    "hotel": {
+        "label": "애견호텔",
+        "search_hint": "애견호텔",
+        "default_suffix": "애견호텔",
+    },
+    "kindergarten": {
+        "label": "애견유치원",
+        "search_hint": "애견유치원",
+        "default_suffix": "애견유치원",
+    },
+    "training": {
+        "label": "애견훈련소",
+        "search_hint": "애견훈련소",
+        "default_suffix": "애견훈련소",
+    },
     "shelter": {
         "label": "강아지보호소",
         "search_hint": "강아지보호소",

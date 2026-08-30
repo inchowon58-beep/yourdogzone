@@ -42,8 +42,11 @@ export function resolveBoundSeoSectionIntro(
     case "hospital":
       return `${label}에서 동물병원 진료·예약 전 확인하면 좋은 안내입니다.`;
     case "academy":
-    default:
       return `${label} 애견미용학원 수강료·자격증·실습 환경 비교 가이드입니다.`;
+    default: {
+      const title = getRegionalServiceConfig(category).title;
+      return `${label}에서 ${title} 선택 전 확인하면 좋은 비교 가이드입니다.`;
+    }
   }
 }
 
@@ -78,8 +81,10 @@ function fallbackMetaDescription(category: RegionalServiceCategory): string {
       return `{region} ${title} 선택 전 확인 포인트 안내.`;
     case "hospital":
       return `{region} ${title} 진료·예약 안내.`;
-    default:
+    case "academy":
       return `{region} ${title} 수강료·국비지원·실습 환경. 인증 추천 학원 정보 포함.`;
+    default:
+      return `{region} ${title} 비교·이용 전 확인 포인트 안내.`;
   }
 }
 
@@ -148,6 +153,10 @@ function fallbackFaqItems(category: RegionalServiceCategory) {
       ];
     case "breeder":
     case "hospital":
+    case "cafe":
+    case "hotel":
+    case "kindergarten":
+    case "training":
       return [
         {
           question: `{region} ${title}은 어떻게 고르나요?`,

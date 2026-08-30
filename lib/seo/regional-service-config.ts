@@ -65,6 +65,10 @@ const ACADEMY_CONFIG: RegionalServiceConfig = {
 
 const LISTING_SLUG_SUFFIX: Record<ListingCategory, string> = {
   adoption: "dog-adoption",
+  cafe: "dog-cafe",
+  hotel: "dog-hotel",
+  kindergarten: "dog-kindergarten",
+  training: "dog-training",
   shelter: "dog-shelter",
   funeral: "dog-funeral",
   breeder: "dog-breeder",
@@ -74,6 +78,14 @@ const LISTING_SLUG_SUFFIX: Record<ListingCategory, string> = {
 const LISTING_KEYWORD_NOISE: Record<ListingCategory, RegExp> = {
   adoption:
     /애견샵|애견\s*샵|강아지분양|강아지\s*분양|견종\s*분양|강아지입양|입양|분양|반려견|강아지|업체/g,
+  cafe:
+    /애견카페|강아지카페|반려견\s*카페|펫카페|카페|반려견|강아지/g,
+  hotel:
+    /애견호텔|강아지호텔|반려견\s*호텔|애견위탁|펫호텔|호텔|위탁|반려견|강아지/g,
+  kindergarten:
+    /애견유치원|강아지유치원|반려견\s*유치원|애견데이케어|데이케어|유치원|반려견|강아지/g,
+  training:
+    /애견훈련소|강아지훈련|반려견\s*훈련|애견훈련사|훈련소|훈련|반려견|강아지/g,
   shelter:
     /강아지보호소|강아지\s*보호소|강아지파양|유기견보호소|유기동물|입양센터|보호센터|유기견|구조견|보호소|파양|반려견|강아지/g,
   funeral:
@@ -112,6 +124,10 @@ export const REGIONAL_SERVICE_CONFIG: Record<
 > = {
   academy: ACADEMY_CONFIG,
   adoption: buildListingConfig("adoption"),
+  cafe: buildListingConfig("cafe"),
+  hotel: buildListingConfig("hotel"),
+  kindergarten: buildListingConfig("kindergarten"),
+  training: buildListingConfig("training"),
   shelter: buildListingConfig("shelter"),
   funeral: buildListingConfig("funeral"),
   breeder: buildListingConfig("breeder"),

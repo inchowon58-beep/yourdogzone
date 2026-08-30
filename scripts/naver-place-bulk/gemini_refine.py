@@ -43,6 +43,50 @@ CATEGORY_CONFIG: dict[str, dict[str, Any]] = {
         ],
         "required": ("title_copy", "service_info"),
     },
+    "cafe": {
+        "label": "애견카페",
+        "singular": "애견카페",
+        "fields": [
+            ("title_copy", "한 줄 카피 (40자 내외)"),
+            ("service_info", "카페 소개·이용 안내 (3~5문장)"),
+            ("extra_info", "운영 시간·요금 (없으면 null)"),
+            ("extra_info_2", "예약·주의사항 (없으면 null)"),
+        ],
+        "required": ("title_copy", "service_info"),
+    },
+    "hotel": {
+        "label": "애견호텔",
+        "singular": "애견호텔",
+        "fields": [
+            ("title_copy", "한 줄 카피 (40자 내외)"),
+            ("service_info", "호텔 소개·돌봄 환경 (3~5문장)"),
+            ("extra_info", "요금·패키지 (없으면 null)"),
+            ("extra_info_2", "예약·입소 조건 (없으면 null)"),
+        ],
+        "required": ("title_copy", "service_info"),
+    },
+    "kindergarten": {
+        "label": "애견유치원",
+        "singular": "애견유치원",
+        "fields": [
+            ("title_copy", "한 줄 카피 (40자 내외)"),
+            ("service_info", "유치원 소개·프로그램 (3~5문장)"),
+            ("extra_info", "수강료·운영 시간 (없으면 null)"),
+            ("extra_info_2", "등원 조건·주의사항 (없으면 null)"),
+        ],
+        "required": ("title_copy", "service_info"),
+    },
+    "training": {
+        "label": "애견훈련소",
+        "singular": "애견훈련소",
+        "fields": [
+            ("title_copy", "한 줄 카피 (40자 내외)"),
+            ("service_info", "훈련 프로그램 안내 (3~5문장)"),
+            ("extra_info", "수강료·기간 (없으면 null)"),
+            ("extra_info_2", "상담·예약 안내 (없으면 null)"),
+        ],
+        "required": ("title_copy", "service_info"),
+    },
     "shelter": {
         "label": "강아지보호소",
         "singular": "보호소",

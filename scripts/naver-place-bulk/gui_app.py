@@ -86,7 +86,7 @@ class AcademyRegisterApp(tk.Tk):
         self.category_combo.bind("<<ComboboxSelected>>", self._on_category_change)
         tk.Label(
             frm,
-            text="선택한 카테고리로 사이트에 저장됩니다 (academy / adoption / shelter / funeral / breeder / hospital)",
+            text="선택한 카테고리로 사이트에 저장됩니다 (academy / adoption / cafe / hotel / kindergarten / training / shelter / funeral / breeder / hospital)",
             bg="#fff",
             fg="#888",
             font=("Segoe UI", 8),

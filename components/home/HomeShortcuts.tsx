@@ -7,12 +7,16 @@ import {
   Building2,
   Cake,
   Calculator,
+  Coffee,
+  GraduationCap,
   Heart,
   HelpCircle,
   Home,
   Hospital,
+  Hotel,
   PawPrint,
   Scissors,
+  School,
   Sparkles,
   Stethoscope,
   type LucideIcon,
@@ -88,6 +92,38 @@ export const SERVICE_SHORTCUTS: HomeShortcut[] = [
     icon: Heart,
     tile: "bg-rose-100",
     iconClass: "text-rose-600",
+  },
+  {
+    id: "cafe",
+    label: "애견카페",
+    href: "/services/cafe",
+    icon: Coffee,
+    tile: "bg-yellow-100",
+    iconClass: "text-yellow-700",
+  },
+  {
+    id: "hotel",
+    label: "애견호텔",
+    href: "/services/hotel",
+    icon: Hotel,
+    tile: "bg-blue-100",
+    iconClass: "text-blue-700",
+  },
+  {
+    id: "kindergarten",
+    label: "애견유치원",
+    href: "/services/kindergarten",
+    icon: School,
+    tile: "bg-lime-100",
+    iconClass: "text-lime-700",
+  },
+  {
+    id: "training",
+    label: "애견훈련소",
+    href: "/services/training",
+    icon: GraduationCap,
+    tile: "bg-orange-100",
+    iconClass: "text-orange-700",
   },
   {
     id: "shelter",
@@ -175,7 +211,7 @@ function ShortcutMobileRow({ items }: { items: HomeShortcut[] }) {
   );
 }
 
-/** PC: 기존처럼 한 줄에 전부 (위 5 · 아래 8) */
+/** PC: 한 줄에 넣고, 넘치면 가운데 정렬로 줄바꿈 */
 function ShortcutDesktopRow({
   items,
   itemWidth,
@@ -184,7 +220,7 @@ function ShortcutDesktopRow({
   itemWidth: string;
 }) {
   return (
-    <ul className="flex flex-nowrap items-start justify-center gap-x-4 md:gap-x-5">
+    <ul className="flex flex-wrap items-start justify-center gap-x-4 gap-y-6 md:gap-x-5">
       {items.map((item) => (
         <li key={item.id} className={`shrink-0 ${itemWidth}`}>
           <ShortcutItem item={item} />
@@ -205,7 +241,7 @@ export function HomeShortcuts() {
       {/* 모바일: 상·하 구분 없이 연속 4열 */}
       <ShortcutMobileRow items={mobileItems} />
 
-      {/* PC: 기존처럼 위 5 · 아래 8 */}
+      {/* PC: 위 케어 도구 · 아래 서비스(여러 줄) */}
       <div className="hidden flex-col gap-7 sm:flex">
         <ShortcutDesktopRow
           items={CARE_SHORTCUTS}
@@ -213,7 +249,7 @@ export function HomeShortcuts() {
         />
         <ShortcutDesktopRow
           items={SERVICE_SHORTCUTS}
-          itemWidth="w-[5rem]"
+          itemWidth="w-[5.25rem]"
         />
       </div>
     </nav>

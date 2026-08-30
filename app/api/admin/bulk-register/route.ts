@@ -55,6 +55,10 @@ export async function GET() {
     categories: {
       academy: "애견미용학원 (기본, category 생략 시)",
       adoption: "강아지분양",
+      cafe: "애견카페",
+      hotel: "애견호텔",
+      kindergarten: "애견유치원",
+      training: "애견훈련소",
       shelter: "강아지보호소",
       funeral: "강아지장례식장",
       breeder: "브리더정보",

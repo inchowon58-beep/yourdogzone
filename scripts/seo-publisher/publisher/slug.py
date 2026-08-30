@@ -93,6 +93,10 @@ ROMANIZE: dict[str, str] = {
 SLUG_SUFFIX: dict[str, str] = {
     "academy": "dog-grooming-academy",
     "adoption": "dog-adoption",
+    "cafe": "dog-cafe",
+    "hotel": "dog-hotel",
+    "kindergarten": "dog-kindergarten",
+    "training": "dog-training",
     "shelter": "dog-shelter",
     "funeral": "pet-funeral",
     "breeder": "dog-breeder",
@@ -106,6 +110,22 @@ KEYWORD_NOISE: dict[str, re.Pattern[str]] = {
     ),
     "adoption": re.compile(
         r"애견샵|애견\s*샵|강아지분양|강아지\s*분양|견종\s*분양|강아지입양|입양|분양|반려견|강아지|업체",
+        re.I,
+    ),
+    "cafe": re.compile(
+        r"애견카페|강아지카페|반려견\s*카페|펫카페|카페|반려견|강아지",
+        re.I,
+    ),
+    "hotel": re.compile(
+        r"애견호텔|강아지호텔|반려견\s*호텔|애견위탁|펫호텔|호텔|위탁|반려견|강아지",
+        re.I,
+    ),
+    "kindergarten": re.compile(
+        r"애견유치원|강아지유치원|반려견\s*유치원|애견데이케어|데이케어|유치원|반려견|강아지",
+        re.I,
+    ),
+    "training": re.compile(
+        r"애견훈련소|강아지훈련|반려견\s*훈련|애견훈련사|훈련소|훈련|반려견|강아지",
         re.I,
     ),
     "shelter": re.compile(
@@ -144,6 +164,30 @@ CATEGORY_META: dict[str, dict[str, str]] = {
         "singular": "분양업체",
         "default_suffix": "강아지분양",
         "base_path": "/services/adoption",
+    },
+    "cafe": {
+        "title": "애견카페",
+        "singular": "애견카페",
+        "default_suffix": "애견카페",
+        "base_path": "/services/cafe",
+    },
+    "hotel": {
+        "title": "애견호텔",
+        "singular": "애견호텔",
+        "default_suffix": "애견호텔",
+        "base_path": "/services/hotel",
+    },
+    "kindergarten": {
+        "title": "애견유치원",
+        "singular": "애견유치원",
+        "default_suffix": "애견유치원",
+        "base_path": "/services/kindergarten",
+    },
+    "training": {
+        "title": "애견훈련소",
+        "singular": "애견훈련소",
+        "default_suffix": "애견훈련소",
+        "base_path": "/services/training",
     },
     "funeral": {
         "title": "강아지장례식장",
