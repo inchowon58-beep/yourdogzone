@@ -111,10 +111,11 @@ export async function POST(request: Request) {
     const categoryRaw =
       typeof body.category === "string" ? body.category : "academy";
     const deferIndexNow = body.defer_indexnow !== false;
-    const listingOptions = { deferIndexNow };
+    const skipImageMirror = body.skip_image_mirror === true;
+    const listingOptions = { deferIndexNow, skipImageMirror };
     const academyOptions = {
       refineWithGemini: body.refine_with_gemini !== false,
-      skipImageMirror: body.skip_image_mirror === true,
+      skipImageMirror,
       deferIndexNow,
     };
 

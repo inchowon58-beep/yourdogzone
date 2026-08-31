@@ -40,12 +40,15 @@ export type BulkListingItemResult = {
   url?: string;
   storage?: "r2";
   imageCount?: number;
+  imageErrors?: string[];
   indexnow?: { ok: boolean; status: number; message: string };
   error?: string;
 };
 
 export type BulkListingRegisterOptions = {
   deferIndexNow?: boolean;
+  /** true면 image_urls 미러링 생략 (크롤러가 이미 R2 URL을 logo/gallery로 보낼 때) */
+  skipImageMirror?: boolean;
 };
 
 function splitImages(urls: string[]): {
@@ -103,23 +106,24 @@ export async function bulkRegisterListing(
   const extra_info = input.extra_info?.trim() || null;
   const extra_info_2 = input.extra_info_2?.trim() || null;
 
-  let logo_image = input.logo_image ?? null;
-  let gallery_images = input.gallery_images ?? null;
-  let imageCount = 0;
+  const r2Images: string[] = [
+    ...(input.logo_image?.startsWith("http") ? [input.logo_image] : []),
+    ...(input.gallery_images ?? []).filter((u) => u.startsWith("http")),
+  ];
+  let imageErrors: string[] = [];
 
-  const rawUrls = [
-    ...(input.image_urls ?? []),
-    ...(logo_image ? [logo_image] : []),
-    ...(gallery_images ?? []),
-  ].filter(Boolean) as string[];
-
-  if (rawUrls.length > 0) {
-    const mirrored = await mirrorExternalImagesToR2(rawUrls, 3);
-    const split = splitImages(mirrored.urls);
-    logo_image = split.logo_image;
-    gallery_images = split.gallery_images;
-    imageCount = mirrored.urls.length;
+  if (!options.skipImageMirror && input.image_urls?.length) {
+    const mirrored = await mirrorExternalImagesToR2(input.image_urls, 3);
+    r2Images.push(...mirrored.urls);
+    imageErrors = mirrored.errors;
   }
+
+  const uniqueImages = [...new Set(r2Images.filter((u) => u.startsWith("http")))].slice(
+    0,
+    3
+  );
+  const { logo_image, gallery_images } = splitImages(uniqueImages);
+  const imageCount = uniqueImages.length;
 
   const slug = generateListingSlug(category);
 
@@ -151,11 +155,23 @@ export async function bulkRegisterListing(
       ok: false,
       name,
       error: insertResult.error ?? "등록에 실패했습니다.",
+      imageErrors: imageErrors.length ? imageErrors : undefined,
     };
   }
 
-  if (insertResult.uploads?.length) {
-    await completeR2Uploads(insertResult.uploads);
+  try {
+    if (insertResult.uploads?.length) {
+      await completeR2Uploads(insertResult.uploads);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "R2 저장 실패";
+    return {
+      ok: false,
+      name,
+      slug: insertResult.data.slug,
+      error: message,
+      imageErrors: imageErrors.length ? imageErrors : undefined,
+    };
   }
 
   const url = listingPageUrl(category, insertResult.data.slug);
@@ -170,6 +186,7 @@ export async function bulkRegisterListing(
     url,
     storage: "r2",
     imageCount,
+    imageErrors: imageErrors.length ? imageErrors : undefined,
     indexnow,
   };
 }

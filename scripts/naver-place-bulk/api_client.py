@@ -142,7 +142,13 @@ def register_batch(
         },
         timeout=180,
     )
-    res.raise_for_status()
+    if not res.ok:
+        detail = res.text[:400].strip()
+        raise requests.HTTPError(
+            f"{res.status_code} {res.reason} for url: {res.url}"
+            + (f" — {detail}" if detail else ""),
+            response=res,
+        )
     return res.json()
 
 
