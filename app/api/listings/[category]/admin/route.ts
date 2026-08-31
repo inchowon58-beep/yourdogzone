@@ -9,7 +9,7 @@ import {
   setListingPremium,
   updateListingFields,
 } from "@/lib/listings/queries";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import { invalidateListingRegionalIndexMemoryCache } from "@/lib/academy/regional-entity-index";
 import type { ListingCategory } from "@/lib/types/listing";
 

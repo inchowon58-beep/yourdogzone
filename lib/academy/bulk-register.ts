@@ -7,9 +7,8 @@ import { generateAcademySlug } from "@/lib/academy/slug";
 import { academyPageUrl, submitToIndexNow } from "@/lib/indexnow/submit";
 import {
   completeR2Uploads,
-  mirrorExternalImagesToR2,
   resolveExternalImageUrl,
-} from "@/lib/upload/r2-mirror";
+} from "@/lib/upload/r2-mirror-core";
 import type { NaverBlogReview } from "@/lib/types/listing";
 
 export type BulkAcademyInput = {
@@ -126,6 +125,7 @@ export async function bulkRegisterAcademy(
   let imageErrors: string[] = [];
 
   if (!options.skipImageMirror && input.image_urls?.length) {
+    const { mirrorExternalImagesToR2 } = await import("@/lib/upload/r2-mirror");
     const mirrored = await mirrorExternalImagesToR2(input.image_urls, 3);
     r2Images.push(...mirrored.urls);
     imageErrors = mirrored.errors;

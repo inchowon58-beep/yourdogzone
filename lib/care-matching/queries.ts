@@ -23,7 +23,7 @@ import {
 import { notifyAllApprovedPartners } from "@/lib/care-matching/notification-queries";
 import { createPresignedPutObject } from "@/lib/upload/presign";
 import { getPublicBaseUrl } from "@/lib/upload/r2-server";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import type {
   CareApplicantBidView,
   CareDeliveryStatus,

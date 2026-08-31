@@ -4,7 +4,7 @@ import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { deleteBreeds, getBreeds } from "@/lib/breeds/queries";
 import { loadAllBreedsFromR2 } from "@/lib/breeds/r2-read";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 
 export const runtime = "nodejs";
 

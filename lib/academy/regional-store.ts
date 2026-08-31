@@ -4,7 +4,7 @@ import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { createPresignedPutObject } from "@/lib/upload/presign";
 import { getPublicBaseUrl } from "@/lib/upload/r2-server";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import { getR2ObjectText } from "@/lib/upload/r2-get";
 import {
   readTtlMemoryCache,

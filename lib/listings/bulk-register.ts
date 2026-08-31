@@ -4,10 +4,7 @@ import { insertListing } from "@/lib/listings/queries";
 import { loadLatestListingList } from "@/lib/listings/r2-read";
 import { generateListingSlug, listingPageUrl } from "@/lib/listings/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
-import {
-  completeR2Uploads,
-  mirrorExternalImagesToR2,
-} from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import type { ListingCategory, NaverBlogReview } from "@/lib/types/listing";
 
 export type BulkListingInput = {
@@ -113,6 +110,7 @@ export async function bulkRegisterListing(
   let imageErrors: string[] = [];
 
   if (!options.skipImageMirror && input.image_urls?.length) {
+    const { mirrorExternalImagesToR2 } = await import("@/lib/upload/r2-mirror");
     const mirrored = await mirrorExternalImagesToR2(input.image_urls, 3);
     r2Images.push(...mirrored.urls);
     imageErrors = mirrored.errors;

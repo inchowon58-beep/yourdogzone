@@ -1,15 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  bulkRegisterAcademies,
-  bulkRegisterAcademy,
-  type BulkAcademyInput,
-} from "@/lib/academy/bulk-register";
 import { isAdminConfigured, verifyAdminSecret } from "@/lib/academy/admin-auth";
-import {
-  bulkRegisterListing,
-  bulkRegisterListings,
-  type BulkListingInput,
-} from "@/lib/listings/bulk-register";
 import { isListingCategory } from "@/lib/listings/config";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { absoluteUrl } from "@/lib/site/config";
@@ -24,25 +14,15 @@ function unauthorized() {
   return NextResponse.json({ error: "관리자 인증이 필요합니다." }, { status: 401 });
 }
 
-function normalizeItems(body: Record<string, unknown>): BulkAcademyInput[] {
+function normalizeItems(body: Record<string, unknown>) {
   if (Array.isArray(body.items)) {
-    return body.items as BulkAcademyInput[];
+    return body.items;
   }
   if (Array.isArray(body.academies)) {
-    return body.academies as BulkAcademyInput[];
+    return body.academies;
   }
   if (body.name && body.address) {
-    return [body as unknown as BulkAcademyInput];
-  }
-  return [];
-}
-
-function normalizeListingItems(body: Record<string, unknown>): BulkListingInput[] {
-  if (Array.isArray(body.items)) {
-    return body.items as BulkListingInput[];
-  }
-  if (body.name && body.address) {
-    return [body as unknown as BulkListingInput];
+    return [body];
   }
   return [];
 }
@@ -121,7 +101,7 @@ export async function POST(request: Request) {
 
     if (isListingCategory(categoryRaw)) {
       const category = categoryRaw as ListingCategory;
-      const items = normalizeListingItems(body);
+      const items = normalizeItems(body);
 
       if (items.length === 0) {
         return NextResponse.json(
@@ -136,15 +116,29 @@ export async function POST(request: Request) {
         );
       }
 
+      const { bulkRegisterListing, bulkRegisterListings } = await import(
+        "@/lib/listings/bulk-register"
+      );
+
       if (items.length === 1) {
-        const result = await bulkRegisterListing(category, items[0], listingOptions);
-        return NextResponse.json({ category, defer_indexnow: deferIndexNow, ...result }, { status: result.ok ? 200 : 422 });
+        const result = await bulkRegisterListing(
+          category,
+          items[0],
+          listingOptions
+        );
+        return NextResponse.json(
+          { category, defer_indexnow: deferIndexNow, ...result },
+          { status: result.ok ? 200 : 422 }
+        );
       }
 
       const batch = await bulkRegisterListings(category, items, listingOptions);
-      return NextResponse.json({ category, defer_indexnow: deferIndexNow, ...batch }, {
-        status: batch.failed === batch.total ? 422 : 200,
-      });
+      return NextResponse.json(
+        { category, defer_indexnow: deferIndexNow, ...batch },
+        {
+          status: batch.failed === batch.total ? 422 : 200,
+        }
+      );
     }
 
     const items = normalizeItems(body);
@@ -163,19 +157,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const options = academyOptions;
+    const { bulkRegisterAcademy, bulkRegisterAcademies } = await import(
+      "@/lib/academy/bulk-register"
+    );
 
     if (items.length === 1) {
-      const result = await bulkRegisterAcademy(items[0], options);
-      return NextResponse.json({ defer_indexnow: deferIndexNow, ...result }, { status: result.ok ? 200 : 422 });
+      const result = await bulkRegisterAcademy(items[0], academyOptions);
+      return NextResponse.json(
+        { defer_indexnow: deferIndexNow, ...result },
+        { status: result.ok ? 200 : 422 }
+      );
     }
 
-    const batch = await bulkRegisterAcademies(items, options);
-    return NextResponse.json({ defer_indexnow: deferIndexNow, ...batch }, {
-      status: batch.failed === batch.total ? 422 : 200,
-    });
+    const batch = await bulkRegisterAcademies(items, academyOptions);
+    return NextResponse.json(
+      { defer_indexnow: deferIndexNow, ...batch },
+      {
+        status: batch.failed === batch.total ? 422 : 200,
+      }
+    );
   } catch (error) {
     console.error("bulk-register 오류:", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "서버 오류가 발생했습니다.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

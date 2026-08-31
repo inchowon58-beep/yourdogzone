@@ -4,7 +4,7 @@ import { isListingCategory, getListingConfig, listingBasePath } from "@/lib/list
 import { insertListing } from "@/lib/listings/queries";
 import { generateListingSlug, listingPageUrl } from "@/lib/listings/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import type { ListingCategory } from "@/lib/types/listing";
 
 type RouteContext = { params: Promise<{ category: string }> };

@@ -1,7 +1,8 @@
 import { buildR2Key, MAX_IMAGE_SIZE_BYTES, resolveImageContentType } from "@/lib/upload/constants";
 import { createPresignedPutObject } from "@/lib/upload/presign";
-import { resizeAcademyImage } from "@/lib/upload/resize-image";
-import type { R2UploadTask } from "@/lib/academy/r2-store";
+import { resolveExternalImageUrl } from "@/lib/upload/r2-mirror-core";
+
+export { completeR2Uploads, resolveExternalImageUrl } from "@/lib/upload/r2-mirror-core";
 
 const DOWNLOAD_HEADERS = {
   "User-Agent":
@@ -9,23 +10,6 @@ const DOWNLOAD_HEADERS = {
   Accept: "image/*,*/*;q=0.8",
   Referer: "https://map.naver.com/",
 };
-
-/** search.pstatic.net 프록시 URL → ldb-phinf 등 실제 이미지 URL */
-export function resolveExternalImageUrl(imageUrl: string): string {
-  try {
-    const u = new URL(imageUrl);
-    const src = u.searchParams.get("src");
-    if (
-      src &&
-      (u.hostname.includes("pstatic.net") || u.hostname.includes("naver"))
-    ) {
-      return decodeURIComponent(src);
-    }
-  } catch {
-    // ignore
-  }
-  return imageUrl;
-}
 
 function guessFilenameFromUrl(imageUrl: string): string {
   try {
@@ -37,25 +21,10 @@ function guessFilenameFromUrl(imageUrl: string): string {
   }
 }
 
-export async function completeR2Uploads(uploads: R2UploadTask[]): Promise<void> {
-  for (const upload of uploads) {
-    const res = await fetch(upload.uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": upload.contentType },
-      body: upload.body,
-      duplex: "half",
-    } as RequestInit & { duplex?: "half" });
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(`R2 JSON 업로드 실패 (${res.status}): ${detail.slice(0, 120)}`);
-    }
-  }
-}
-
 export async function mirrorExternalImageToR2(
   imageUrl: string
 ): Promise<{ publicUrl: string } | { error: string }> {
+  const { resizeAcademyImage } = await import("@/lib/upload/resize-image");
   const candidates = [
     ...new Set([resolveExternalImageUrl(imageUrl), imageUrl]),
   ];

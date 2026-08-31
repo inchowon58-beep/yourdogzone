@@ -4,7 +4,7 @@ import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { getBreedBySlug, upsertBreed } from "@/lib/breeds/queries";
 import { loadAllBreedsFromR2, normalizeBreedSlug } from "@/lib/breeds/r2-read";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import type { BreedInsert, BreedKind, BreedSizeGroup } from "@/lib/types/breed";
 import { BREED_SIZE_LABELS } from "@/lib/breeds/config";
 

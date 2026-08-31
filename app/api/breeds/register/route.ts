@@ -4,7 +4,7 @@ import { upsertBreed } from "@/lib/breeds/queries";
 import { breedDetailPath, BREED_SIZE_LABELS } from "@/lib/breeds/config";
 import { breedPageUrl } from "@/lib/breeds/slug";
 import { submitToIndexNow } from "@/lib/indexnow/submit";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 import type { BreedInsert, BreedKind, BreedSizeGroup } from "@/lib/types/breed";
 
 export async function POST(request: NextRequest) {

@@ -4,7 +4,7 @@ import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { invalidateAcademyIndexMemoryCache } from "@/lib/academy/academy-index";
 import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
 import { getAllRegionalLandings } from "@/lib/academy/regional-store";
-import { completeR2Uploads } from "@/lib/upload/r2-mirror";
+import { completeR2Uploads } from "@/lib/upload/r2-mirror-core";
 
 async function revalidateRegionalLandingPages() {
   const pages = await getAllRegionalLandings({ includeUnpublished: true });
