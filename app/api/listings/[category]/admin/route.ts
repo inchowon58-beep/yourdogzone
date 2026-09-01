@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { isListingCategory, listingBasePath } from "@/lib/listings/config";
 import {
@@ -93,7 +94,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       const base = listingBasePath(category);
       revalidatePath(`${base}/${result.data.slug}`);
       revalidatePath(base);
-      revalidatePath("/sitemap.xml");
+      revalidateSitemap();
 
       return NextResponse.json({
         ok: true,
@@ -143,7 +144,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     revalidatePath(base);
     revalidatePath(`${base}/region`, "layout");
     revalidatePath(`${base}/region/[slug]`, "page");
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     return NextResponse.json({
       ok: true,
@@ -185,7 +186,7 @@ export async function DELETE(request: Request, context: RouteContext) {
       revalidatePath(`${base}/${s}`);
     }
     revalidatePath(base);
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     return NextResponse.json({
       ok: true,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import {
   isListingCategory,
@@ -89,7 +90,7 @@ export async function POST(request: Request, { params }: RouteProps) {
     const base = listingBasePath(category);
     revalidatePath(base);
     revalidatePath(`${base}/${result.slug}`);
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     const pageUrl = result.url ?? absoluteUrl(`${base}/${result.slug}`);
     const indexnow = await submitToIndexNow([pageUrl]);

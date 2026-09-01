@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { listingBasePath } from "@/lib/listings/config";
 import {
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     const base = listingBasePath("adoption");
     revalidatePath(base);
     revalidatePath(`${base}/${result.slug}`);
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     const pageUrl = result.url ?? absoluteUrl(`${base}/${result.slug}`);
     const indexnow = await submitToIndexNow([pageUrl]);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { invalidateAcademyIndexMemoryCache } from "@/lib/academy/academy-index";
 import { deleteAcademies, getAcademies, setAcademyPremium } from "@/lib/academy/queries";
@@ -119,7 +120,7 @@ export async function DELETE(request: Request) {
       revalidatePath(`/services/academy/${slug}`);
     }
     revalidatePath("/services/academy");
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     return NextResponse.json({
       ok: true,

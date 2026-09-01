@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import {
   importNaverPlaceAsAcademy,
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
 
     revalidatePath("/services/academy");
     revalidatePath(`/services/academy/${result.slug}`);
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     const pageUrl =
       result.url ?? absoluteUrl(`/services/academy/${result.slug}`);

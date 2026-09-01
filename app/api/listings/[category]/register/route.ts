@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { isListingCategory, getListingConfig, listingBasePath } from "@/lib/listings/config";
 import { insertListing } from "@/lib/listings/queries";
 import { generateListingSlug, listingPageUrl } from "@/lib/listings/slug";
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const base = listingBasePath(category);
     revalidatePath(`${base}/${data.slug}`);
     revalidatePath(base);
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     const url = listingPageUrl(category, data.slug);
     const indexResult = await submitToIndexNow([url]);

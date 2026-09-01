@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { getBreedBySlug, upsertBreed } from "@/lib/breeds/queries";
@@ -122,7 +123,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     revalidatePath(breedDetailPath(slug));
     revalidatePath("/dognose");
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     return NextResponse.json({
       ok: true,

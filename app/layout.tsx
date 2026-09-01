@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
+  absoluteUrl,
   getSiteUrl,
   SITE_DESCRIPTION,
   SITE_NAME,
@@ -79,6 +80,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full w-full overflow-x-hidden">
+      <head>
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title={`${SITE_NAME} RSS`}
+          href={absoluteUrl("/feed.xml")}
+        />
+      </head>
       <body className="flex min-h-full w-full flex-col overflow-x-hidden antialiased">
         <JsonLd data={[buildWebSiteJsonLd(), buildOrganizationJsonLd()]} />
         <Header />

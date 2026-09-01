@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { upsertBreed } from "@/lib/breeds/queries";
 import { breedDetailPath, BREED_SIZE_LABELS } from "@/lib/breeds/config";
 import { breedPageUrl } from "@/lib/breeds/slug";
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     revalidatePath(breedDetailPath(result.data.slug));
     revalidatePath("/dognose");
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     const url = breedPageUrl(result.data.slug);
     const indexResult = await submitToIndexNow([url]);

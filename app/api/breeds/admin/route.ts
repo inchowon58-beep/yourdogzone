@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import { enforceAdminAccess } from "@/lib/academy/admin-auth";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { deleteBreeds, getBreeds } from "@/lib/breeds/queries";
@@ -57,7 +58,7 @@ export async function DELETE(request: Request) {
       revalidatePath(breedDetailPath(slug));
     }
     revalidatePath("/dognose");
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
 
     return NextResponse.json({
       ok: true,

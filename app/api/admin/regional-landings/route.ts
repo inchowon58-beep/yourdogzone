@@ -21,6 +21,7 @@ import { getNearbyDistricts } from "@/lib/constants/region-nearby-districts";
 import { getNearbyStations } from "@/lib/constants/region-nearby-stations";
 import type { RegionalLandingInsert } from "@/lib/types/regional-landing";
 import { revalidatePath } from "next/cache";
+import { revalidateSitemap } from "@/lib/seo/sitemap-cache";
 import {
   getRegionalServiceConfig,
   isRegionalServiceCategory,
@@ -47,7 +48,7 @@ async function requireMainAdmin(request?: Request): Promise<NextResponse | null>
 function revalidateRegional(category: RegionalServiceCategory, slug?: string) {
   const base = getRegionalServiceConfig(category).basePath;
   revalidatePath(`${base}/region/[slug]`, "page");
-  revalidatePath("/sitemap.xml");
+  revalidateSitemap();
   if (slug) {
     revalidatePath(regionalLandingPathForCategory(category, slug));
   }
@@ -352,7 +353,7 @@ export async function DELETE(request: Request) {
   if (category) {
     revalidateRegional(category, slug);
   } else {
-    revalidatePath("/sitemap.xml");
+    revalidateSitemap();
   }
   return NextResponse.json({ ok: true });
 }
