@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { DreamDetailView } from "@/components/dreams/DreamDetailView";
 import {
   animalLabel,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/dreams/catalog";
 import { getOrGenerateDreamLongform } from "@/lib/dreams/longform-store";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { buildArticleJsonLd } from "@/lib/seo/site-jsonld";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -32,6 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     path: `/dreams/${article.slug}`,
     ogSubtitle: `${animalLabel(article.animal)} 꿈 해몽`,
     keywords: article.keywords,
+    type: "article",
   });
 }
 
@@ -44,6 +47,14 @@ export default async function DreamDetailPage({ params }: Props) {
 
   return (
     <main className="w-full min-w-0 px-4 py-8 sm:px-6 sm:py-12">
+      <JsonLd
+        data={buildArticleJsonLd({
+          title: article.title,
+          description: article.description,
+          path: `/dreams/${article.slug}`,
+          keywords: article.keywords,
+        })}
+      />
       <Link
         href="/dreams"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground"

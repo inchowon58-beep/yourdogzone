@@ -53,3 +53,60 @@ export function buildFaqPageJsonLd(
     })),
   };
 }
+
+/** 케어 툴 · 인터랙티브 유틸 페이지용 */
+export function buildWebApplicationJsonLd(opts: {
+  name: string;
+  description: string;
+  path: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: opts.name,
+    description: opts.description,
+    url: absoluteUrl(opts.path),
+    applicationCategory: "LifestyleApplication",
+    operatingSystem: "Any",
+    inLanguage: "ko-KR",
+    isAccessibleForFree: true,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "KRW",
+    },
+    provider: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: absoluteUrl("/"),
+    },
+  };
+}
+
+/** SEO 해몽 상세 등 아티클형 페이지 */
+export function buildArticleJsonLd(opts: {
+  title: string;
+  description: string;
+  path: string;
+  keywords?: string[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: opts.title,
+    description: opts.description,
+    url: absoluteUrl(opts.path),
+    inLanguage: "ko-KR",
+    keywords: opts.keywords?.join(", "),
+    author: {
+      "@type": "Organization",
+      name: SITE_NAME,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: absoluteUrl("/"),
+    },
+    mainEntityOfPage: absoluteUrl(opts.path),
+  };
+}

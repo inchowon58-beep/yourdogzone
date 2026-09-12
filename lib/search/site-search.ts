@@ -106,6 +106,21 @@ export function searchSite(query: string, limit = 40): SearchHit[] {
       ...(tool.id === "health"
         ? ["질병", "증상", "예방", "백과", "건강"]
         : []),
+      ...(tool.id === "love-score"
+        ? ["사랑지수", "사랑지수조회", "엄마사랑지수", "반려견 사랑"]
+        : []),
+      ...(tool.id === "petshop-curation"
+        ? ["펫샵선택도우미", "분양", "펫샵", "맞춤분양", "안심제휴"]
+        : []),
+      ...(tool.id === "dreams"
+        ? ["꿈해몽", "꿈 해몽", "강아지 꿈", "고양이 꿈", "해몽소"]
+        : []),
+      ...(tool.id === "bcs"
+        ? ["비만도", "BCS", "체중", "살찐", "체형"]
+        : []),
+      ...(tool.id === "pregnancy"
+        ? ["임신", "출산", "교배", "예정일", "임신캘린더"]
+        : []),
     ]);
     if (score > 0) {
       hits.push({

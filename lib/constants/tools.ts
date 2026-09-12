@@ -43,7 +43,7 @@ export const HOME_TOOLS: ToolItem[] = [
   },
   {
     id: "petshop-curation",
-    title: "펫샵선택도우미",
+    title: "유아독존 펫샵선택도우미",
     description: "조건·성향 입력 → 맞춤 분양 가이드 · 안심제휴 매칭",
     href: "/tools/petshop-curation",
     cta: "매칭하기",
@@ -52,7 +52,7 @@ export const HOME_TOOLS: ToolItem[] = [
   },
   {
     id: "dreams",
-    title: "반려동물 꿈 해몽소",
+    title: "유아독존 반려동물 꿈 해몽소",
     description: "상황별 해몽 툴 · 강아지·고양이·토끼 등 SEO 사전",
     href: "/dreams",
     cta: "해몽하기",
@@ -70,7 +70,7 @@ export const HOME_TOOLS: ToolItem[] = [
   },
   {
     id: "bcs",
-    title: "비만도(BCS) 체크",
+    title: "유아독존 비만도(BCS) 체크",
     description: "갈비·허리·배로 1~9단계 진단 + 맞춤 관리 가이드",
     href: "/tools/bcs",
     cta: "진단하기",
@@ -79,7 +79,7 @@ export const HOME_TOOLS: ToolItem[] = [
   },
   {
     id: "pregnancy",
-    title: "임신·출산 캘린더",
+    title: "유아독존 임신·출산 캘린더",
     description: "교배일 → 예정일·주차별 발달·영양·준비물 체크",
     href: "/tools/pregnancy",
     cta: "캘린더 보기",
