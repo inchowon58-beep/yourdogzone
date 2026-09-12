@@ -15,6 +15,7 @@ import { getBreeds } from "@/lib/breeds/queries";
 import { breedDetailPath } from "@/lib/breeds/config";
 import { PET_FOODS } from "@/lib/tools/foods";
 import { HEALTH_GUIDES } from "@/lib/health";
+import { DREAM_ARTICLES } from "@/lib/dreams/catalog";
 import type { SitemapChunkName, SitemapEntry } from "@/lib/seo/sitemap-types";
 
 const STATIC_ROUTES: SitemapEntry[] = [
@@ -77,12 +78,19 @@ async function buildStaticEntries(): Promise<SitemapEntry[]> {
     priority: 0.72,
   }));
 
+  const dreamRoutes: SitemapEntry[] = DREAM_ARTICLES.map((dream) => ({
+    url: absoluteUrl(`/dreams/${dream.slug}`),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
   return [
     ...STATIC_ROUTES,
     ...serviceRoutes,
     ...breedRoutes,
     ...foodRoutes,
     ...healthRoutes,
+    ...dreamRoutes,
   ];
 }
 

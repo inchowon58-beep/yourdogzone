@@ -2,7 +2,12 @@ import Link from "next/link";
 
 const FOOTER_LINKS = [
   { label: "증상·질병 백과", href: "/health" },
+  { label: "펫샵선택도우미", href: "/tools/petshop-curation" },
+  { label: "반려동물 꿈 해몽소", href: "/dreams" },
+  { label: "유아독존 사랑지수조회", href: "/tools/love-score" },
   { label: "급여량 계산기", href: "/tools/feeding" },
+  { label: "비만도(BCS) 체크", href: "/tools/bcs" },
+  { label: "임신·출산 캘린더", href: "/tools/pregnancy" },
   { label: "사람 나이 계산기", href: "/tools/human-age" },
   { label: "멍BTI", href: "/tools/mbti" },
   { label: "먹어도 되나요", href: "/tools/food" },
