@@ -1,15 +1,15 @@
-# 유아독존 네이버 웹문서 등록용 URL 목록
-# 생성일: 2026-09-13
-# 대상: 꿈해몽소 / 사랑지수조회 / 펫샵선택도우미 / 비만도체크 / 임신캘린더
+﻿# YourDogZone Naver WebDoc URL list
+# 2026-09-13
+# dreams / love-score / petshop-curation / bcs / pregnancy
 
-## 메인 툴 페이지
+## Main tools
 https://www.yourdogzone.co.kr/dreams
 https://www.yourdogzone.co.kr/tools/love-score
 https://www.yourdogzone.co.kr/tools/petshop-curation
 https://www.yourdogzone.co.kr/tools/bcs
 https://www.yourdogzone.co.kr/tools/pregnancy
 
-## 꿈 해몽 SEO 상세 (120)
+## Dream SEO pages (120)
 https://www.yourdogzone.co.kr/dreams/flying-dog
 https://www.yourdogzone.co.kr/dreams/dead-appearance-dog
 https://www.yourdogzone.co.kr/dreams/hugging-dog
